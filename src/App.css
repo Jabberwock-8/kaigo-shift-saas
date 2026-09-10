@@ -1,0 +1,57 @@
+.app-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+.app-shell h1 {
+  font-size: 1.6rem;
+  margin-bottom: 4px;
+}
+
+.tagline {
+  color: #6b7066;
+  margin-bottom: 24px;
+}
+
+.card {
+  border: 1px solid #e4e2db;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  background: #fff;
+}
+
+.card h2 {
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.card ul {
+  padding-left: 1.2em;
+}
+
+.ok {
+  color: #1d7a63;
+}
+
+.warn {
+  color: #8a5a0a;
+}
+
+code {
+  background: #f1f0eb;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .card {
+    background: #1f2320;
+    border-color: #333;
+  }
+  code {
+    background: #333;
+  }
+}

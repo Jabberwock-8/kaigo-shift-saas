@@ -1,0 +1,8 @@
+# 改行コードを LF に統一（Windows/Mac 混在対策）
+* text=auto eol=lf
+
+# バイナリ扱い
+*.png binary
+*.jpg binary
+*.xlsx binary
+*.ico binary
