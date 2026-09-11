@@ -88,6 +88,21 @@ export interface ShiftPattern {
   color?: string
 }
 
+export type LeaveRequestType = '希望休' | '有給希望' | '勤務希望'
+export type LeaveRequestPriority = 'must' | 'want'
+export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export interface LeaveRequest {
+  staffId: string
+  yearMonth: string
+  date: string
+  type: LeaveRequestType
+  desiredPatternId: string | null
+  priority: LeaveRequestPriority
+  status: LeaveRequestStatus
+  createdByUid: string
+}
+
 export type ScheduleStatus = 'draft' | 'confirmed' | 'archived'
 
 /** facilityId/schedules/{yearMonth} の中身。Phase 3a では assignments / locks のみ使用 */

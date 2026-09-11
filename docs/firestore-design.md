@@ -481,7 +481,7 @@ facilities/{facilityId}/
 | staff（職員一覧） | 読み取り／編集 | 読み取り |
 | settings/*（shiftRules / timeproExport / generationConfig） | 読み取り／編集 | 読み取り |
 | schedules（月間シフト・candidates） | 読み取り／編集 | 読み取り |
-| leaveRequests（希望休） | 全件 読み取り／編集／**承認・却下** | **自分の分のみ** 作成／読み取り／pending の間だけ内容編集・取消。**承認・却下は不可** |
+| leaveRequests（希望休） | **誰の分でも**作成／全件 読み取り／編集／**承認・却下**（§14参照） | **自分の分のみ** 作成／読み取り／pending の間だけ内容編集・取消。**承認・却下は不可** |
 | users（アカウント） | 同一法人内を読み取り | 自分の1件のみ |
 | 他施設の一切のデータ | 不可 | 不可 |
 
@@ -567,10 +567,13 @@ match /facilities/{fid} {
   match /leaveRequests/{reqId} {
     allow read: if isAdmin(fid)
                 || (inFacility(fid) && resource.data.staffId == myStaffId());
-    allow create: if inFacility(fid)
-                && request.resource.data.staffId      == myStaffId()
-                && request.resource.data.createdByUid == request.auth.uid
-                && request.resource.data.status       == 'pending';
+    // admin は誰の分でも作成可（Phase 3b時点では職員個人ログインが無く、
+    // 管理者が全職員分をまとめて入力する運用のため。実装メモは §14 参照）
+    allow create: if isAdmin(fid)
+                || (inFacility(fid)
+                    && request.resource.data.staffId      == myStaffId()
+                    && request.resource.data.createdByUid == request.auth.uid
+                    && request.resource.data.status       == 'pending');
     allow update: if isAdmin(fid) && leaveImmutableKept();
     allow update: if inFacility(fid)
                 && resource.data.staffId       == myStaffId()
@@ -737,4 +740,13 @@ Phase 1 で追加: react-router-dom。Phase 3〜4 で追加: xlsx（SheetJS、�
 - [ ] リポジトリ名 `kaigo-shift-saas` / GitHub のユーザー名・組織名（Phase 0 の push に必要）
 
 → rev.3 で問題なければ設計確定。Phase 0（プロジェクトフォルダの場所決めから）へ進みます。
-```
+
+---
+
+## 14. 実装メモ（rev.3確定後、実装フェーズでの運用変更）
+
+設計を大きく変えるほどではないが、実装時に判明・決定した細かい変更をここに記録する。
+
+| 日付 | 変更 | 理由 |
+|---|---|---|
+| 2026-09-12 | `leaveRequests` の `create` を `isAdmin(fid) \|\| (本人条件)` に変更（従来は本人のみ） | Phase 3b着手時点で職員個人ログインが無く、管理者が全職員分の希望休をまとめて入力する運用（旧HTML版と同じ）を当面続けるため。職員個人ログインを実際に発行するタイミングで、自己申請フローを別途有効化する想定。§5・§8のルール本文に反映済み。 |

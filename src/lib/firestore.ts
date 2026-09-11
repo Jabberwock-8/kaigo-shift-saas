@@ -16,6 +16,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type {
@@ -23,6 +24,7 @@ import type {
   EmploymentType,
   Facility,
   JobType,
+  LeaveRequest,
   Schedule,
   ShiftPattern,
   Staff,
@@ -253,4 +255,62 @@ export async function setLock(
     updatedAt: serverTimestamp(),
     revision: increment(1),
   })
+}
+
+// ------------------------------------------------------------------
+// leaveRequests（希望休。Phase 3b時点では admin が代理入力する運用）
+// ------------------------------------------------------------------
+
+/** ドキュメントIDは「職員ID_日付」に固定し、1人1日1件を保証する */
+function leaveRequestId(staffId: string, date: string) {
+  return `${staffId}_${date}`
+}
+
+export async function fetchLeaveRequestsForMonth(
+  facilityId: string,
+  yearMonth: string,
+): Promise<(LeaveRequest & { id: string })[]> {
+  const col = collection(requireDb(), 'facilities', facilityId, 'leaveRequests')
+  const snap = await getDocs(query(col, where('yearMonth', '==', yearMonth)))
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as LeaveRequest) }))
+}
+
+/** 希望休を立てる（既にあれば何もしない） */
+export async function setWish(
+  facilityId: string,
+  staffId: string,
+  date: string,
+  yearMonth: string,
+  uid: string,
+) {
+  const ref = doc(
+    requireDb(),
+    'facilities',
+    facilityId,
+    'leaveRequests',
+    leaveRequestId(staffId, date),
+  )
+  const data: LeaveRequest = {
+    staffId,
+    yearMonth,
+    date,
+    type: '希望休',
+    desiredPatternId: null,
+    priority: 'must',
+    status: 'approved',
+    createdByUid: uid,
+  }
+  await setDoc(ref, data)
+}
+
+/** 希望休を取り消す */
+export async function clearWish(facilityId: string, staffId: string, date: string) {
+  const ref = doc(
+    requireDb(),
+    'facilities',
+    facilityId,
+    'leaveRequests',
+    leaveRequestId(staffId, date),
+  )
+  await deleteDoc(ref)
 }

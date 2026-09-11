@@ -76,11 +76,14 @@ service cloud.firestore {
         allow read: if isAdmin(fid)
                     || (inFacility(fid) && resource.data.staffId == myStaffId());
 
-        // 作成: 本人の分のみ。作成者と本人を強制。初期 status は pending 固定
-        allow create: if inFacility(fid)
-                    && request.resource.data.staffId      == myStaffId()
-                    && request.resource.data.createdByUid == request.auth.uid
-                    && request.resource.data.status       == 'pending';
+        // 作成: admin は誰の分でも作成可（現状は職員個人ログインが無く、
+        //       管理者が全職員分をまとめて入力する運用のため）。
+        //       admin以外（本人）は自分の分のみ、作成者と本人を強制、初期 status は pending 固定
+        allow create: if isAdmin(fid)
+                    || (inFacility(fid)
+                        && request.resource.data.staffId      == myStaffId()
+                        && request.resource.data.createdByUid == request.auth.uid
+                        && request.resource.data.status       == 'pending');
 
         // 更新: admin は無制限（承認・却下を含む）。不変フィールドは admin でも変更不可
         allow update: if isAdmin(fid) && leaveImmutableKept();
