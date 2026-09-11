@@ -21,6 +21,8 @@ import {
 import { db } from './firebase'
 import type {
   AppUser,
+  Compatibility,
+  CompatibilityLevel,
   EmploymentType,
   Facility,
   JobType,
@@ -178,6 +180,46 @@ export function upsertShiftPattern(
 
 export function deleteShiftPattern(facilityId: string, id: string) {
   return deleteSub(facilityId, 'shiftPatterns', id)
+}
+
+// ------------------------------------------------------------------
+// compatibilities（相性。「普通」は保存しない）
+// ------------------------------------------------------------------
+
+/** 2つのstaffIdを昇順で連結してドキュメントIDにする */
+function compatibilityId(a: string, b: string) {
+  return [a, b].sort().join('__')
+}
+
+export async function listCompatibilities(
+  facilityId: string,
+): Promise<(Compatibility & { id: string })[]> {
+  const col = collection(requireDb(), 'facilities', facilityId, 'compatibilities')
+  const snap = await getDocs(col)
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Compatibility) }))
+}
+
+/** level が null（＝普通）なら削除、それ以外なら作成/上書き */
+export async function setCompatibility(
+  facilityId: string,
+  staffIdA: string,
+  staffIdB: string,
+  level: CompatibilityLevel | null,
+) {
+  const ref = doc(
+    requireDb(),
+    'facilities',
+    facilityId,
+    'compatibilities',
+    compatibilityId(staffIdA, staffIdB),
+  )
+  if (!level) {
+    await deleteDoc(ref)
+    return
+  }
+  const [a, b] = [staffIdA, staffIdB].sort()
+  const data: Compatibility = { staffIdA: a, staffIdB: b, level }
+  await setDoc(ref, data)
 }
 
 // ------------------------------------------------------------------

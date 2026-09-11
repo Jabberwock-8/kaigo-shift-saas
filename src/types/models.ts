@@ -88,6 +88,20 @@ export interface ShiftPattern {
   color?: string
 }
 
+export type CompatibilityLevel = 'double' | 'caution' | 'x'
+
+/**
+ * 職員ペアの相性。「普通(good)」は保存しない（存在しない＝普通）。
+ * ドキュメントIDは staffIdA/staffIdB を昇順で連結したもの（lib/firestore.ts 参照）。
+ */
+export interface Compatibility {
+  staffIdA: string
+  staffIdB: string
+  level: CompatibilityLevel
+  weight?: number | null
+  note?: string
+}
+
 export type LeaveRequestType = '希望休' | '有給希望' | '勤務希望'
 export type LeaveRequestPriority = 'must' | 'want'
 export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected'
