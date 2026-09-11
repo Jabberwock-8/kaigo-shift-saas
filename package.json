@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:dev": "tsc -b && vite build --mode development",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:dev": "npm run build:dev && firebase.cmd deploy --project dev",
+    "deploy:prod": "npm run build && firebase.cmd deploy --project prod"
   },
   "dependencies": {
     "firebase": "^12.4.0",

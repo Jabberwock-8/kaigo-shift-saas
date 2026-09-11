@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "kaigo-shift-saas"
+    "default": "kaigo-shift-saas",
+    "dev": "kaigo-shift-saas",
+    "prod": "kaigo-shift-saas-prod"
   }
 }
