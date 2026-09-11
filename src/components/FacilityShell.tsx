@@ -29,7 +29,7 @@ export default function FacilityShell() {
   return (
     <MastersProvider facilityId={selectedFacilityId}>
       <div className="app-shell wide">
-        <div className="page-header">
+        <div className="page-header no-print">
           <div>
             <h1>{facility?.name ?? ''}</h1>
             {appUser?.role !== 'admin' && (
@@ -48,7 +48,7 @@ export default function FacilityShell() {
           </div>
         </div>
 
-        <nav className="tabbar">
+        <nav className="tabbar no-print">
           {TABS.map((t) => (
             <NavLink
               key={t.to}

@@ -12,14 +12,16 @@ import {
   weekdayOf,
   WEEKDAY_LABELS,
 } from '../../lib/dateUtils'
+import PrintableShiftGrid from './PrintableShiftGrid'
 
 type StaffWithId = Staff & { id: string }
 
 export default function ShiftGridPage() {
   const { user } = useAuth()
-  const { appUser, selectedFacilityId } = useFacility()
+  const { appUser, selectedFacilityId, facilities } = useFacility()
   const { shiftPatterns, loading: mastersLoading } = useMasters()
   const isAdmin = appUser?.role === 'admin'
+  const facilityName = facilities.find((f) => f.id === selectedFacilityId)?.name ?? ''
 
   const [yearMonth, setYearMonth] = useState(currentYearMonth())
   const [staffList, setStaffList] = useState<StaffWithId[]>([])
@@ -126,7 +128,7 @@ export default function ShiftGridPage() {
 
   return (
     <section className="card">
-      <div className="page-header">
+      <div className="page-header no-print">
         <h2>{formatYearMonthLabel(yearMonth)} のシフト表</h2>
         <div className="header-actions">
           <button type="button" onClick={() => setYearMonth((ym) => shiftYearMonth(ym, -1))}>
@@ -138,22 +140,25 @@ export default function ShiftGridPage() {
           <button type="button" onClick={() => setYearMonth((ym) => shiftYearMonth(ym, 1))}>
             ▶
           </button>
+          <button type="button" onClick={() => window.print()}>
+            🖨 印刷
+          </button>
         </div>
       </div>
 
-      {(loading || mastersLoading) && <p className="muted">読み込み中…</p>}
-      {error && <p className="warn">{error}</p>}
+      {(loading || mastersLoading) && <p className="muted no-print">読み込み中…</p>}
+      {error && <p className="warn no-print">{error}</p>}
       {!loading && staffList.length === 0 && (
-        <p className="muted">有効な職員が登録されていません。</p>
+        <p className="muted no-print">有効な職員が登録されていません。</p>
       )}
       {!loading && shiftPatterns.length === 0 && (
-        <p className="warn">
+        <p className="warn no-print">
           勤務パターンが未登録です。先に「勤務パターン」タブで登録してください。
         </p>
       )}
 
       {staffList.length > 0 && shiftPatterns.length > 0 && (
-        <div className="grid-scroll">
+        <div className="grid-scroll no-print">
           <table className="shift-grid">
             <thead>
               <tr>
@@ -218,9 +223,19 @@ export default function ShiftGridPage() {
         </div>
       )}
 
-      <p className="muted" style={{ marginTop: 10 }}>
+      <p className="muted no-print" style={{ marginTop: 10 }}>
         セルをクリックして勤務パターンを選択できます。🔒は自動生成（今後のフェーズ）でこのセルを固定する目印です。
       </p>
+
+      {staffList.length > 0 && shiftPatterns.length > 0 && (
+        <PrintableShiftGrid
+          facilityName={facilityName}
+          yearMonth={yearMonth}
+          staffList={staffList}
+          schedule={schedule}
+          shiftPatterns={shiftPatterns}
+        />
+      )}
     </section>
   )
 }

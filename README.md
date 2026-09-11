@@ -31,7 +31,7 @@ Firebase（Firestore + Authentication + Hosting）を使ったサーバー型構
 - **Phase 0**: プロジェクト骨格（Vite + Firebase 接続 + Hosting 公開 + 初回 push） ✅
 - **Phase 1**: ログイン → 施設選択 → 職員一覧表示 ✅
 - **Phase 2**: 職員・勤務パターン・職種・雇用区分のマスタ管理 ✅
-- **Phase 3**: 月間シフトの表示・手修正(3a ✅) / 希望休(3b ✅) / 印刷(3c 進行中)
+- **Phase 3**: 月間シフトの表示・手修正(3a ✅) / 希望休(3b ✅) / 印刷(3c ✅)
 - **Phase 4 以降**: 相性・条件ルール、自動シフト生成、Excel入出力・TimePro-VG連携の移植
 
 進捗の詳細は [docs/feature-parity.md](docs/feature-parity.md) を参照。
