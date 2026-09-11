@@ -46,6 +46,86 @@ code {
   font-size: 0.9em;
 }
 
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 320px;
+}
+
+.form-stack label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+  color: #6b7066;
+}
+
+.form-stack input {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid #cfcdc4;
+  border-radius: 8px;
+}
+
+.form-stack button {
+  align-self: flex-start;
+  font: inherit;
+  padding: 8px 20px;
+  border: 1px solid #1d7a63;
+  background: #1d7a63;
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.form-stack button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.list-plain {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.list-plain button {
+  font: inherit;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border: 1px solid #e4e2db;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.header-actions button {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid #cfcdc4;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
 @media (prefers-color-scheme: dark) {
   .card {
     background: #1f2320;
