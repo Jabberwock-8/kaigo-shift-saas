@@ -27,6 +27,7 @@ import type {
   Facility,
   JobType,
   LeaveRequest,
+  Rule,
   Schedule,
   ShiftPattern,
   Staff,
@@ -220,6 +221,30 @@ export async function setCompatibility(
   const [a, b] = [staffIdA, staffIdB].sort()
   const data: Compatibility = { staffIdA: a, staffIdB: b, level }
   await setDoc(ref, data)
+}
+
+// ------------------------------------------------------------------
+// rules（条件ビルダー）
+// ------------------------------------------------------------------
+
+export async function listRules(facilityId: string): Promise<(Rule & { id: string })[]> {
+  const col = collection(requireDb(), 'facilities', facilityId, 'rules')
+  const snap = await getDocs(col)
+  const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Rule) }))
+  // order が未設定のドキュメントもあり得るため、orderBy クエリではなくここで並べ替える
+  return rows.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+}
+
+export function upsertRule(facilityId: string, id: string | null, data: Rule) {
+  return upsertSub(facilityId, 'rules', id, data)
+}
+
+export async function setRuleEnabled(facilityId: string, id: string, enabled: boolean) {
+  await updateDoc(doc(requireDb(), 'facilities', facilityId, 'rules', id), { enabled })
+}
+
+export function deleteRule(facilityId: string, id: string) {
+  return deleteSub(facilityId, 'rules', id)
 }
 
 // ------------------------------------------------------------------

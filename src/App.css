@@ -422,6 +422,55 @@ td.compat-cell.self {
 }
 
 /* ------------------------------------------------------------------
+   条件（ルール一覧）
+   ------------------------------------------------------------------ */
+
+.rule-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 4px;
+  border-bottom: 1px solid #e4e2db;
+  font-size: 0.9rem;
+}
+
+.rule-row:last-child {
+  border-bottom: none;
+}
+
+.rule-row.disabled .rule-text {
+  color: #9a9e95;
+  text-decoration: line-through;
+}
+
+.rule-text {
+  flex: 1;
+}
+
+.badge {
+  font-size: 0.7rem;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.badge.hard {
+  background: #f9e9e7;
+  color: #b4372e;
+}
+
+.badge.soft {
+  background: #f8efdc;
+  color: #8a5a0a;
+}
+
+/* ------------------------------------------------------------------
    印刷
    ------------------------------------------------------------------ */
 

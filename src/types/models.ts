@@ -88,6 +88,61 @@ export interface ShiftPattern {
   color?: string
 }
 
+export type RuleDaysType = 'all' | 'weekdays' | 'weekend' | 'dow' | 'dates'
+
+export interface RuleDays {
+  type: RuleDaysType
+  /** dow: 0(日)〜6(土) の配列 / dates: "YYYY-MM-DD" の配列 */
+  values?: number[] | string[]
+}
+
+export type RuleTargetType =
+  | 'shift'
+  | 'qualification'
+  | 'trait'
+  | 'staff'
+  | 'traitPair'
+  | 'shiftGroup'
+
+export interface RuleTarget {
+  type: RuleTargetType
+  /** shift/staff: id、qualification/trait/traitPairのvalue: 名称、shiftGroup: id配列 */
+  value?: string | string[]
+  /** traitPair のときだけ使う、もう一方のタグ名 */
+  value2?: string
+}
+
+export type RuleCondType =
+  | 'exact'
+  | 'atLeast'
+  | 'atMost'
+  | 'none'
+  | 'work'
+  | 'off'
+  | 'together'
+  | 'notTogether'
+  | 'atLeastGroup'
+  | 'notTogetherGroup'
+  | 'preferShift'
+
+export interface RuleCond {
+  type: RuleCondType
+  count?: number
+  /** preferShift のときだけ使う、優先する勤務パターンID */
+  value?: string
+}
+
+export type RuleKind = 'hard' | 'soft'
+
+export interface Rule {
+  enabled: boolean
+  kind: RuleKind
+  days: RuleDays
+  target: RuleTarget
+  cond: RuleCond
+  order?: number
+}
+
 export type CompatibilityLevel = 'double' | 'caution' | 'x'
 
 /**

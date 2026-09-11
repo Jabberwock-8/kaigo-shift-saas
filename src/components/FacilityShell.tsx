@@ -10,12 +10,14 @@ import EmploymentTypesPage from '../features/masters/EmploymentTypesPage'
 import ShiftGridPage from '../features/shift/ShiftGridPage'
 import WishesPage from '../features/wishes/WishesPage'
 import CompatibilityPage from '../features/compatibility/CompatibilityPage'
+import RulesPage from '../features/rules/RulesPage'
 
 const TABS = [
   { to: '/shift', label: 'シフト表' },
   { to: '/wishes', label: '希望休' },
   { to: '/staff', label: '職員' },
   { to: '/compatibility', label: '相性' },
+  { to: '/rules', label: '条件' },
   { to: '/shift-patterns', label: '勤務パターン' },
   { to: '/job-types', label: '職種' },
   { to: '/employment-types', label: '雇用区分' },
@@ -69,6 +71,7 @@ export default function FacilityShell() {
           <Route path="/staff/new" element={<StaffFormPage />} />
           <Route path="/staff/:staffId" element={<StaffFormPage />} />
           <Route path="/compatibility" element={<CompatibilityPage />} />
+          <Route path="/rules" element={<RulesPage />} />
           <Route path="/shift-patterns" element={<ShiftPatternsPage />} />
           <Route path="/job-types" element={<JobTypesPage />} />
           <Route path="/employment-types" element={<EmploymentTypesPage />} />
