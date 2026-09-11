@@ -126,10 +126,6 @@ code {
   cursor: pointer;
 }
 
-.app-shell.wide {
-  max-width: 960px;
-}
-
 .tabbar {
   display: inline-flex;
   gap: 2px;
@@ -238,6 +234,101 @@ code {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 14px;
+}
+
+.app-shell.wide {
+  max-width: 1200px;
+}
+
+.grid-scroll {
+  overflow-x: auto;
+}
+
+table.shift-grid {
+  border-collapse: collapse;
+}
+
+table.shift-grid th,
+table.shift-grid td {
+  border: 1px solid #e4e2db;
+  text-align: center;
+  padding: 2px;
+  font-size: 0.8rem;
+}
+
+table.shift-grid th {
+  background: #fbfaf7;
+  font-weight: 600;
+}
+
+table.shift-grid th.sat {
+  color: #2c5fa8;
+}
+
+table.shift-grid th.sun {
+  color: #b4372e;
+}
+
+table.shift-grid .dow {
+  font-weight: 400;
+  font-size: 0.7rem;
+}
+
+table.shift-grid td.namecol,
+table.shift-grid th.namecol {
+  position: sticky;
+  left: 0;
+  background: #fbfaf7;
+  text-align: left;
+  padding: 4px 8px;
+  white-space: nowrap;
+  min-width: 96px;
+  z-index: 1;
+}
+
+td.grid-cell {
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+.cell-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.cell-wrap select {
+  width: 100%;
+  height: 34px;
+  border: none;
+  text-align: center;
+  font: inherit;
+  font-size: 0.85rem;
+  background: #fff;
+  cursor: pointer;
+}
+
+.cell-wrap select:disabled {
+  cursor: default;
+  color: inherit;
+}
+
+.lock-btn {
+  position: absolute;
+  top: -2px;
+  right: 0;
+  border: none;
+  background: transparent;
+  font-size: 8px;
+  line-height: 1;
+  padding: 1px;
+  cursor: pointer;
+  opacity: 0.35;
+}
+
+.lock-btn.locked {
+  opacity: 1;
 }
 
 @media (prefers-color-scheme: dark) {

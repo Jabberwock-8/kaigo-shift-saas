@@ -6,12 +6,16 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
+  increment,
   orderBy,
   query,
+  serverTimestamp,
   setDoc,
+  updateDoc,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type {
@@ -19,6 +23,7 @@ import type {
   EmploymentType,
   Facility,
   JobType,
+  Schedule,
   ShiftPattern,
   Staff,
 } from '../types/models'
@@ -171,4 +176,81 @@ export function upsertShiftPattern(
 
 export function deleteShiftPattern(facilityId: string, id: string) {
   return deleteSub(facilityId, 'shiftPatterns', id)
+}
+
+// ------------------------------------------------------------------
+// schedules（月間シフト。Phase 3a では assignments / locks のみ使用）
+// ------------------------------------------------------------------
+
+function scheduleRef(facilityId: string, yearMonth: string) {
+  return doc(requireDb(), 'facilities', facilityId, 'schedules', yearMonth)
+}
+
+export async function fetchSchedule(
+  facilityId: string,
+  yearMonth: string,
+): Promise<Schedule | null> {
+  const snap = await getDoc(scheduleRef(facilityId, yearMonth))
+  return snap.exists() ? (snap.data() as Schedule) : null
+}
+
+/** ドキュメントが無ければ空のシフト表として作成する */
+async function ensureSchedule(
+  facilityId: string,
+  yearMonth: string,
+  daysInMonth: number,
+  uid: string,
+) {
+  const ref = scheduleRef(facilityId, yearMonth)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) {
+    await setDoc(ref, {
+      yearMonth,
+      daysInMonth,
+      status: 'draft',
+      assignments: {},
+      locks: {},
+      revision: 1,
+      createdByUid: uid,
+      updatedByUid: uid,
+      updatedAt: serverTimestamp(),
+    })
+  }
+  return ref
+}
+
+export async function setAssignment(
+  facilityId: string,
+  yearMonth: string,
+  daysInMonth: number,
+  staffId: string,
+  day: number,
+  patternId: string | null,
+  uid: string,
+) {
+  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
+  await updateDoc(ref, {
+    [`assignments.${staffId}.${day}`]: patternId ?? deleteField(),
+    updatedByUid: uid,
+    updatedAt: serverTimestamp(),
+    revision: increment(1),
+  })
+}
+
+export async function setLock(
+  facilityId: string,
+  yearMonth: string,
+  daysInMonth: number,
+  staffId: string,
+  day: number,
+  locked: boolean,
+  uid: string,
+) {
+  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
+  await updateDoc(ref, {
+    [`locks.${staffId}.${day}`]: locked ? true : deleteField(),
+    updatedByUid: uid,
+    updatedAt: serverTimestamp(),
+    revision: increment(1),
+  })
 }

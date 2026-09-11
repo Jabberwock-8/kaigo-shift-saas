@@ -2,17 +2,15 @@
   font-family: system-ui, 'Segoe UI', 'Yu Gothic UI', 'Hiragino Kaku Gothic ProN',
     Meiryo, Roboto, sans-serif;
   line-height: 1.6;
-  color-scheme: light dark;
+  /*
+   * 現状、カード・表などのコンポーネントは明るい配色を前提に作っている。
+   * OSのダークモードに合わせて背景だけ暗くすると表の中身と噛み合わず崩れるため、
+   * 当面は明るい配色に固定する（ダークモード対応は将来まとめて行う）。
+   */
+  color-scheme: light;
   color: #22271f;
   background: #f7f6f3;
   -webkit-font-smoothing: antialiased;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #e6e6e6;
-    background: #16171d;
-  }
 }
 
 body {

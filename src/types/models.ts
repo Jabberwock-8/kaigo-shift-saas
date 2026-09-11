@@ -87,3 +87,17 @@ export interface ShiftPattern {
   order?: number
   color?: string
 }
+
+export type ScheduleStatus = 'draft' | 'confirmed' | 'archived'
+
+/** facilityId/schedules/{yearMonth} の中身。Phase 3a では assignments / locks のみ使用 */
+export interface Schedule {
+  yearMonth: string
+  daysInMonth: number
+  status?: ScheduleStatus
+  /** staffId -> 日(1始まりの文字列) -> shiftPatterns のドキュメントID */
+  assignments?: Record<string, Record<string, string>>
+  /** staffId -> 日 -> ロック中か */
+  locks?: Record<string, Record<string, boolean>>
+  revision?: number
+}

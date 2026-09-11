@@ -1,0 +1,36 @@
+export const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土']
+
+export function pad2(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+export function currentYearMonth(): string {
+  const t = new Date()
+  return `${t.getFullYear()}-${pad2(t.getMonth() + 1)}`
+}
+
+export function parseYearMonth(yearMonth: string): { year: number; month0: number } {
+  const [y, m] = yearMonth.split('-').map(Number)
+  return { year: y, month0: m - 1 }
+}
+
+export function daysInMonth(yearMonth: string): number {
+  const { year, month0 } = parseYearMonth(yearMonth)
+  return new Date(year, month0 + 1, 0).getDate()
+}
+
+export function weekdayOf(yearMonth: string, day: number): number {
+  const { year, month0 } = parseYearMonth(yearMonth)
+  return new Date(year, month0, day).getDay()
+}
+
+export function shiftYearMonth(yearMonth: string, delta: number): string {
+  const { year, month0 } = parseYearMonth(yearMonth)
+  const d = new Date(year, month0 + delta, 1)
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`
+}
+
+export function formatYearMonthLabel(yearMonth: string): string {
+  const { year, month0 } = parseYearMonth(yearMonth)
+  return `${year}年${month0 + 1}月`
+}

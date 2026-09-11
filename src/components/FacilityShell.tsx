@@ -7,8 +7,10 @@ import StaffFormPage from '../features/staff/StaffFormPage'
 import ShiftPatternsPage from '../features/masters/ShiftPatternsPage'
 import JobTypesPage from '../features/masters/JobTypesPage'
 import EmploymentTypesPage from '../features/masters/EmploymentTypesPage'
+import ShiftGridPage from '../features/shift/ShiftGridPage'
 
 const TABS = [
+  { to: '/shift', label: 'シフト表' },
   { to: '/staff', label: '職員' },
   { to: '/shift-patterns', label: '勤務パターン' },
   { to: '/job-types', label: '職種' },
@@ -57,13 +59,14 @@ export default function FacilityShell() {
         </nav>
 
         <Routes>
+          <Route path="/shift" element={<ShiftGridPage />} />
           <Route path="/staff" element={<StaffListPage />} />
           <Route path="/staff/new" element={<StaffFormPage />} />
           <Route path="/staff/:staffId" element={<StaffFormPage />} />
           <Route path="/shift-patterns" element={<ShiftPatternsPage />} />
           <Route path="/job-types" element={<JobTypesPage />} />
           <Route path="/employment-types" element={<EmploymentTypesPage />} />
-          <Route path="*" element={<Navigate to="/staff" replace />} />
+          <Route path="*" element={<Navigate to="/shift" replace />} />
         </Routes>
       </div>
     </MastersProvider>
