@@ -1,0 +1,109 @@
+// Firestore Security Rules
+//
+// 設計の根拠・各判断の理由は docs/firestore-design.md §8 を参照。
+// 基本方針: 明示的に許可したものだけ通す。デフォルト拒否。
+// 各 match ブロックはヘルパー関数（isAdmin 等）の呼び出しだけにし、
+// 将来の権限モデル変更（§6）はヘルパーの中身の差し替えだけで対応できるようにする。
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ログイン済みか
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // 自分の users/{uid} ドキュメント
+    function me() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // 指定施設に所属しているか
+    function inFacility(fid) {
+      return signedIn() && (fid in me().facilityIds);
+    }
+
+    // 指定施設の管理者か
+    function isAdmin(fid) {
+      return inFacility(fid) && me().role == 'admin';
+    }
+
+    // 自分に紐づく staff ドキュメントID（管理者専任なら null）
+    function myStaffId() {
+      return me().linkedStaffId;
+    }
+
+    // leaveRequests の不変フィールドが変更されていないか
+    function leaveImmutableKept() {
+      return request.resource.data.staffId      == resource.data.staffId
+          && request.resource.data.createdByUid == resource.data.createdByUid
+          && request.resource.data.yearMonth    == resource.data.yearMonth
+          && request.resource.data.date         == resource.data.date;
+    }
+
+    match /organizations/{orgId} {
+      allow read:  if signedIn() && me().organizationId == orgId;
+      allow write: if false; // 当面コンソール管理
+    }
+
+    match /facilities/{fid} {
+      allow read:   if inFacility(fid);
+      allow update: if isAdmin(fid);
+      allow create, delete: if false;
+
+      match /jobTypes/{id}        { allow read: if inFacility(fid); allow write: if isAdmin(fid); }
+      match /employmentTypes/{id} { allow read: if inFacility(fid); allow write: if isAdmin(fid); }
+      match /shiftPatterns/{id}   { allow read: if inFacility(fid); allow write: if isAdmin(fid); }
+      match /rules/{id}           { allow read: if inFacility(fid); allow write: if isAdmin(fid); }
+      match /compatibilities/{id} { allow read: if inFacility(fid); allow write: if isAdmin(fid); }
+      match /settings/{id}        { allow read: if inFacility(fid); allow write: if isAdmin(fid); }
+      match /staff/{staffId}      { allow read: if inFacility(fid); allow write: if isAdmin(fid); }
+
+      match /schedules/{ym} {
+        allow read:  if inFacility(fid);
+        allow write: if isAdmin(fid);
+
+        match /candidates/{cid} {
+          allow read:  if inFacility(fid);
+          allow write: if isAdmin(fid);
+        }
+      }
+
+      match /leaveRequests/{reqId} {
+        // 読み取り: admin は全件 / 本人は自分の分のみ
+        allow read: if isAdmin(fid)
+                    || (inFacility(fid) && resource.data.staffId == myStaffId());
+
+        // 作成: 本人の分のみ。作成者と本人を強制。初期 status は pending 固定
+        allow create: if inFacility(fid)
+                    && request.resource.data.staffId      == myStaffId()
+                    && request.resource.data.createdByUid == request.auth.uid
+                    && request.resource.data.status       == 'pending';
+
+        // 更新: admin は無制限（承認・却下を含む）。不変フィールドは admin でも変更不可
+        allow update: if isAdmin(fid) && leaveImmutableKept();
+
+        // 更新: 本人は pending の間だけ、status を pending のまま保ったときのみ編集可
+        //       （承認・却下は不可。staffId/createdByUid/yearMonth/date も変更不可）
+        allow update: if inFacility(fid)
+                    && resource.data.staffId        == myStaffId()
+                    && resource.data.status         == 'pending'
+                    && request.resource.data.status == 'pending'
+                    && leaveImmutableKept();
+
+        // 削除: admin、または本人が pending のうちに取消
+        allow delete: if isAdmin(fid)
+                    || (inFacility(fid) && resource.data.staffId == myStaffId()
+                        && resource.data.status == 'pending');
+      }
+    }
+
+    match /users/{uid} {
+      allow read:  if signedIn() && (request.auth.uid == uid
+                   || (me().role == 'admin' && me().organizationId == resource.data.organizationId));
+      allow write: if false; // 当面コンソール管理
+    }
+  }
+}
