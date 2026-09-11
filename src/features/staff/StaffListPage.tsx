@@ -1,72 +1,92 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from '../../context/AuthContext'
+import { Link } from 'react-router-dom'
 import { useFacility } from '../../context/FacilityContext'
-import { fetchStaffList } from '../../lib/firestore'
+import { useMasters } from '../../context/MastersContext'
+import { deleteStaff, fetchStaffList } from '../../lib/firestore'
 import type { Staff } from '../../types/models'
 
 export default function StaffListPage() {
-  const { signOut } = useAuth()
-  const { facilities, selectedFacilityId, selectFacility } = useFacility()
+  const { appUser, selectedFacilityId } = useFacility()
+  const { jobTypes, employmentTypes } = useMasters()
   const [staff, setStaff] = useState<(Staff & { id: string })[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const isAdmin = appUser?.role === 'admin'
 
-  const facility = facilities.find((f) => f.id === selectedFacilityId)
-
-  useEffect(() => {
+  async function load() {
     if (!selectedFacilityId) return
-    let cancelled = false
     setLoading(true)
     setError(null)
-    fetchStaffList(selectedFacilityId)
-      .then((list) => {
-        if (!cancelled) setStaff(list)
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
+    try {
+      setStaff(await fetchStaffList(selectedFacilityId))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
+    void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFacilityId])
 
+  if (!selectedFacilityId) return null
+
+  const jobTypeLabel = (id?: string) => jobTypes.find((j) => j.id === id)?.label ?? ''
+  const employmentTypeLabel = (id?: string) =>
+    employmentTypes.find((e) => e.id === id)?.label ?? ''
+
+  async function handleDelete(s: Staff & { id: string }) {
+    if (!confirm(`「${s.name}」を削除しますか？`)) return
+    await deleteStaff(selectedFacilityId!, s.id)
+    await load()
+  }
+
   return (
-    <main className="app-shell">
+    <section className="card">
       <div className="page-header">
-        <h1>{facility ? facility.name : '職員一覧'}</h1>
-        <div className="header-actions">
-          {facilities.length > 1 && (
-            <button type="button" onClick={() => selectFacility('')}>
-              施設を変更
-            </button>
-          )}
-          <button type="button" onClick={() => void signOut()}>
-            ログアウト
-          </button>
-        </div>
+        <h2>職員一覧</h2>
+        {isAdmin && <Link to="/staff/new">＋ 職員を追加</Link>}
       </div>
 
-      <section className="card">
-        <h2>職員一覧</h2>
-        {loading && <p className="muted">読み込み中…</p>}
-        {error && <p className="warn">{error}</p>}
-        {!loading && !error && staff.length === 0 && (
-          <p className="muted">職員が登録されていません。</p>
-        )}
-        {staff.length > 0 && (
-          <ul className="list-plain">
+      {loading && <p className="muted">読み込み中…</p>}
+      {error && <p className="warn">{error}</p>}
+      {!loading && !error && staff.length === 0 && (
+        <p className="muted">職員が登録されていません。</p>
+      )}
+
+      {staff.length > 0 && (
+        <table className="master-table">
+          <thead>
+            <tr>
+              <th>氏名</th>
+              <th>職種</th>
+              <th>雇用区分</th>
+              <th>状態</th>
+              {isAdmin && <th></th>}
+            </tr>
+          </thead>
+          <tbody>
             {staff.map((s) => (
-              <li key={s.id}>
-                {s.name}
-                {s.active === false && <span className="muted"> （無効）</span>}
-              </li>
+              <tr key={s.id}>
+                <td>{s.name}</td>
+                <td>{jobTypeLabel(s.jobTypeId)}</td>
+                <td>{employmentTypeLabel(s.employmentTypeId)}</td>
+                <td>{s.active === false ? '無効' : '有効'}</td>
+                {isAdmin && (
+                  <td className="row-actions">
+                    <Link to={`/staff/${s.id}`}>編集</Link>
+                    <button type="button" className="ghost" onClick={() => void handleDelete(s)}>
+                      削除
+                    </button>
+                  </td>
+                )}
+              </tr>
             ))}
-          </ul>
-        )}
-      </section>
-    </main>
+          </tbody>
+        </table>
+      )}
+    </section>
   )
 }

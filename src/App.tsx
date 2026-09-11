@@ -5,7 +5,7 @@ import { FacilityProvider, useFacility } from './context/FacilityContext'
 import { firebaseStatus } from './lib/firebase'
 import LoginPage from './features/auth/LoginPage'
 import FacilityPickerPage from './features/facilities/FacilityPickerPage'
-import StaffListPage from './features/staff/StaffListPage'
+import FacilityShell from './components/FacilityShell'
 
 function ConfigMissing() {
   return (
@@ -38,7 +38,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 /** users ドキュメント読み込み・施設選択の状態に応じて出し分け */
-function HomeRoute() {
+function HomeGate() {
   const { loading, error, appUser, facilities, selectedFacilityId } =
     useFacility()
 
@@ -70,7 +70,7 @@ function HomeRoute() {
     return <FacilityPickerPage />
   }
 
-  return <StaffListPage />
+  return <FacilityShell />
 }
 
 export default function App() {
@@ -82,16 +82,15 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
-        path="/"
+        path="/*"
         element={
           <RequireAuth>
             <FacilityProvider>
-              <HomeRoute />
+              <HomeGate />
             </FacilityProvider>
           </RequireAuth>
         }
       />
-      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

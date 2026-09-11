@@ -50,3 +50,40 @@ export interface Staff {
   traits?: string[]
   workConditions?: StaffWorkConditions
 }
+
+export interface JobType {
+  label: string
+  shortLabel?: string
+  order?: number
+  color?: string
+}
+
+export interface EmploymentType {
+  label: string
+  order?: number
+  /** true の区分は「必要勤務日数(下限)」チェックの対象になる（例: 常勤） */
+  hasTargetWorkdays?: boolean
+}
+
+export type ShiftCategory =
+  | 'day'
+  | 'early'
+  | 'late'
+  | 'night'
+  | 'afterNight'
+  | 'off'
+  | 'paidLeave'
+  | 'individual'
+
+export interface ShiftPattern {
+  code: string
+  label: string
+  startTime?: string
+  endTime?: string
+  category?: ShiftCategory
+  isWork: boolean
+  isNight: boolean
+  isSystem?: boolean
+  order?: number
+  color?: string
+}
