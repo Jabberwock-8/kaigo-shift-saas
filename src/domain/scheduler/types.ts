@@ -7,6 +7,7 @@ import type {
   Staff,
 } from '../../types/models'
 import type { MonthlyLimitsOverride } from './limits'
+import type { GenerationConfig } from './defaults'
 
 export type StaffWithId = Staff & { id: string }
 export type PatternWithId = ShiftPattern & { id: string }
@@ -14,14 +15,16 @@ export type RuleWithId = Rule & { id: string }
 export type CompatibilityWithId = Compatibility & { id: string }
 export type EmploymentTypeWithId = EmploymentType & { id: string }
 
+/** staffId -> 日(1始まりの文字列) -> shiftPatterns のID */
+export type AssignmentGrid = Record<string, Record<string, string>>
+
 export interface CheckInput {
   yearMonth: string
   daysInMonth: number
   staff: StaffWithId[]
   employmentTypes: EmploymentTypeWithId[]
   shiftPatterns: PatternWithId[]
-  /** staffId -> 日(1始まりの文字列) -> shiftPatternsのID */
-  assignments: Record<string, Record<string, string>>
+  assignments: AssignmentGrid
   rules: RuleWithId[]
   compatibilities: CompatibilityWithId[]
   settings: ShiftRulesSettings
@@ -44,4 +47,61 @@ export interface CheckResult {
   soft: string[]
   hardCount: number
   softCount: number
+}
+
+// ------------------------------------------------------------------
+// Phase 4d: 自動生成
+// ------------------------------------------------------------------
+
+/** canWork（配置可否判定）が参照する、生成途中のグリッドと関連データ */
+export interface CanWorkContext {
+  grid: AssignmentGrid
+  yearMonth: string
+  daysInMonth: number
+  patternById: Map<string, PatternWithId>
+  employmentTypeById: Map<string, EmploymentTypeWithId>
+  settings: ShiftRulesSettings
+  /** enabled の hard ルールのみで十分（forced-off 判定にのみ使う） */
+  rules: RuleWithId[]
+  compatibilities: CompatibilityWithId[]
+  monthlyMaxDaysOverride?: Record<string, MonthlyLimitsOverride>
+}
+
+export interface GenerateInput {
+  yearMonth: string
+  daysInMonth: number
+  staff: StaffWithId[]
+  employmentTypes: EmploymentTypeWithId[]
+  shiftPatterns: PatternWithId[]
+  /** enabled のみ渡す */
+  rules: RuleWithId[]
+  compatibilities: CompatibilityWithId[]
+  settings: ShiftRulesSettings
+  /** 当月の希望休（type=希望休）のみ */
+  wishes: { staffId: string; day: number }[]
+  /** schedule.locks */
+  lockedCells: Record<string, Record<string, true>>
+  /** ロック引き継ぎ元（現在の assignments） */
+  baseAssignments: AssignmentGrid
+  monthlyMaxDaysOverride?: Record<string, MonthlyLimitsOverride>
+  config: GenerationConfig
+}
+
+export type ScoreKey = 'fair' | 'comp' | 'wish' | 'soft' | 'interval' | 'spread'
+
+export interface CandidateScores extends Record<ScoreKey, number> {
+  total: number
+}
+
+export interface Candidate {
+  profileKey: string
+  label: string
+  weights: Record<ScoreKey, number>
+  assignments: AssignmentGrid
+  scores: CandidateScores
+  hardCount: number
+  softCount: number
+  hardViolations: string[]
+  softViolations: string[]
+  fulfillmentRate: number
 }

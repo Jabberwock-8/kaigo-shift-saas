@@ -3,31 +3,19 @@
  * UI・Firestoreに依存しない純粋なロジック。docs/firestore-design.md §9 の方針どおり、
  * 生成エンジン（Phase 4d）からもこのまま呼び出す想定。
  */
-import type { Rule, RuleCond, RuleDays } from '../../types/models'
-import { formatDate, parseTimeToHours, weekdayOf } from '../../lib/dateUtils'
+import type { Rule, RuleCond } from '../../types/models'
+import { parseTimeToHours, weekdayOf } from '../../lib/dateUtils'
 import { ruleText, type RuleTextContext } from './ruleText'
 import { resolveLimits } from './limits'
+import { ruleAppliesToDate } from './ruleMatch'
 import type { CheckInput, CheckResult, PatternWithId, RuleWithId, StaffWithId } from './types'
 
-function ruleAppliesToDate(days: RuleDays, yearMonth: string, day: number): boolean {
-  const w = weekdayOf(yearMonth, day)
-  switch (days.type) {
-    case 'all':
-      return true
-    case 'weekdays':
-      return w >= 1 && w <= 5
-    case 'weekend':
-      return w === 0 || w === 6
-    case 'dow':
-      return ((days.values as number[] | undefined) ?? []).includes(w)
-    case 'dates':
-      return ((days.values as string[] | undefined) ?? []).includes(formatDate(yearMonth, day))
-    default:
-      return false
-  }
-}
-
-interface EvalCtx {
+/**
+ * ルール1件・1日分を評価するための文脈。
+ * score.ts（Phase 4d-1）が「推奨ルール充足率」を計算する際にも再利用する
+ * （評価ロジックを二重実装しないため）。
+ */
+export interface EvalCtx {
   staff: StaffWithId[]
   patternById: Map<string, PatternWithId>
   assignedOf: (staffId: string, day: number) => string | undefined
@@ -35,12 +23,12 @@ interface EvalCtx {
   ruleTextCtx: RuleTextContext
 }
 
-interface RuleViolation {
+export interface RuleViolation {
   message: string
   cells?: { staffId: string; day: number }[]
 }
 
-function evalRuleDay(rule: Rule, day: number, ctx: EvalCtx): RuleViolation | null {
+export function evalRuleDay(rule: Rule, day: number, ctx: EvalCtx): RuleViolation | null {
   const { target, cond } = rule
   const label = ruleText(rule, ctx.ruleTextCtx)
 
