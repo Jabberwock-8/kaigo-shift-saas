@@ -1,13 +1,15 @@
-import type { Schedule, ShiftPattern, Staff } from '../../types/models'
+import type { Rule, Schedule, ShiftPattern, Staff } from '../../types/models'
 import {
   daysInMonth as daysInMonthOf,
   formatYearMonthLabel,
   weekdayOf,
   WEEKDAY_LABELS,
 } from '../../lib/dateUtils'
+import { demandFor } from '../../domain/scheduler/demand'
 
 type StaffWithId = Staff & { id: string }
 type PatternWithId = ShiftPattern & { id: string }
+type RuleWithId = Rule & { id: string }
 
 interface Props {
   facilityName: string
@@ -15,6 +17,7 @@ interface Props {
   staffList: StaffWithId[]
   schedule: Schedule | null
   shiftPatterns: PatternWithId[]
+  rules: RuleWithId[]
 }
 
 /**
@@ -27,6 +30,7 @@ export default function PrintableShiftGrid({
   staffList,
   schedule,
   shiftPatterns,
+  rules,
 }: Props) {
   const days = daysInMonthOf(yearMonth)
   const dayList = Array.from({ length: days }, (_, i) => i + 1)
@@ -91,9 +95,16 @@ export default function PrintableShiftGrid({
           {workPatterns.map((p) => (
             <tr key={p.id} className="tally-row">
               <td className="namecol">{p.code} 計</td>
-              {dayList.map((d) => (
-                <td key={d}>{countFor(p.id, d) || ''}</td>
-              ))}
+              {dayList.map((d) => {
+                const need = demandFor(rules, yearMonth, d)[p.id]
+                const actual = countFor(p.id, d)
+                if (need == null) return <td key={d}>{actual || ''}</td>
+                return (
+                  <td key={d} className={actual !== need ? 'tally-short' : undefined}>
+                    {actual}/{need}
+                  </td>
+                )
+              })}
             </tr>
           ))}
         </tbody>

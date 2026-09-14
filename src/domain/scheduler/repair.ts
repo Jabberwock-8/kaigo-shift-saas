@@ -30,7 +30,11 @@ export function repair(grid: AssignmentGrid, input: GenerateInput) {
   const isLocked = (staffId: string, day: number) => !!lockedCells[staffId]?.[String(day)]
   const isWish = (staffId: string, day: number) => wishes.some((w) => w.staffId === staffId && w.day === day)
 
+  // 条件を満たせないデータでは反復回数の上限だけでは体感フリーズし得るため、実時間でも打ち切る
+  const deadline = Date.now() + config.engine.repairMaxMs
+
   for (let iter = 0; iter < config.engine.repairMaxIter; iter++) {
+    if (Date.now() > deadline) break
     let fixed = false
     const order =
       iter % 2
@@ -133,7 +137,10 @@ export function repairGroups(grid: AssignmentGrid, input: GenerateInput) {
   const groupRules = rules.filter((r) => r.enabled && r.kind === 'hard' && r.target.type === 'shiftGroup')
   if (!groupRules.length) return
 
+  const deadline = Date.now() + config.engine.groupRepairMaxMs
+
   for (let iter = 0; iter < config.engine.groupRepairMaxIter; iter++) {
+    if (Date.now() > deadline) return
     let fixed = false
     for (const r of groupRules) {
       const ids = (r.target.value as string[] | undefined) ?? []

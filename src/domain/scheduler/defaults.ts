@@ -32,7 +32,11 @@ export interface GenerationConfig {
   engine: {
     hillClimbMs: number
     repairMaxIter: number
+    /** repair 全体（repairGroups含む）の実時間上限(ms)。反復回数の上限だけでは
+     *  条件を満たせないデータで1反復が高コストになり得るため、体感フリーズを防ぐ安全弁 */
+    repairMaxMs: number
     groupRepairMaxIter: number
+    groupRepairMaxMs: number
     nightPickTopN: number
     dayPickTopN: number
     typeCountWeight: number
@@ -67,7 +71,9 @@ export const GENERATION_DEFAULTS_V1: GenerationConfig = {
   engine: {
     hillClimbMs: 800,
     repairMaxIter: 400,
+    repairMaxMs: 1500,
     groupRepairMaxIter: 100,
+    groupRepairMaxMs: 500,
     nightPickTopN: 2,
     dayPickTopN: 3,
     typeCountWeight: 0.8,

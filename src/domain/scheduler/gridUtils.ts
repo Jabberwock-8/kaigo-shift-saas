@@ -60,13 +60,38 @@ export function shuffle<T>(arr: T[]): T[] {
   return arr
 }
 
+/**
+ * shiftPatterns/employmentTypes から作る Map は同一 input の間は変化しないため、
+ * canWork が高頻度に呼ばれる repair/hillClimb での再構築コストを避けるためにキャッシュする。
+ */
+const patternMapCache = new WeakMap<GenerateInput, Map<string, PatternWithId>>()
+const employmentTypeMapCache = new WeakMap<GenerateInput, CanWorkContext['employmentTypeById']>()
+
+function cachedPatternById(input: GenerateInput) {
+  let m = patternMapCache.get(input)
+  if (!m) {
+    m = new Map(input.shiftPatterns.map((p) => [p.id, p]))
+    patternMapCache.set(input, m)
+  }
+  return m
+}
+
+function cachedEmploymentTypeById(input: GenerateInput) {
+  let m = employmentTypeMapCache.get(input)
+  if (!m) {
+    m = new Map(input.employmentTypes.map((e) => [e.id, e]))
+    employmentTypeMapCache.set(input, m)
+  }
+  return m
+}
+
 export function makeCanWorkContext(grid: AssignmentGrid, input: GenerateInput): CanWorkContext {
   return {
     grid,
     yearMonth: input.yearMonth,
     daysInMonth: input.daysInMonth,
-    patternById: new Map(input.shiftPatterns.map((p) => [p.id, p])),
-    employmentTypeById: new Map(input.employmentTypes.map((e) => [e.id, e])),
+    patternById: cachedPatternById(input),
+    employmentTypeById: cachedEmploymentTypeById(input),
     settings: input.settings,
     rules: input.rules,
     compatibilities: input.compatibilities,

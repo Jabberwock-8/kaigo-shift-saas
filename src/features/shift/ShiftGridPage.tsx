@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
 import {
   DEFAULT_SHIFT_RULES_SETTINGS,
+  adoptCandidate,
+  fetchCurrentGenerationConfig,
   fetchLeaveRequestsForMonth,
   fetchSchedule,
   fetchShiftRulesSettings,
   fetchStaffList,
+  listCandidates,
   listCompatibilities,
   listRules,
+  loadGenerateInput,
+  saveCandidates,
   setAssignment,
   setLock,
 } from '../../lib/firestore'
@@ -32,8 +37,12 @@ import {
   WEEKDAY_LABELS,
 } from '../../lib/dateUtils'
 import { checkMonth } from '../../domain/scheduler/check'
+import { demandFor } from '../../domain/scheduler/demand'
+import { generate } from '../../domain/scheduler/generate'
+import type { Candidate } from '../../domain/scheduler/types'
 import PrintableShiftGrid from './PrintableShiftGrid'
 import CellPicker from './CellPicker'
+import CandidatesPanel from '../generate/CandidatesPanel'
 
 type StaffWithId = Staff & { id: string }
 
@@ -57,6 +66,16 @@ export default function ShiftGridPage() {
     null,
   )
 
+  const [storedCandidates, setStoredCandidates] = useState<(Candidate & { id: string })[]>([])
+  const [candidates, setCandidates] = useState<(Candidate & { id: string })[] | null>(null)
+  const [previewId, setPreviewId] = useState<string | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const [adoptingId, setAdoptingId] = useState<string | null>(null)
+  const [genError, setGenError] = useState<string | null>(null)
+  // クリック直後は state 更新がまだ描画に反映されておらず、連打でボタンの disabled が
+  // 効く前に二重起動しうるため、同期的に効く ref でも二重起動を防ぐ
+  const generatingRef = useRef(false)
+
   const days = daysInMonthOf(yearMonth)
   const dayList = Array.from({ length: days }, (_, i) => i + 1)
 
@@ -64,14 +83,17 @@ export default function ShiftGridPage() {
     if (!selectedFacilityId) return
     setLoading(true)
     setError(null)
+    setCandidates(null)
+    setPreviewId(null)
     try {
-      const [sl, sc, rl, cl, wl, st] = await Promise.all([
+      const [sl, sc, rl, cl, wl, st, cd] = await Promise.all([
         fetchStaffList(selectedFacilityId),
         fetchSchedule(selectedFacilityId, yearMonth),
         listRules(selectedFacilityId),
         listCompatibilities(selectedFacilityId),
         fetchLeaveRequestsForMonth(selectedFacilityId, yearMonth),
         fetchShiftRulesSettings(selectedFacilityId),
+        listCandidates(selectedFacilityId, yearMonth),
       ])
       setStaffList(sl.filter((s) => s.active !== false))
       setSchedule(sc)
@@ -79,6 +101,7 @@ export default function ShiftGridPage() {
       setCompatibilities(cl)
       setWishes(wl)
       setSettings(st)
+      setStoredCandidates(cd)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -91,6 +114,12 @@ export default function ShiftGridPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFacilityId, yearMonth])
 
+  const previewCandidate = candidates?.find((c) => c.id === previewId) ?? null
+  const effectiveAssignments = useMemo(
+    () => previewCandidate?.assignments ?? schedule?.assignments ?? {},
+    [previewCandidate, schedule],
+  )
+
   const checkResult = useMemo(
     () =>
       checkMonth({
@@ -99,13 +128,56 @@ export default function ShiftGridPage() {
         staff: staffList,
         employmentTypes,
         shiftPatterns,
-        assignments: schedule?.assignments ?? {},
+        assignments: effectiveAssignments,
         rules,
         compatibilities,
         settings,
       }),
-    [yearMonth, days, staffList, employmentTypes, shiftPatterns, schedule, rules, compatibilities, settings],
+    [yearMonth, days, staffList, employmentTypes, shiftPatterns, effectiveAssignments, rules, compatibilities, settings],
   )
+
+  async function handleGenerate() {
+    if (!selectedFacilityId || generatingRef.current) return
+    generatingRef.current = true
+    setGenerating(true)
+    setGenError(null)
+    setPreviewId(null)
+    try {
+      // 旧版と同じく、生成を開始する前に1フレーム逃してボタン押下の反応を先に描画させる
+      await new Promise((resolve) => setTimeout(resolve, 30))
+      const input = await loadGenerateInput(selectedFacilityId, yearMonth)
+      const result = generate(input)
+      const saved = await saveCandidates(selectedFacilityId, yearMonth, result)
+      setCandidates(saved)
+      setStoredCandidates(saved)
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : String(e))
+    } finally {
+      generatingRef.current = false
+      setGenerating(false)
+    }
+  }
+
+  async function handleAdopt(candidate: Candidate & { id: string }) {
+    if (!selectedFacilityId || !user) return
+    if (candidate.hardCount > 0 && !confirm(`この案には必須条件の違反が${candidate.hardCount}件あります。採択しますか？`)) {
+      return
+    }
+    setAdoptingId(candidate.id)
+    setGenError(null)
+    try {
+      const configSnapshot = await fetchCurrentGenerationConfig(selectedFacilityId)
+      await adoptCandidate(selectedFacilityId, yearMonth, days, candidate, candidate.id, user.uid, configSnapshot)
+      setCandidates(null)
+      setPreviewId(null)
+      setStoredCandidates([])
+      await load()
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setAdoptingId(null)
+    }
+  }
 
   const wishDates = useMemo(() => {
     const map = new Map<string, LeaveRequest & { id: string }>()
@@ -117,6 +189,15 @@ export default function ShiftGridPage() {
 
   const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
   const summaryPatterns = shiftPatterns.filter((p) => p.isWork || p.category === 'off')
+  const workPatterns = shiftPatterns.filter((p) => p.isWork)
+
+  function actualCountFor(patternId: string, day: number): number {
+    let count = 0
+    for (const staff of staffList) {
+      if (effectiveAssignments[staff.id]?.[String(day)] === patternId) count++
+    }
+    return count
+  }
 
   function optionsFor(staff: StaffWithId) {
     const allowed = staff.workConditions?.workablePatternIds
@@ -220,8 +301,45 @@ export default function ShiftGridPage() {
           <button type="button" onClick={() => window.print()}>
             🖨 印刷
           </button>
+          {isAdmin && (
+            <button type="button" onClick={() => void handleGenerate()} disabled={generating}>
+              {generating ? '生成中…' : '⚡ パターン生成'}
+            </button>
+          )}
         </div>
       </div>
+
+      {genError && <p className="warn no-print">{genError}</p>}
+
+      {isAdmin && !candidates && storedCandidates.length > 0 && (
+        <p className="no-print" style={{ marginBottom: 10 }}>
+          <button type="button" className="link-btn" onClick={() => setCandidates(storedCandidates)}>
+            前回の生成結果を表示（{storedCandidates.length}案）
+          </button>
+        </p>
+      )}
+
+      {candidates && (
+        <CandidatesPanel
+          candidates={candidates}
+          previewId={previewId}
+          adoptingId={adoptingId}
+          onPreview={(id) => setPreviewId((cur) => (cur === id ? null : id))}
+          onAdopt={(c) => void handleAdopt(c)}
+        />
+      )}
+
+      {previewCandidate && (
+        <p className="no-print preview-banner">
+          プレビュー中: {previewCandidate.label}（未確定）
+          <button type="button" className="link-btn" onClick={() => void handleAdopt(previewCandidate)}>
+            この案を採択
+          </button>
+          <button type="button" className="link-btn" onClick={() => setPreviewId(null)}>
+            閉じる
+          </button>
+        </p>
+      )}
 
       {!loading && !mastersLoading && (checkResult.hardCount > 0 || checkResult.softCount > 0) && (
         <p className="no-print" style={{ marginBottom: 10 }}>
@@ -273,7 +391,7 @@ export default function ShiftGridPage() {
             <tbody>
               {staffList.map((staff) => {
                 const staffMsgs = checkResult.staffMessages[staff.id] ?? []
-                const staffAssignments = schedule?.assignments?.[staff.id] ?? {}
+                const staffAssignments = effectiveAssignments[staff.id] ?? {}
                 return (
                   <tr key={staff.id}>
                     <td className="namecol" title={staffMsgs.join('\n') || undefined}>
@@ -282,7 +400,7 @@ export default function ShiftGridPage() {
                     </td>
                     {dayList.map((d) => {
                       const patternId = staffAssignments[String(d)] ?? ''
-                      const locked = schedule?.locks?.[staff.id]?.[String(d)] ?? false
+                      const locked = !previewCandidate && (schedule?.locks?.[staff.id]?.[String(d)] ?? false)
                       const pattern = patternById.get(patternId)
                       const cellMsgs = checkResult.cellMessages[staff.id]?.[d] ?? []
                       const wish = wishDates.get(`${staff.id}_${formatDate(yearMonth, d)}`)
@@ -306,7 +424,7 @@ export default function ShiftGridPage() {
                                   : undefined
                               }
                               onClick={(e) => {
-                                if (!isAdmin) return
+                                if (!isAdmin || previewCandidate) return
                                 setPicker({
                                   staffId: staff.id,
                                   day: d,
@@ -337,12 +455,31 @@ export default function ShiftGridPage() {
                   </tr>
                 )
               })}
+              {workPatterns.map((p) => (
+                <tr key={p.id} className="tally-row">
+                  <td className="namecol">{p.code} 計</td>
+                  {dayList.map((d) => {
+                    const need = demandFor(rules, yearMonth, d)[p.id]
+                    const actual = actualCountFor(p.id, d)
+                    if (need == null) return <td key={d}>{actual || ''}</td>
+                    return (
+                      <td key={d} className={actual !== need ? 'tally-short' : undefined}>
+                        {actual}/{need}
+                      </td>
+                    )
+                  })}
+                  {summaryPatterns.map((sp) => (
+                    <td key={sp.id} className="sumcol" />
+                  ))}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       )}
 
       {picker &&
+        !previewCandidate &&
         (() => {
           const pickerStaff = staffList.find((s) => s.id === picker.staffId)
           if (!pickerStaff) return null
@@ -384,6 +521,7 @@ export default function ShiftGridPage() {
           staffList={staffList}
           schedule={schedule}
           shiftPatterns={shiftPatterns}
+          rules={rules}
         />
       )}
     </section>

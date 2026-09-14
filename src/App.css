@@ -799,6 +799,11 @@ table.shift-grid tr.tally-row td {
   font-size: 0.7rem;
 }
 
+table.shift-grid tr.tally-row td.tally-short {
+  color: #b4372e;
+  font-weight: 700;
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -822,6 +827,247 @@ table.shift-grid tr.tally-row td {
     size: A4 landscape;
     margin: 10mm;
   }
+}
+
+/* ------------------------------------------------------------------
+   職員管理（カード表示）
+   ------------------------------------------------------------------ */
+
+.header-link-btn {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid #cfcdc4;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.staff-card {
+  position: relative;
+  border: 1px solid #e4e2db;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #fbfaf7;
+}
+
+.staff-card.inactive {
+  opacity: 0.6;
+}
+
+.staff-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.staff-avatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e4f2ed;
+  color: #0c4a3b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.staff-card-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.staff-name {
+  font-weight: 700;
+}
+
+.staff-meta {
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.staff-delete-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #b4372e;
+  opacity: 0.7;
+}
+
+.staff-delete-btn:hover {
+  opacity: 1;
+}
+
+.staff-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.chip.small {
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: default;
+}
+
+.tag-chip {
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  border-radius: 6px;
+  background: #f1f0eb;
+  color: #6b7066;
+}
+
+.staff-card-footer {
+  font-size: 0.78rem;
+}
+
+/* ------------------------------------------------------------------
+   自動生成（3案比較・プレビュー）
+   ------------------------------------------------------------------ */
+
+.header-actions button.primary,
+button.primary {
+  border-color: #1d7a63;
+  background: #1d7a63;
+  color: #fff;
+}
+
+.header-actions button.primary:disabled,
+button.primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #fbf1d6;
+  border: 1px solid #c9971f;
+  border-radius: 8px;
+  padding: 8px 14px;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+.candidates-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.candidate-card {
+  border: 1px solid #e4e2db;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fbfaf7;
+}
+
+.candidate-card.previewing {
+  outline: 2px solid #1d7a63;
+  outline-offset: -2px;
+}
+
+.candidate-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.candidate-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.badge.recommend {
+  background: #e4f2ed;
+  color: #0c4a3b;
+}
+
+.candidate-total {
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.candidate-total-num {
+  color: #1d7a63;
+}
+
+.candidate-fulfillment {
+  font-size: 0.8rem;
+  color: #6b7066;
+  margin-bottom: 8px;
+}
+
+.candidate-scores {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 8px;
+  font-size: 0.78rem;
+  margin-bottom: 8px;
+}
+
+.candidate-score-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.candidate-violations {
+  font-size: 0.8rem;
+  margin-bottom: 10px;
+}
+
+.candidate-violations p {
+  margin: 0 0 2px;
+}
+
+.candidate-violation-detail {
+  display: block;
+  color: #6b7066;
+  font-size: 0.72rem;
+}
+
+.candidate-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.candidate-actions button {
+  flex: 1;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid #cfcdc4;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.candidate-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 @media (prefers-color-scheme: dark) {

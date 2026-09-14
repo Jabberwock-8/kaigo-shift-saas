@@ -2,15 +2,28 @@ import { useEffect, useState } from 'react'
 import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
 import { deleteShiftPattern, upsertShiftPattern } from '../../lib/firestore'
-import type { ShiftPattern } from '../../types/models'
+import type { ShiftCategory, ShiftPattern } from '../../types/models'
 import { defaultPairFor, PASTEL_PALETTE } from '../../lib/palette'
 
-type Row = ShiftPattern & { id: string | null; saving?: boolean }
+type Row = ShiftPattern & { id: string | null }
+
+const CATEGORY_LABELS: Record<ShiftCategory, string> = {
+  day: '日勤',
+  early: '早出',
+  late: '遅出',
+  night: '夜勤',
+  afterNight: '夜勤明け',
+  off: '公休',
+  paidLeave: '有給',
+  individual: '個別',
+}
 
 export default function ShiftPatternsPage() {
   const { appUser, selectedFacilityId } = useFacility()
   const { shiftPatterns, loading, error, refresh } = useMasters()
   const [rows, setRows] = useState<Row[]>([])
+  const [saving, setSaving] = useState(false)
+  const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const isAdmin = appUser?.role === 'admin'
 
   useEffect(() => {
@@ -21,16 +34,27 @@ export default function ShiftPatternsPage() {
 
   function updateRow(index: number, patch: Partial<Row>) {
     setRows((rs) => rs.map((r, i) => (i === index ? { ...r, ...patch } : r)))
+    setSaveMessage(null)
   }
 
-  async function saveRow(index: number) {
-    const row = rows[index]
-    if (!row.code.trim() || !row.label.trim()) return
-    updateRow(index, { saving: true })
-    const { id, saving: _saving, ...data } = row
-    void _saving
-    await upsertShiftPattern(selectedFacilityId!, id, data)
-    await refresh()
+  /** 記号・名称が入力済みの行をまとめて1回で保存する（未入力の行はスキップ） */
+  async function saveAll() {
+    const validRows = rows.filter((r) => r.code.trim() && r.label.trim())
+    const skipped = rows.length - validRows.length
+    setSaving(true)
+    setSaveMessage(null)
+    try {
+      await Promise.all(
+        validRows.map((row) => {
+          const { id, ...data } = row
+          return upsertShiftPattern(selectedFacilityId!, id, data)
+        }),
+      )
+      await refresh()
+      setSaveMessage(skipped > 0 ? `保存しました（記号・名称が未入力の${skipped}行はスキップしました）` : '保存しました')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function removeRow(index: number) {
@@ -83,6 +107,7 @@ export default function ShiftPatternsPage() {
             <th>終了</th>
             <th>勤務</th>
             <th>夜勤</th>
+            <th>種別</th>
             <th>色</th>
             {isAdmin && <th></th>}
           </tr>
@@ -125,7 +150,7 @@ export default function ShiftPatternsPage() {
                 <input
                   type="checkbox"
                   checked={row.isWork}
-                  disabled={!isAdmin || row.isSystem}
+                  disabled={!isAdmin}
                   onChange={(e) => updateRow(i, { isWork: e.target.checked })}
                 />
               </td>
@@ -133,9 +158,23 @@ export default function ShiftPatternsPage() {
                 <input
                   type="checkbox"
                   checked={row.isNight}
-                  disabled={!isAdmin || row.isSystem}
+                  disabled={!isAdmin}
                   onChange={(e) => updateRow(i, { isNight: e.target.checked })}
                 />
+              </td>
+              <td>
+                <select
+                  value={row.category ?? ''}
+                  disabled={!isAdmin}
+                  onChange={(e) => updateRow(i, { category: (e.target.value || undefined) as ShiftCategory | undefined })}
+                >
+                  <option value="">（未設定）</option>
+                  {(Object.keys(CATEGORY_LABELS) as ShiftCategory[]).map((c) => (
+                    <option key={c} value={c}>
+                      {CATEGORY_LABELS[c]}
+                    </option>
+                  ))}
+                </select>
               </td>
               <td>
                 <div className="swatch-row">
@@ -160,9 +199,6 @@ export default function ShiftPatternsPage() {
               </td>
               {isAdmin && (
                 <td className="row-actions">
-                  <button type="button" onClick={() => void saveRow(i)} disabled={row.saving}>
-                    保存
-                  </button>
                   <button type="button" className="ghost" onClick={() => void removeRow(i)}>
                     削除
                   </button>
@@ -173,12 +209,21 @@ export default function ShiftPatternsPage() {
         </tbody>
       </table>
       {isAdmin && (
-        <button type="button" onClick={addRow} style={{ marginTop: 10 }}>
-          ＋ 勤務パターンを追加
-        </button>
+        <div className="row" style={{ marginTop: 10, gap: 10 }}>
+          <button type="button" onClick={addRow}>
+            ＋ 勤務パターンを追加
+          </button>
+          <button type="button" onClick={() => void saveAll()} disabled={saving}>
+            {saving ? '保存中…' : 'まとめて保存'}
+          </button>
+          {saveMessage && <span className="ok">{saveMessage}</span>}
+        </div>
       )}
       <p className="muted" style={{ marginTop: 10 }}>
-        「明」「公休」「有給」などシステム固定の記号は、色以外を編集できません（職員の勤務可否判定などに使われるため）。
+        「明」「公休」「有給」などシステム固定の記号は、記号・名称・開始/終了時刻を編集できません（職員の勤務可否判定などに使われるため）。
+        勤務・夜勤・種別・色は編集できます。「種別」は自動生成や違反チェックが「公休」「夜勤明け」などを特定するために使います。
+        「公休」の種別を持つ勤務パターンが1つ必要です（夜勤明けの扱いを「明を使う」にする場合は「夜勤明け」も必要）。
+        <strong>「公休」「有給」は通常「勤務」のチェックを外してください</strong>（勤務日数としてカウントされてしまいます）。
       </p>
     </section>
   )

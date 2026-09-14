@@ -202,6 +202,18 @@ export interface ShiftRulesSettings {
 
 export type ScheduleStatus = 'draft' | 'confirmed' | 'archived'
 
+export type ScheduleGenerationSource = 'manual' | 'auto'
+
+/** 自動生成で採択した場合の記録（schedules/{ym}.generationMeta） */
+export interface ScheduleGenerationMeta {
+  source: ScheduleGenerationSource
+  /** auto のとき採択した candidates ドキュメントID */
+  candidateId: string | null
+  /** 生成時に使った重み・係数のスナップショット（監査用。中身は問わない） */
+  generationConfigSnapshot: Record<string, unknown> | null
+  generatedAt: unknown | null
+}
+
 /** facilityId/schedules/{yearMonth} の中身。Phase 3a では assignments / locks のみ使用 */
 export interface Schedule {
   yearMonth: string
@@ -211,5 +223,8 @@ export interface Schedule {
   assignments?: Record<string, Record<string, string>>
   /** staffId -> 日 -> ロック中か */
   locks?: Record<string, Record<string, boolean>>
+  /** ★P5で編集UIを追加予定。この月だけの勤務日数上限の上書き */
+  monthlyMaxDaysOverride?: Record<string, { targetWorkdays?: number | null; maxWorkdays?: number | null }>
+  generationMeta?: ScheduleGenerationMeta
   revision?: number
 }

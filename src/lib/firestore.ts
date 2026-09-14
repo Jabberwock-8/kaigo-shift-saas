@@ -19,6 +19,13 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { daysInMonth as daysInMonthOf } from './dateUtils'
+import {
+  mergeGenerationConfig,
+  type GenerationConfig,
+  type GenerationConfigOverride,
+} from '../domain/scheduler/defaults'
+import type { Candidate, GenerateInput } from '../domain/scheduler/types'
 import type {
   AppUser,
   Compatibility,
@@ -422,4 +429,117 @@ export async function fetchShiftRulesSettings(facilityId: string): Promise<Shift
 
 export async function saveShiftRulesSettings(facilityId: string, data: ShiftRulesSettings) {
   await setDoc(shiftRulesRef(facilityId), data, { merge: true })
+}
+
+// ------------------------------------------------------------------
+// settings/generationConfig（未作成なら defaults.ts の既定値を使う）
+// ------------------------------------------------------------------
+
+function generationConfigRef(facilityId: string) {
+  return doc(requireDb(), 'facilities', facilityId, 'settings', 'generationConfig')
+}
+
+/** 既定値にフィールド単位でマージ済みの生成設定を返す（施設ごとに未作成なら既定値そのもの） */
+export async function fetchCurrentGenerationConfig(facilityId: string): Promise<GenerationConfig> {
+  const snap = await getDoc(generationConfigRef(facilityId))
+  const override = snap.exists() ? (snap.data() as GenerationConfigOverride) : null
+  return mergeGenerationConfig(override)
+}
+
+// ------------------------------------------------------------------
+// 自動生成（Phase 4e）: 入力の組み立て・候補の保存・採択
+// ------------------------------------------------------------------
+
+/** 自動生成エンジンへ渡す入力一式を、既存フェッチャの Promise.all で組み立てる */
+export async function loadGenerateInput(facilityId: string, yearMonth: string): Promise<GenerateInput> {
+  const days = daysInMonthOf(yearMonth)
+  const [staffAll, employmentTypes, shiftPatterns, rulesAll, compatibilities, settings, wishesAll, schedule, config] =
+    await Promise.all([
+      fetchStaffList(facilityId),
+      listEmploymentTypes(facilityId),
+      listShiftPatterns(facilityId),
+      listRules(facilityId),
+      listCompatibilities(facilityId),
+      fetchShiftRulesSettings(facilityId),
+      fetchLeaveRequestsForMonth(facilityId, yearMonth),
+      fetchSchedule(facilityId, yearMonth),
+      fetchCurrentGenerationConfig(facilityId),
+    ])
+
+  return {
+    yearMonth,
+    daysInMonth: days,
+    staff: staffAll.filter((s) => s.active !== false),
+    employmentTypes,
+    shiftPatterns,
+    rules: rulesAll.filter((r) => r.enabled),
+    compatibilities,
+    settings,
+    wishes: wishesAll
+      .filter((w) => w.type === '希望休')
+      .map((w) => ({ staffId: w.staffId, day: Number(w.date.split('-')[2]) })),
+    lockedCells: (schedule?.locks ?? {}) as Record<string, Record<string, true>>,
+    baseAssignments: schedule?.assignments ?? {},
+    monthlyMaxDaysOverride: schedule?.monthlyMaxDaysOverride,
+    config,
+  }
+}
+
+function candidatesCollection(facilityId: string, yearMonth: string) {
+  return collection(requireDb(), 'facilities', facilityId, 'schedules', yearMonth, 'candidates')
+}
+
+export async function listCandidates(
+  facilityId: string,
+  yearMonth: string,
+): Promise<(Candidate & { id: string })[]> {
+  const snap = await getDocs(candidatesCollection(facilityId, yearMonth))
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Candidate) }))
+}
+
+export async function clearCandidates(facilityId: string, yearMonth: string) {
+  const snap = await getDocs(candidatesCollection(facilityId, yearMonth))
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)))
+}
+
+/** 既存の候補（あれば）を削除してから、生成された3案を保存する */
+export async function saveCandidates(
+  facilityId: string,
+  yearMonth: string,
+  candidates: Candidate[],
+): Promise<(Candidate & { id: string })[]> {
+  const col = candidatesCollection(facilityId, yearMonth)
+  await clearCandidates(facilityId, yearMonth)
+  return Promise.all(
+    candidates.map(async (c) => {
+      const ref = await addDoc(col, { ...c, generatedAt: serverTimestamp() })
+      return { ...c, id: ref.id }
+    }),
+  )
+}
+
+/** 案を確定シフトとして採択する。assignments を全置換し、候補は削除する */
+export async function adoptCandidate(
+  facilityId: string,
+  yearMonth: string,
+  daysInMonth: number,
+  candidate: Candidate,
+  candidateId: string,
+  uid: string,
+  configSnapshot: GenerationConfig,
+) {
+  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
+  await updateDoc(ref, {
+    assignments: candidate.assignments,
+    generationMeta: {
+      source: 'auto',
+      candidateId,
+      generationConfigSnapshot: configSnapshot,
+      generatedAt: serverTimestamp(),
+    },
+    updatedByUid: uid,
+    updatedAt: serverTimestamp(),
+    revision: increment(1),
+  })
+  await clearCandidates(facilityId, yearMonth)
 }
