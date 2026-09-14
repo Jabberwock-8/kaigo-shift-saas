@@ -3,15 +3,24 @@ import { useAuth } from '../../context/AuthContext'
 import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
 import {
+  DEFAULT_SHIFT_RULES_SETTINGS,
   fetchLeaveRequestsForMonth,
   fetchSchedule,
+  fetchShiftRulesSettings,
   fetchStaffList,
   listCompatibilities,
   listRules,
   setAssignment,
   setLock,
 } from '../../lib/firestore'
-import type { Compatibility, LeaveRequest, Rule, Schedule, Staff } from '../../types/models'
+import type {
+  Compatibility,
+  LeaveRequest,
+  Rule,
+  Schedule,
+  ShiftRulesSettings,
+  Staff,
+} from '../../types/models'
 import {
   currentYearMonth,
   daysInMonth as daysInMonthOf,
@@ -31,7 +40,7 @@ type StaffWithId = Staff & { id: string }
 export default function ShiftGridPage() {
   const { user } = useAuth()
   const { appUser, selectedFacilityId, facilities } = useFacility()
-  const { shiftPatterns, loading: mastersLoading } = useMasters()
+  const { shiftPatterns, employmentTypes, loading: mastersLoading } = useMasters()
   const isAdmin = appUser?.role === 'admin'
   const facilityName = facilities.find((f) => f.id === selectedFacilityId)?.name ?? ''
 
@@ -41,6 +50,7 @@ export default function ShiftGridPage() {
   const [rules, setRules] = useState<(Rule & { id: string })[]>([])
   const [compatibilities, setCompatibilities] = useState<(Compatibility & { id: string })[]>([])
   const [wishes, setWishes] = useState<(LeaveRequest & { id: string })[]>([])
+  const [settings, setSettings] = useState<ShiftRulesSettings>(DEFAULT_SHIFT_RULES_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [picker, setPicker] = useState<{ staffId: string; day: number; rect: DOMRect } | null>(
@@ -55,18 +65,20 @@ export default function ShiftGridPage() {
     setLoading(true)
     setError(null)
     try {
-      const [sl, sc, rl, cl, wl] = await Promise.all([
+      const [sl, sc, rl, cl, wl, st] = await Promise.all([
         fetchStaffList(selectedFacilityId),
         fetchSchedule(selectedFacilityId, yearMonth),
         listRules(selectedFacilityId),
         listCompatibilities(selectedFacilityId),
         fetchLeaveRequestsForMonth(selectedFacilityId, yearMonth),
+        fetchShiftRulesSettings(selectedFacilityId),
       ])
       setStaffList(sl.filter((s) => s.active !== false))
       setSchedule(sc)
       setRules(rl)
       setCompatibilities(cl)
       setWishes(wl)
+      setSettings(st)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -85,12 +97,14 @@ export default function ShiftGridPage() {
         yearMonth,
         daysInMonth: days,
         staff: staffList,
+        employmentTypes,
         shiftPatterns,
         assignments: schedule?.assignments ?? {},
         rules,
         compatibilities,
+        settings,
       }),
-    [yearMonth, days, staffList, shiftPatterns, schedule, rules, compatibilities],
+    [yearMonth, days, staffList, employmentTypes, shiftPatterns, schedule, rules, compatibilities, settings],
   )
 
   const wishDates = useMemo(() => {

@@ -30,6 +30,7 @@ import type {
   Rule,
   Schedule,
   ShiftPattern,
+  ShiftRulesSettings,
   Staff,
 } from '../types/models'
 
@@ -380,4 +381,45 @@ export async function clearWish(facilityId: string, staffId: string, date: strin
     leaveRequestId(staffId, date),
   )
   await deleteDoc(ref)
+}
+
+// ------------------------------------------------------------------
+// settings/shiftRules（未作成 = 全て制約なしとして扱う）
+// ------------------------------------------------------------------
+
+export const DEFAULT_SHIFT_RULES_SETTINGS: ShiftRulesSettings = {
+  nightMode: null,
+  nightAvoidPatternIdsAfter2: [],
+  shiftConsecutiveCaps: {},
+  minRestHours: null,
+  preferredFillTimeRange: { start: null, end: null },
+  treatCompatibilityXAsHard: null,
+  maxConsecutiveWorkdaysDefault: null,
+  monthlyLimitsDefault: { targetWorkdays: null, maxWorkdays: null, maxNightShifts: null },
+}
+
+function shiftRulesRef(facilityId: string) {
+  return doc(requireDb(), 'facilities', facilityId, 'settings', 'shiftRules')
+}
+
+export async function fetchShiftRulesSettings(facilityId: string): Promise<ShiftRulesSettings> {
+  const snap = await getDoc(shiftRulesRef(facilityId))
+  if (!snap.exists()) return { ...DEFAULT_SHIFT_RULES_SETTINGS }
+  const data = snap.data() as Partial<ShiftRulesSettings>
+  return {
+    ...DEFAULT_SHIFT_RULES_SETTINGS,
+    ...data,
+    preferredFillTimeRange: {
+      ...DEFAULT_SHIFT_RULES_SETTINGS.preferredFillTimeRange,
+      ...data.preferredFillTimeRange,
+    },
+    monthlyLimitsDefault: {
+      ...DEFAULT_SHIFT_RULES_SETTINGS.monthlyLimitsDefault,
+      ...data.monthlyLimitsDefault,
+    },
+  }
+}
+
+export async function saveShiftRulesSettings(facilityId: string, data: ShiftRulesSettings) {
+  await setDoc(shiftRulesRef(facilityId), data, { merge: true })
 }

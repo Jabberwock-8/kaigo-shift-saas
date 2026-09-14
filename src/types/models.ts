@@ -174,6 +174,32 @@ export interface LeaveRequest {
   createdByUid: string
 }
 
+export type NightMode = 'ake' | 'direct'
+
+/**
+ * facilities/{fid}/settings/shiftRules。未作成なら「全て制約なし」として扱う
+ * （lib/firestore.ts の fetchShiftRulesSettings が既定値を返す）。
+ */
+export interface ShiftRulesSettings {
+  /** null = 夜勤ブロックの制約なし。'ake' = 夜→明→休／'direct' = 夜→公休 */
+  nightMode: NightMode | null
+  /** direct のとき、夜勤の2日後に避ける勤務パターンID */
+  nightAvoidPatternIdsAfter2: string[]
+  /** patternId -> 連続日数の上限 */
+  shiftConsecutiveCaps: Record<string, number>
+  /** 勤務間インターバル（時間）。下回るとsoft違反 */
+  minRestHours: number | null
+  preferredFillTimeRange: { start: string | null; end: string | null }
+  /** null/true = 相性×を必須(hard)扱い。false = スコア減点のみ */
+  treatCompatibilityXAsHard: boolean | null
+  maxConsecutiveWorkdaysDefault: number | null
+  monthlyLimitsDefault: {
+    targetWorkdays: number | null
+    maxWorkdays: number | null
+    maxNightShifts: number | null
+  }
+}
+
 export type ScheduleStatus = 'draft' | 'confirmed' | 'archived'
 
 /** facilityId/schedules/{yearMonth} の中身。Phase 3a では assignments / locks のみ使用 */

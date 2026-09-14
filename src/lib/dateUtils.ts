@@ -47,3 +47,14 @@ export function formatMonthDayWeekday(yearMonth: string, day: number): string {
   const w = weekdayOf(yearMonth, day)
   return `${month0 + 1}/${day}(${WEEKDAY_LABELS[w]})`
 }
+
+/** "HH:MM" -> 小数時間（例 "09:30" -> 9.5）。不正な値は null */
+export function parseTimeToHours(hhmm: string | undefined | null): number | null {
+  if (!hhmm) return null
+  const parts = hhmm.split(':')
+  if (parts.length < 2) return null
+  const h = Number(parts[0])
+  const m = Number(parts[1])
+  if (Number.isNaN(h) || Number.isNaN(m)) return null
+  return h + m / 60
+}

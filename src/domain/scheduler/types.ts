@@ -1,19 +1,32 @@
-import type { Compatibility, Rule, ShiftPattern, Staff } from '../../types/models'
+import type {
+  Compatibility,
+  EmploymentType,
+  Rule,
+  ShiftPattern,
+  ShiftRulesSettings,
+  Staff,
+} from '../../types/models'
+import type { MonthlyLimitsOverride } from './limits'
 
 export type StaffWithId = Staff & { id: string }
 export type PatternWithId = ShiftPattern & { id: string }
 export type RuleWithId = Rule & { id: string }
 export type CompatibilityWithId = Compatibility & { id: string }
+export type EmploymentTypeWithId = EmploymentType & { id: string }
 
 export interface CheckInput {
   yearMonth: string
   daysInMonth: number
   staff: StaffWithId[]
+  employmentTypes: EmploymentTypeWithId[]
   shiftPatterns: PatternWithId[]
   /** staffId -> 日(1始まりの文字列) -> shiftPatternsのID */
   assignments: Record<string, Record<string, string>>
   rules: RuleWithId[]
   compatibilities: CompatibilityWithId[]
+  settings: ShiftRulesSettings
+  /** staffId -> その月だけの勤務日数上限の上書き */
+  monthlyMaxDaysOverride?: Record<string, MonthlyLimitsOverride>
 }
 
 export interface CellViolation {

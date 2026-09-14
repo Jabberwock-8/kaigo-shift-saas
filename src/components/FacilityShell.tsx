@@ -11,6 +11,7 @@ import ShiftGridPage from '../features/shift/ShiftGridPage'
 import WishesPage from '../features/wishes/WishesPage'
 import CompatibilityPage from '../features/compatibility/CompatibilityPage'
 import RulesPage from '../features/rules/RulesPage'
+import SettingsPage from '../features/settings/SettingsPage'
 
 const TABS = [
   { to: '/shift', label: 'シフト表', icon: '📅' },
@@ -21,6 +22,7 @@ const TABS = [
   { to: '/shift-patterns', label: '勤務パターン', icon: '🕒' },
   { to: '/job-types', label: '職種', icon: '🏷️' },
   { to: '/employment-types', label: '雇用区分', icon: '📁' },
+  { to: '/settings', label: '設定', icon: '⚙️' },
 ]
 
 export default function FacilityShell() {
@@ -85,6 +87,7 @@ export default function FacilityShell() {
               <Route path="/shift-patterns" element={<ShiftPatternsPage />} />
               <Route path="/job-types" element={<JobTypesPage />} />
               <Route path="/employment-types" element={<EmploymentTypesPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/shift" replace />} />
             </Routes>
           </div>
