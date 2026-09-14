@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
-import { deleteRule, fetchStaffList, listRules, setRuleEnabled } from '../../lib/firestore'
+import { deleteRule, fetchStaffList, listRules, setRuleEnabled, upsertRule } from '../../lib/firestore'
 import type { Rule, Staff } from '../../types/models'
 import { ruleText } from './ruleText'
+import RuleForm from './RuleForm'
 
 type StaffWithId = Staff & { id: string }
 
@@ -62,17 +63,32 @@ export default function RulesPage() {
     await load()
   }
 
+  async function handleCreate(rule: Rule) {
+    await upsertRule(selectedFacilityId!, null, rule)
+    await load()
+  }
+
+  const nextOrder = rules.reduce((max, r) => Math.max(max, r.order ?? 0), 0) + 1
+
   return (
     <section className="card">
       <h2>条件</h2>
+
+      {isAdmin && (
+        <div className="card inner">
+          <h3>新しいルールを追加</h3>
+          <RuleForm
+            shiftPatterns={shiftPatterns}
+            staffList={staffList}
+            nextOrder={nextOrder}
+            onSubmit={handleCreate}
+          />
+        </div>
+      )}
+
       {loading && <p className="muted">読み込み中…</p>}
       {error && <p className="warn">{error}</p>}
-      {!loading && rules.length === 0 && (
-        <p className="muted">
-          ルールがありません。（新規作成フォームは次のフェーズで追加予定です。今は Firestore
-          コンソールから <code>facilities/{'{'}施設ID{'}'}/rules</code> に直接入れてテストできます）
-        </p>
-      )}
+      {!loading && rules.length === 0 && <p className="muted">ルールがありません。</p>}
 
       {rules.length > 0 && (
         <ul className="rule-list">
