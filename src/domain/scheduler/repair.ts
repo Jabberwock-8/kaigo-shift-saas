@@ -43,9 +43,11 @@ export function repair(grid: AssignmentGrid, input: GenerateInput) {
 
     for (const d of order) {
       if (fixed) break
+      if (Date.now() > deadline) break
       const dem = demandFor(rules, yearMonth, d)
 
       for (const patternId of Object.keys(dem)) {
+        if (Date.now() > deadline) break
         const cur = staff.filter((s) => getCell(grid, s.id, d) === patternId).length
         if (cur >= dem[patternId]) continue
 
@@ -93,8 +95,10 @@ export function repair(grid: AssignmentGrid, input: GenerateInput) {
         if (fixed) break
 
         // ③ 2手修復: 別日の余剰勤務を休に振替 → 空いた職員を充当
+        if (Date.now() > deadline) break
         let twoHandFixed = false
         for (const s of offs) {
+          if (Date.now() > deadline) break
           for (let d2 = 1; d2 <= daysInMonth && !twoHandFixed; d2++) {
             if (d2 === d) continue
             const pid2 = getCell(grid, s.id, d2)

@@ -830,6 +830,115 @@ table.shift-grid tr.tally-row td.tally-short {
 }
 
 /* ------------------------------------------------------------------
+   モーダル（汎用）
+   ------------------------------------------------------------------ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(34, 39, 31, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.modal-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(34, 39, 31, 0.25);
+  max-width: 640px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e4e2db;
+}
+
+.modal-head h3 {
+  font-size: 1rem;
+}
+
+.modal-close {
+  border: none;
+  background: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #6b7066;
+  padding: 4px;
+}
+
+.modal-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+
+.limit-calc-box {
+  background: #e4f2ed;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.modal-footer {
+  padding: 12px 18px;
+  border-top: 1px solid #e4e2db;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .modal-card {
+    background: #1f2320;
+  }
+  .modal-head,
+  .modal-footer {
+    border-color: #333;
+  }
+}
+
+/* ------------------------------------------------------------------
+   違反の一覧
+   ------------------------------------------------------------------ */
+
+.violation-list {
+  border: 1px solid #e4e2db;
+  border-radius: 8px;
+  padding: 10px 14px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #fbfaf7;
+}
+
+.violation-list h4 {
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.violation-list h4:not(:first-child) {
+  margin-top: 12px;
+}
+
+.violation-list ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.violation-list li {
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+/* ------------------------------------------------------------------
    職員管理（カード表示）
    ------------------------------------------------------------------ */
 

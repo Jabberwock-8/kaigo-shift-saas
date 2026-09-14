@@ -332,6 +332,23 @@ export async function setLock(
   })
 }
 
+/** その月だけの勤務日数上限の上書き（P5）をまとめて保存する */
+export async function saveMonthlyMaxDaysOverride(
+  facilityId: string,
+  yearMonth: string,
+  daysInMonth: number,
+  override: Record<string, { targetWorkdays?: number | null; maxWorkdays?: number | null }>,
+  uid: string,
+) {
+  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
+  await updateDoc(ref, {
+    monthlyMaxDaysOverride: override,
+    updatedByUid: uid,
+    updatedAt: serverTimestamp(),
+    revision: increment(1),
+  })
+}
+
 // ------------------------------------------------------------------
 // leaveRequests（希望休。Phase 3b時点では admin が代理入力する運用）
 // ------------------------------------------------------------------

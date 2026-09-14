@@ -12,6 +12,7 @@ import {
 } from '../../lib/firestore'
 import { findDuplicatePatternGroups, type DuplicateGroup } from './dedupe'
 import { runLegacyImport, type LegacyBackup } from './legacyImport'
+import { applyRosterFix, ROSTER } from './rosterFix'
 
 /**
  * 旧HTML版の「JSONエクスポート」バックアップから、勤務パターン・職員・条件ルール・相性・
@@ -34,6 +35,9 @@ export default function ImportLegacyPage() {
   const [dupGroups, setDupGroups] = useState<DuplicateGroup[] | null>(null)
   const [checkingDup, setCheckingDup] = useState(false)
   const [cleaningDup, setCleaningDup] = useState(false)
+
+  const [runningRoster, setRunningRoster] = useState(false)
+  const [rosterLog, setRosterLog] = useState<string[] | null>(null)
 
   if (!selectedFacilityId) return null
   if (!isAdmin) {
@@ -143,6 +147,22 @@ export default function ImportLegacyPage() {
     }
   }
 
+  async function handleRosterFix() {
+    if (!selectedFacilityId) return
+    if (!confirm(`職員名簿どおりに職種・資格・上限日数を反映します（対象${ROSTER.length}名）。よろしいですか？`)) return
+    setRunningRoster(true)
+    setError(null)
+    try {
+      const result = await applyRosterFix(selectedFacilityId)
+      setRosterLog(result)
+      await refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setRunningRoster(false)
+    }
+  }
+
   return (
     <section className="card">
       <h2>旧データの取り込み（一時的な機能）</h2>
@@ -211,6 +231,25 @@ export default function ImportLegacyPage() {
               {cleaningDup ? '削除中…' : '未使用の重複を削除する'}
             </button>
           </>
+        )}
+      </div>
+
+      <div className="card inner" style={{ marginTop: 14 }}>
+        <h3>職員名簿の一括反映（今回限定）</h3>
+        <p className="muted" style={{ marginBottom: 10 }}>
+          正式な職員名簿どおりに、職種（生活支援員／管理者・サービス管理責任者）・資格・非常勤4名の上限日数を反映し、
+          未登録の職員（森　朱美）を追加します。既存の勤務可能パターンなどは変更しません。氏名が一致する職員は更新、
+          一致しない場合は新規登録します（対象{ROSTER.length}名）。
+        </p>
+        <button type="button" onClick={() => void handleRosterFix()} disabled={runningRoster}>
+          {runningRoster ? '反映中…' : '名簿どおりに反映する'}
+        </button>
+        {rosterLog && (
+          <ul style={{ marginTop: 10 }}>
+            {rosterLog.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
         )}
       </div>
 

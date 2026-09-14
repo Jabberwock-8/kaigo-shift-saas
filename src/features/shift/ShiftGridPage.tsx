@@ -15,6 +15,7 @@ import {
   listRules,
   loadGenerateInput,
   saveCandidates,
+  saveMonthlyMaxDaysOverride,
   setAssignment,
   setLock,
 } from '../../lib/firestore'
@@ -43,6 +44,7 @@ import type { Candidate } from '../../domain/scheduler/types'
 import PrintableShiftGrid from './PrintableShiftGrid'
 import CellPicker from './CellPicker'
 import CandidatesPanel from '../generate/CandidatesPanel'
+import MonthlyLimitsModal from './MonthlyLimitsModal'
 
 type StaffWithId = Staff & { id: string }
 
@@ -75,6 +77,9 @@ export default function ShiftGridPage() {
   // クリック直後は state 更新がまだ描画に反映されておらず、連打でボタンの disabled が
   // 効く前に二重起動しうるため、同期的に効く ref でも二重起動を防ぐ
   const generatingRef = useRef(false)
+
+  const [showLimitsModal, setShowLimitsModal] = useState(false)
+  const [showViolationList, setShowViolationList] = useState(false)
 
   const days = daysInMonthOf(yearMonth)
   const dayList = Array.from({ length: days }, (_, i) => i + 1)
@@ -132,8 +137,20 @@ export default function ShiftGridPage() {
         rules,
         compatibilities,
         settings,
+        monthlyMaxDaysOverride: schedule?.monthlyMaxDaysOverride,
       }),
-    [yearMonth, days, staffList, employmentTypes, shiftPatterns, effectiveAssignments, rules, compatibilities, settings],
+    [
+      yearMonth,
+      days,
+      staffList,
+      employmentTypes,
+      shiftPatterns,
+      effectiveAssignments,
+      rules,
+      compatibilities,
+      settings,
+      schedule?.monthlyMaxDaysOverride,
+    ],
   )
 
   async function handleGenerate() {
@@ -306,6 +323,11 @@ export default function ShiftGridPage() {
               {generating ? '生成中…' : '⚡ パターン生成'}
             </button>
           )}
+          {isAdmin && (
+            <button type="button" onClick={() => setShowLimitsModal(true)}>
+              📅 月の上限を調整
+            </button>
+          )}
         </div>
       </div>
 
@@ -342,16 +364,47 @@ export default function ShiftGridPage() {
       )}
 
       {!loading && !mastersLoading && (checkResult.hardCount > 0 || checkResult.softCount > 0) && (
-        <p className="no-print" style={{ marginBottom: 10 }}>
-          {checkResult.hardCount > 0 && (
-            <span className="warn" style={{ marginRight: 12 }}>
-              ⚠ 必須条件の違反 {checkResult.hardCount}件
-            </span>
+        <div className="no-print" style={{ marginBottom: 10 }}>
+          <p style={{ marginBottom: showViolationList ? 8 : 0 }}>
+            {checkResult.hardCount > 0 && (
+              <span className="warn" style={{ marginRight: 12 }}>
+                ⚠ 必須条件の違反 {checkResult.hardCount}件
+              </span>
+            )}
+            {checkResult.softCount > 0 && (
+              <span className="muted" style={{ marginRight: 12 }}>
+                推奨条件の未達 {checkResult.softCount}件
+              </span>
+            )}
+            <button type="button" className="link-btn" onClick={() => setShowViolationList((v) => !v)}>
+              {showViolationList ? '一覧を閉じる' : '違反の一覧を表示'}
+            </button>
+          </p>
+          {showViolationList && (
+            <div className="violation-list">
+              {checkResult.hard.length > 0 && (
+                <>
+                  <h4 className="warn">必須条件の違反</h4>
+                  <ul>
+                    {checkResult.hard.map((msg, i) => (
+                      <li key={`hard-${i}`}>{msg}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {checkResult.soft.length > 0 && (
+                <>
+                  <h4 className="muted">推奨条件の未達</h4>
+                  <ul>
+                    {checkResult.soft.map((msg, i) => (
+                      <li key={`soft-${i}`}>{msg}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
           )}
-          {checkResult.softCount > 0 && (
-            <span className="muted">推奨条件の未達 {checkResult.softCount}件</span>
-          )}
-        </p>
+        </div>
       )}
 
       {(loading || mastersLoading) && <p className="muted no-print">読み込み中…</p>}
@@ -509,8 +562,25 @@ export default function ShiftGridPage() {
           )
         })()}
 
+      {showLimitsModal && (
+        <MonthlyLimitsModal
+          yearMonth={yearMonth}
+          daysInMonth={days}
+          staffList={staffList}
+          employmentTypes={employmentTypes}
+          settings={settings}
+          initialOverride={schedule?.monthlyMaxDaysOverride ?? {}}
+          onSave={async (override) => {
+            if (!selectedFacilityId || !user) return
+            await saveMonthlyMaxDaysOverride(selectedFacilityId, yearMonth, days, override, user.uid)
+            await load()
+          }}
+          onClose={() => setShowLimitsModal(false)}
+        />
+      )}
+
       <p className="muted no-print" style={{ marginTop: 10 }}>
-        セルをクリックすると勤務パターンを選択できます。パネル内の「ロック切替」は自動生成（今後のフェーズ）でこのセルを固定する目印です（🔒が付きます）。
+        セルをクリックすると勤務パターンを選択できます。パネル内の「ロック切替」は自動生成でこのセルを固定する目印です（🔒が付きます）。
         「!」は必須条件・相性・勤務条件などの違反（マウスを乗せると詳細）、金の枠は希望休が守れている日、赤の枠は希望休なのに勤務が入っている日です。
       </p>
 

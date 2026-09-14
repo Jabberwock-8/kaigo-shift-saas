@@ -4,12 +4,14 @@ import { useMasters } from '../../context/MastersContext'
 import { deleteJobType, upsertJobType } from '../../lib/firestore'
 import type { JobType } from '../../types/models'
 
-type Row = JobType & { id: string | null; saving?: boolean }
+type Row = JobType & { id: string | null }
 
 export default function JobTypesPage() {
   const { appUser, selectedFacilityId } = useFacility()
   const { jobTypes, loading, error, refresh } = useMasters()
   const [rows, setRows] = useState<Row[]>([])
+  const [saving, setSaving] = useState(false)
+  const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const isAdmin = appUser?.role === 'admin'
 
   useEffect(() => {
@@ -20,16 +22,27 @@ export default function JobTypesPage() {
 
   function updateRow(index: number, patch: Partial<Row>) {
     setRows((rs) => rs.map((r, i) => (i === index ? { ...r, ...patch } : r)))
+    setSaveMessage(null)
   }
 
-  async function saveRow(index: number) {
-    const row = rows[index]
-    if (!row.label.trim()) return
-    updateRow(index, { saving: true })
-    const { id, saving: _saving, ...data } = row
-    void _saving
-    await upsertJobType(selectedFacilityId!, id, data)
-    await refresh()
+  /** 表示名が入力済みの行をまとめて1回で保存する（未入力の行はスキップ） */
+  async function saveAll() {
+    const validRows = rows.filter((r) => r.label.trim())
+    const skipped = rows.length - validRows.length
+    setSaving(true)
+    setSaveMessage(null)
+    try {
+      await Promise.all(
+        validRows.map((row) => {
+          const { id, ...data } = row
+          return upsertJobType(selectedFacilityId!, id, data)
+        }),
+      )
+      await refresh()
+      setSaveMessage(skipped > 0 ? `保存しました（表示名が未入力の${skipped}行はスキップしました）` : '保存しました')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function removeRow(index: number) {
@@ -83,9 +96,6 @@ export default function JobTypesPage() {
               </td>
               {isAdmin && (
                 <td className="row-actions">
-                  <button type="button" onClick={() => void saveRow(i)} disabled={row.saving}>
-                    保存
-                  </button>
                   <button type="button" className="ghost" onClick={() => void removeRow(i)}>
                     削除
                   </button>
@@ -96,9 +106,15 @@ export default function JobTypesPage() {
         </tbody>
       </table>
       {isAdmin && (
-        <button type="button" onClick={addRow} style={{ marginTop: 10 }}>
-          ＋ 職種を追加
-        </button>
+        <div className="row" style={{ marginTop: 10, gap: 10 }}>
+          <button type="button" onClick={addRow}>
+            ＋ 職種を追加
+          </button>
+          <button type="button" onClick={() => void saveAll()} disabled={saving}>
+            {saving ? '保存中…' : 'まとめて保存'}
+          </button>
+          {saveMessage && <span className="ok">{saveMessage}</span>}
+        </div>
       )}
     </section>
   )
