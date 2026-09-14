@@ -34,3 +34,16 @@ export function formatYearMonthLabel(yearMonth: string): string {
   const { year, month0 } = parseYearMonth(yearMonth)
   return `${year}年${month0 + 1}月`
 }
+
+/** "YYYY-MM" と日 -> "YYYY-MM-DD" */
+export function formatDate(yearMonth: string, day: number): string {
+  const { year, month0 } = parseYearMonth(yearMonth)
+  return `${year}-${pad2(month0 + 1)}-${pad2(day)}`
+}
+
+/** "YYYY-MM" と日 -> "9/8(火)" */
+export function formatMonthDayWeekday(yearMonth: string, day: number): string {
+  const { month0 } = parseYearMonth(yearMonth)
+  const w = weekdayOf(yearMonth, day)
+  return `${month0 + 1}/${day}(${WEEKDAY_LABELS[w]})`
+}

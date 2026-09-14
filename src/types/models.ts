@@ -86,6 +86,8 @@ export interface ShiftPattern {
   isSystem?: boolean
   order?: number
   color?: string
+  /** 記号の文字色（パステル背景とペアで使う） */
+  textColor?: string
 }
 
 export type RuleDaysType = 'all' | 'weekdays' | 'weekend' | 'dow' | 'dates'

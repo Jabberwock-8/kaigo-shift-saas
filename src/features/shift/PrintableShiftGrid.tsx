@@ -76,7 +76,11 @@ export default function PrintableShiftGrid({
                   <td
                     key={d}
                     className="print-cell"
-                    style={pattern?.color ? { backgroundColor: pattern.color } : undefined}
+                    style={
+                      pattern
+                        ? { backgroundColor: pattern.color, color: pattern.textColor }
+                        : undefined
+                    }
                   >
                     {pattern?.code ?? ''}
                   </td>

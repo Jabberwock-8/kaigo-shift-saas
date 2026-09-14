@@ -13,14 +13,14 @@ import CompatibilityPage from '../features/compatibility/CompatibilityPage'
 import RulesPage from '../features/rules/RulesPage'
 
 const TABS = [
-  { to: '/shift', label: 'シフト表' },
-  { to: '/wishes', label: '希望休' },
-  { to: '/staff', label: '職員' },
-  { to: '/compatibility', label: '相性' },
-  { to: '/rules', label: '条件' },
-  { to: '/shift-patterns', label: '勤務パターン' },
-  { to: '/job-types', label: '職種' },
-  { to: '/employment-types', label: '雇用区分' },
+  { to: '/shift', label: 'シフト表', icon: '📅' },
+  { to: '/wishes', label: '希望休', icon: '🙋' },
+  { to: '/staff', label: '職員', icon: '👤' },
+  { to: '/compatibility', label: '相性', icon: '🤝' },
+  { to: '/rules', label: '条件', icon: '📋' },
+  { to: '/shift-patterns', label: '勤務パターン', icon: '🕒' },
+  { to: '/job-types', label: '職種', icon: '🏷️' },
+  { to: '/employment-types', label: '雇用区分', icon: '📁' },
 ]
 
 export default function FacilityShell() {
@@ -32,51 +32,63 @@ export default function FacilityShell() {
 
   return (
     <MastersProvider facilityId={selectedFacilityId}>
-      <div className="app-shell wide">
-        <div className="page-header no-print">
-          <div>
-            <h1>{facility?.name ?? ''}</h1>
-            {appUser?.role !== 'admin' && (
-              <p className="muted">閲覧のみ（管理者ではありません）</p>
-            )}
+      <div className="app-layout">
+        <aside className="sidebar no-print">
+          <div className="sidebar-logo">
+            介護
+            <br />
+            シフト
           </div>
-          <div className="header-actions">
-            {facilities.length > 1 && (
-              <button type="button" onClick={() => selectFacility('')}>
-                施設を変更
+          <nav className="sidebar-nav">
+            {TABS.map((t) => (
+              <NavLink
+                key={t.to}
+                to={t.to}
+                className={({ isActive }) => `navbtn${isActive ? ' active' : ''}`}
+              >
+                <span className="nico">{t.icon}</span>
+                {t.label}
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
+
+        <div className="main-area">
+          <div className="page-header no-print">
+            <div>
+              <h1>{facility?.name ?? ''}</h1>
+              {appUser?.role !== 'admin' && (
+                <p className="muted">閲覧のみ（管理者ではありません）</p>
+              )}
+            </div>
+            <div className="header-actions">
+              {facilities.length > 1 && (
+                <button type="button" onClick={() => selectFacility('')}>
+                  施設を変更
+                </button>
+              )}
+              <button type="button" onClick={() => void signOut()}>
+                ログアウト
               </button>
-            )}
-            <button type="button" onClick={() => void signOut()}>
-              ログアウト
-            </button>
+            </div>
+          </div>
+
+          <div className="app-shell wide embedded">
+            <Routes>
+              <Route path="/shift" element={<ShiftGridPage />} />
+              <Route path="/wishes" element={<WishesPage />} />
+              <Route path="/staff" element={<StaffListPage />} />
+              <Route path="/staff/new" element={<StaffFormPage />} />
+              <Route path="/staff/:staffId" element={<StaffFormPage />} />
+              <Route path="/compatibility" element={<CompatibilityPage />} />
+              <Route path="/rules" element={<RulesPage />} />
+              <Route path="/shift-patterns" element={<ShiftPatternsPage />} />
+              <Route path="/job-types" element={<JobTypesPage />} />
+              <Route path="/employment-types" element={<EmploymentTypesPage />} />
+              <Route path="*" element={<Navigate to="/shift" replace />} />
+            </Routes>
           </div>
         </div>
-
-        <nav className="tabbar no-print">
-          {TABS.map((t) => (
-            <NavLink
-              key={t.to}
-              to={t.to}
-              className={({ isActive }) => (isActive ? 'active' : '')}
-            >
-              {t.label}
-            </NavLink>
-          ))}
-        </nav>
-
-        <Routes>
-          <Route path="/shift" element={<ShiftGridPage />} />
-          <Route path="/wishes" element={<WishesPage />} />
-          <Route path="/staff" element={<StaffListPage />} />
-          <Route path="/staff/new" element={<StaffFormPage />} />
-          <Route path="/staff/:staffId" element={<StaffFormPage />} />
-          <Route path="/compatibility" element={<CompatibilityPage />} />
-          <Route path="/rules" element={<RulesPage />} />
-          <Route path="/shift-patterns" element={<ShiftPatternsPage />} />
-          <Route path="/job-types" element={<JobTypesPage />} />
-          <Route path="/employment-types" element={<EmploymentTypesPage />} />
-          <Route path="*" element={<Navigate to="/shift" replace />} />
-        </Routes>
       </div>
     </MastersProvider>
   )

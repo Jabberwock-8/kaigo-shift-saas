@@ -3,7 +3,7 @@ import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
 import { deleteRule, fetchStaffList, listRules, setRuleEnabled, upsertRule } from '../../lib/firestore'
 import type { Rule, Staff } from '../../types/models'
-import { ruleText } from './ruleText'
+import { ruleText } from '../../domain/scheduler/ruleText'
 import RuleForm from './RuleForm'
 
 type StaffWithId = Staff & { id: string }

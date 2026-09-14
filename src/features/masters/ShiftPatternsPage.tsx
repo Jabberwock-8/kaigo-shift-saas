@@ -3,6 +3,7 @@ import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
 import { deleteShiftPattern, upsertShiftPattern } from '../../lib/firestore'
 import type { ShiftPattern } from '../../types/models'
+import { defaultPairFor, PASTEL_PALETTE } from '../../lib/palette'
 
 type Row = ShiftPattern & { id: string | null; saving?: boolean }
 
@@ -50,6 +51,7 @@ export default function ShiftPatternsPage() {
   function addRow() {
     const nextOrder =
       rows.reduce((max, r) => Math.max(max, r.order ?? 0), 0) + 1
+    const pair = defaultPairFor(rows.length)
     setRows((rs) => [
       ...rs,
       {
@@ -61,7 +63,8 @@ export default function ShiftPatternsPage() {
         isWork: true,
         isNight: false,
         order: nextOrder,
-        color: '#E7F5FF',
+        color: pair.bg,
+        textColor: pair.text,
       },
     ])
   }
@@ -135,12 +138,25 @@ export default function ShiftPatternsPage() {
                 />
               </td>
               <td>
-                <input
-                  type="color"
-                  value={row.color ?? '#E7F5FF'}
-                  disabled={!isAdmin}
-                  onChange={(e) => updateRow(i, { color: e.target.value })}
-                />
+                <div className="swatch-row">
+                  <span
+                    className="swatch-preview"
+                    style={{ background: row.color ?? '#F1F0EB', color: row.textColor ?? '#22271F' }}
+                  >
+                    {row.code || '記'}
+                  </span>
+                  {isAdmin &&
+                    PASTEL_PALETTE.map((pair) => (
+                      <button
+                        key={pair.bg}
+                        type="button"
+                        className={`swatch${row.color === pair.bg ? ' selected' : ''}`}
+                        style={{ background: pair.bg }}
+                        title={pair.bg}
+                        onClick={() => updateRow(i, { color: pair.bg, textColor: pair.text })}
+                      />
+                    ))}
+                </div>
               </td>
               {isAdmin && (
                 <td className="row-actions">

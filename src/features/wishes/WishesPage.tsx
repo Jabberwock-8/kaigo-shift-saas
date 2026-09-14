@@ -6,12 +6,11 @@ import type { LeaveRequest, Staff } from '../../types/models'
 import {
   currentYearMonth,
   daysInMonth as daysInMonthOf,
+  formatDate,
   formatYearMonthLabel,
-  parseYearMonth,
   shiftYearMonth,
   weekdayOf,
   WEEKDAY_LABELS,
-  pad2,
 } from '../../lib/dateUtils'
 
 type StaffWithId = Staff & { id: string }
@@ -31,8 +30,7 @@ export default function WishesPage() {
   const dayList = Array.from({ length: days }, (_, i) => i + 1)
 
   function dateStr(day: number) {
-    const { year, month0 } = parseYearMonth(yearMonth)
-    return `${year}-${pad2(month0 + 1)}-${pad2(day)}`
+    return formatDate(yearMonth, day)
   }
 
   async function load() {
