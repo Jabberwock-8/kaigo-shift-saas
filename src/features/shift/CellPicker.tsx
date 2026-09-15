@@ -10,6 +10,8 @@ interface Props {
   options: PatternWithId[]
   current: string
   locked: boolean
+  /** 兼務行などロック機能が不要な場合にfalseを渡す（既定true） */
+  showLock?: boolean
   onPick: (patternId: string) => void
   onClear: () => void
   onToggleLock: () => void
@@ -28,6 +30,7 @@ export default function CellPicker({
   options,
   current,
   locked,
+  showLock = true,
   onPick,
   onClear,
   onToggleLock,
@@ -77,9 +80,11 @@ export default function CellPicker({
         <button type="button" className="link-btn" onClick={onClear}>
           クリア
         </button>
-        <button type="button" className="link-btn" onClick={onToggleLock}>
-          ロック切替
-        </button>
+        {showLock && (
+          <button type="button" className="link-btn" onClick={onToggleLock}>
+            ロック切替
+          </button>
+        )}
       </div>
     </div>
   )

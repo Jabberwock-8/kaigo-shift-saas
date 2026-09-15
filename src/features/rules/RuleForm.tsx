@@ -26,6 +26,12 @@ const COND_OPTIONS: Record<RuleTargetType, { value: RuleCondType; label: string 
     { value: 'atMost', label: 'N名以下' },
     { value: 'none', label: '配置しない' },
   ],
+  secondaryShift: [
+    { value: 'atLeast', label: 'N名以上配置' },
+    { value: 'exact', label: 'ちょうどN名配置' },
+    { value: 'atMost', label: 'N名以下' },
+    { value: 'none', label: '配置しない' },
+  ],
   qualification: [
     { value: 'atLeast', label: 'N名以上配置' },
     { value: 'exact', label: 'ちょうどN名配置' },
@@ -68,6 +74,7 @@ const TARGET_LABELS: Record<RuleTargetType, string> = {
   staff: '特定職員',
   traitPair: 'タグのペア',
   shiftGroup: 'シフトの組み合わせ',
+  secondaryShift: '生活相談員（兼務行）',
 }
 
 export default function RuleForm({ shiftPatterns, staffList, nextOrder, onSubmit }: Props) {
@@ -127,9 +134,9 @@ export default function RuleForm({ shiftPatterns, staffList, nextOrder, onSubmit
     }
 
     let target: Rule['target']
-    if (targetType === 'shift') {
+    if (targetType === 'shift' || targetType === 'secondaryShift') {
       if (!targetShiftId) return setError('シフト種別を選択してください')
-      target = { type: 'shift', value: targetShiftId }
+      target = { type: targetType, value: targetShiftId }
     } else if (targetType === 'qualification') {
       if (!targetQualification.trim()) return setError('資格名を入力してください')
       target = { type: 'qualification', value: targetQualification.trim() }
@@ -241,7 +248,7 @@ export default function RuleForm({ shiftPatterns, staffList, nextOrder, onSubmit
           </select>
         </label>
 
-        {targetType === 'shift' && (
+        {(targetType === 'shift' || targetType === 'secondaryShift') && (
           <select value={targetShiftId} onChange={(e) => setTargetShiftId(e.target.value)}>
             <option value="">（選択）</option>
             {shiftPatterns.map((p) => (

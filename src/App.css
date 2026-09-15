@@ -830,6 +830,12 @@ table.shift-grid tr.event-row td.clickable:hover {
   outline-offset: -2px;
 }
 
+table.shift-grid tr.secondary-role-row td.namecol {
+  background: #f0eafb;
+  color: #5b3a8a;
+  font-size: 0.75rem;
+}
+
 .night-target-panel {
   display: flex;
   flex-wrap: wrap;

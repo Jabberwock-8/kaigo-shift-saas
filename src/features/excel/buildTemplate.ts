@@ -127,7 +127,8 @@ function rulesSheet(
           : ''
     let v1 = ''
     let v2 = ''
-    if (r.target.type === 'shift') v1 = patternById.get(r.target.value as string)?.code ?? ''
+    if (r.target.type === 'shift' || r.target.type === 'secondaryShift')
+      v1 = patternById.get(r.target.value as string)?.code ?? ''
     else if (r.target.type === 'qualification' || r.target.type === 'trait') v1 = String(r.target.value ?? '')
     else if (r.target.type === 'staff') v1 = staffById.get(r.target.value as string)?.name ?? ''
     else if (r.target.type === 'traitPair') {

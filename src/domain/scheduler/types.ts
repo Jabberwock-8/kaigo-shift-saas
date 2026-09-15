@@ -25,6 +25,8 @@ export interface CheckInput {
   employmentTypes: EmploymentTypeWithId[]
   shiftPatterns: PatternWithId[]
   assignments: AssignmentGrid
+  /** 生活相談員などの兼務行（手入力のみ。自動生成は関与しない） */
+  secondaryAssignments?: AssignmentGrid
   rules: RuleWithId[]
   compatibilities: CompatibilityWithId[]
   settings: ShiftRulesSettings

@@ -215,12 +215,12 @@ export function parseTemplateWorkbook(wb: XLSX.WorkBook): ParseResult {
       if (daysType === 'dates') days.values = splitList(daysDetail)
 
       let target: RuleTarget
-      if (targetType === 'shift') {
+      if (targetType === 'shift' || targetType === 'secondaryShift') {
         if (!knownCodes.has(v1)) {
           warnings.push(`条件シート ${i + 1}行目: 勤務記号「${v1}」が見つかりません`)
           continue
         }
-        target = { type: 'shift', value: v1 }
+        target = { type: targetType, value: v1 }
       } else if (targetType === 'qualification' || targetType === 'trait') {
         target = { type: targetType, value: v1 }
       } else if (targetType === 'staff') {

@@ -32,6 +32,7 @@ export const TARGET_TYPE_LABELS: Record<RuleTargetType, string> = {
   staff: '特定職員',
   traitPair: 'タグのペア',
   shiftGroup: 'シフトの組み合わせ',
+  secondaryShift: '生活相談員（兼務行）',
 }
 export const TARGET_TYPE_BY_LABEL = invert(TARGET_TYPE_LABELS)
 

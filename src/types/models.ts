@@ -121,6 +121,8 @@ export type RuleTargetType =
   | 'staff'
   | 'traitPair'
   | 'shiftGroup'
+  /** 生活相談員などの兼務（シフト表の兼務行）を対象にした条件。valueはshiftと同じくpatternId */
+  | 'secondaryShift'
 
 export interface RuleTarget {
   type: RuleTargetType
@@ -255,6 +257,8 @@ export interface Schedule {
   status?: ScheduleStatus
   /** staffId -> 日(1始まりの文字列) -> shiftPatterns のドキュメントID */
   assignments?: Record<string, Record<string, string>>
+  /** 生活相談員などの兼務行。staffId -> 日 -> shiftPatterns のドキュメントID（assignmentsとは独立） */
+  secondaryAssignments?: Record<string, Record<string, string>>
   /** staffId -> 日 -> ロック中か */
   locks?: Record<string, Record<string, boolean>>
   /** この月だけの勤務日数上限の上書き（P5） */

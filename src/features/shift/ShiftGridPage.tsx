@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
@@ -22,6 +22,7 @@ import {
   setAssignment,
   setEvent,
   setLock,
+  setSecondaryAssignment,
 } from '../../lib/firestore'
 import type {
   Compatibility,
@@ -74,7 +75,9 @@ export default function ShiftGridPage() {
   const [settings, setSettings] = useState<ShiftRulesSettings>(DEFAULT_SHIFT_RULES_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [picker, setPicker] = useState<{ staffId: string; day: number; rect: DOMRect } | null>(
+  const [picker, setPicker] = useState<
+    { staffId: string; day: number; rect: DOMRect; kind: 'primary' | 'secondary' } | null
+  >(
     null,
   )
   const [eventPicker, setEventPicker] = useState<{ day: number; rect: DOMRect } | null>(null)
@@ -93,6 +96,12 @@ export default function ShiftGridPage() {
   const [showViolationList, setShowViolationList] = useState(false)
   const [showTimeproModal, setShowTimeproModal] = useState(false)
   const [timeproPatternMap, setTimeproPatternMap] = useState<Record<string, TimeproPatternMapEntry>>({})
+
+  const [fitToScreen, setFitToScreen] = useState(false)
+  const [fitScale, setFitScale] = useState({ x: 1, y: 1 })
+  const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 })
+  const gridScrollRef = useRef<HTMLDivElement>(null)
+  const gridTableRef = useRef<HTMLTableElement>(null)
 
   const days = daysInMonthOf(yearMonth)
   const dayList = Array.from({ length: days }, (_, i) => i + 1)
@@ -149,6 +158,7 @@ export default function ShiftGridPage() {
         employmentTypes,
         shiftPatterns,
         assignments: effectiveAssignments,
+        secondaryAssignments: schedule?.secondaryAssignments,
         rules,
         compatibilities,
         settings,
@@ -161,6 +171,7 @@ export default function ShiftGridPage() {
       employmentTypes,
       shiftPatterns,
       effectiveAssignments,
+      schedule?.secondaryAssignments,
       rules,
       compatibilities,
       settings,
@@ -217,6 +228,29 @@ export default function ShiftGridPage() {
     return map
   }, [wishes])
 
+  // 「画面に収める」: はみ出す分だけ表全体を縮小して、横/縦スクロールなしで全体を見せる
+  useLayoutEffect(() => {
+    if (!fitToScreen) return
+    function recalc() {
+      if (!gridTableRef.current || !gridScrollRef.current) return
+      const w = gridTableRef.current.scrollWidth
+      const h = gridTableRef.current.scrollHeight
+      if (!w || !h) return
+      setNaturalSize({ w, h })
+      const availW = gridScrollRef.current.clientWidth
+      const top = gridScrollRef.current.getBoundingClientRect().top
+      const availH = window.innerHeight - top - 16
+      // 縦横は別々の倍率で伸縮させ、表示スペースを幅・高さとも端から端まで使う（アスペクト比は崩れる）
+      setFitScale({
+        x: availW > 0 && w > 0 ? availW / w : 1,
+        y: availH > 0 && h > 0 ? availH / h : 1,
+      })
+    }
+    recalc()
+    window.addEventListener('resize', recalc)
+    return () => window.removeEventListener('resize', recalc)
+  }, [fitToScreen, staffList.length, days, loading])
+
   if (!selectedFacilityId) return null
 
   const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
@@ -231,6 +265,8 @@ export default function ShiftGridPage() {
     .find((v): v is number => v != null)
   const standardHours = standardWorkdays != null ? standardWorkdays * 8 : null
 
+  // 通常勤務行＋兼務行（生活相談員など）の実労働時間を合算してから1.0を上限にする
+  // （行ごとに別々に上限1.0をかけると、2行分で最大2.0になってしまい常勤換算として成立しないため）
   function fteFor(staffId: string): number | null {
     if (standardHours == null || standardHours <= 0) return null
     let hours = 0
@@ -238,6 +274,10 @@ export default function ShiftGridPage() {
       const patternId = effectiveAssignments[staffId]?.[String(d)]
       const pattern = patternId ? patternById.get(patternId) : undefined
       if (pattern?.isWork) hours += shiftDurationHours(pattern.startTime, pattern.endTime)
+
+      const secondaryPatternId = schedule?.secondaryAssignments?.[staffId]?.[String(d)]
+      const secondaryPattern = secondaryPatternId ? patternById.get(secondaryPatternId) : undefined
+      if (secondaryPattern?.isWork) hours += shiftDurationHours(secondaryPattern.startTime, secondaryPattern.endTime)
     }
     return Math.min(1, Math.round((hours / standardHours) * 10) / 10)
   }
@@ -287,6 +327,25 @@ export default function ShiftGridPage() {
         patternId || null,
         user.uid,
       )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      await load()
+    }
+  }
+
+  async function handleAssignSecondary(staffId: string, day: number, patternId: string) {
+    if (!user) return
+    setSchedule((prev) => {
+      const base: Schedule = prev ?? { yearMonth, daysInMonth: days, assignments: {}, locks: {} }
+      const secondaryAssignments = { ...(base.secondaryAssignments ?? {}) }
+      const staffRow = { ...(secondaryAssignments[staffId] ?? {}) }
+      if (patternId) staffRow[String(day)] = patternId
+      else delete staffRow[String(day)]
+      secondaryAssignments[staffId] = staffRow
+      return { ...base, secondaryAssignments }
+    })
+    try {
+      await setSecondaryAssignment(selectedFacilityId!, yearMonth, days, staffId, day, patternId || null, user.uid)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       await load()
@@ -389,6 +448,9 @@ export default function ShiftGridPage() {
           </button>
           <button type="button" onClick={() => window.print()}>
             🖨 印刷
+          </button>
+          <button type="button" onClick={() => setFitToScreen((v) => !v)}>
+            {fitToScreen ? '🔍 実寸に戻す' : '🔍 画面に収める'}
           </button>
           {isAdmin && (
             <button type="button" onClick={() => void handleGenerate()} disabled={generating}>
@@ -512,8 +574,13 @@ export default function ShiftGridPage() {
       )}
 
       {staffList.length > 0 && shiftPatterns.length > 0 && (
-        <div className="grid-scroll no-print">
-          <table className="shift-grid">
+        <div
+          className="grid-scroll no-print"
+          ref={gridScrollRef}
+          style={fitToScreen ? { overflow: 'hidden', height: naturalSize.h ? naturalSize.h * fitScale.y : undefined } : undefined}
+        >
+          <div style={fitToScreen ? { transform: `scale(${fitScale.x}, ${fitScale.y})`, transformOrigin: 'top left', width: naturalSize.w || undefined } : undefined}>
+          <table className="shift-grid" ref={gridTableRef}>
             <thead>
               <tr>
                 <th className="namecol">職員</th>
@@ -565,7 +632,8 @@ export default function ShiftGridPage() {
                 const staffMsgs = checkResult.staffMessages[staff.id] ?? []
                 const staffAssignments = effectiveAssignments[staff.id] ?? {}
                 return (
-                  <tr key={staff.id}>
+                  <Fragment key={staff.id}>
+                  <tr>
                     <td className="namecol" title={staffMsgs.join('\n') || undefined}>
                       {staff.name}
                       {staffMsgs.length > 0 && <span className="warn"> ⚠</span>}
@@ -601,6 +669,7 @@ export default function ShiftGridPage() {
                                   staffId: staff.id,
                                   day: d,
                                   rect: e.currentTarget.getBoundingClientRect(),
+                                  kind: 'primary',
                                 })
                               }}
                             >
@@ -626,6 +695,45 @@ export default function ShiftGridPage() {
                     })}
                     <td className="sumcol">{fteFor(staff.id)?.toFixed(1) ?? ''}</td>
                   </tr>
+                  {staff.traits?.includes('生活相談員') && (
+                    <tr key={`${staff.id}-secondary`} className="secondary-role-row">
+                      <td className="namecol">└ 生活相談員</td>
+                      {dayList.map((d) => {
+                        const patternId = schedule?.secondaryAssignments?.[staff.id]?.[String(d)] ?? ''
+                        const pattern = patternById.get(patternId)
+                        return (
+                          <td key={d} className="grid-cell">
+                            <div className="cell-wrap">
+                              <div
+                                className="cell-code"
+                                style={
+                                  pattern
+                                    ? { backgroundColor: pattern.color, color: pattern.textColor }
+                                    : undefined
+                                }
+                                onClick={(e) => {
+                                  if (!isAdmin || previewCandidate) return
+                                  setPicker({
+                                    staffId: staff.id,
+                                    day: d,
+                                    rect: e.currentTarget.getBoundingClientRect(),
+                                    kind: 'secondary',
+                                  })
+                                }}
+                              >
+                                {pattern?.code ?? ''}
+                              </div>
+                            </div>
+                          </td>
+                        )
+                      })}
+                      {summaryPatterns.map((p) => (
+                        <td key={p.id} className="sumcol" />
+                      ))}
+                      <td className="sumcol" />
+                    </tr>
+                  )}
+                  </Fragment>
                 )
               })}
               {workPatterns.map((p) => (
@@ -656,6 +764,7 @@ export default function ShiftGridPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -664,6 +773,31 @@ export default function ShiftGridPage() {
         (() => {
           const pickerStaff = staffList.find((s) => s.id === picker.staffId)
           if (!pickerStaff) return null
+
+          if (picker.kind === 'secondary') {
+            return (
+              <CellPicker
+                anchorRect={picker.rect}
+                staffName={`${pickerStaff.name}（生活相談員）`}
+                dateLabel={formatMonthDayWeekday(yearMonth, picker.day)}
+                options={workPatterns}
+                current={schedule?.secondaryAssignments?.[picker.staffId]?.[String(picker.day)] ?? ''}
+                locked={false}
+                showLock={false}
+                onPick={(patternId) => {
+                  void handleAssignSecondary(picker.staffId, picker.day, patternId)
+                  setPicker(null)
+                }}
+                onClear={() => {
+                  void handleAssignSecondary(picker.staffId, picker.day, '')
+                  setPicker(null)
+                }}
+                onToggleLock={() => {}}
+                onClose={() => setPicker(null)}
+              />
+            )
+          }
+
           const locked = schedule?.locks?.[picker.staffId]?.[String(picker.day)] ?? false
           return (
             <CellPicker

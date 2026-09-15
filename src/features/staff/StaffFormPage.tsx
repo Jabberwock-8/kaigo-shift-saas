@@ -32,6 +32,7 @@ export default function StaffFormPage() {
 
   const [form, setForm] = useState<Staff>(emptyStaff)
   const [qualificationsText, setQualificationsText] = useState('')
+  const [traitsText, setTraitsText] = useState('')
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,6 +45,7 @@ export default function StaffFormPage() {
         if (s) {
           setForm(s)
           setQualificationsText((s.qualifications ?? []).join(', '))
+          setTraitsText((s.traits ?? []).join(', '))
         }
       })
       .finally(() => setLoading(false))
@@ -53,9 +55,28 @@ export default function StaffFormPage() {
   if (loading || mastersLoading) return <p className="muted">読み込み中…</p>
 
   const wc: StaffWorkConditions = form.workConditions ?? {}
+  const traitsList = traitsText
+    .split(/[,、，]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
 
   function updateForm(patch: Partial<Staff>) {
     setForm((f) => ({ ...f, ...patch }))
+  }
+
+  function toggleTrait(trait: string, checked: boolean) {
+    const others = traitsList.filter((t) => t !== trait)
+    setTraitsText((checked ? [...others, trait] : others).join(', '))
+  }
+
+  const otherTraitsText = traitsList.filter((t) => t !== '生活相談員').join(', ')
+
+  function setOtherTraitsText(value: string) {
+    const others = value
+      .split(/[,、，]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    setTraitsText((traitsList.includes('生活相談員') ? [...others, '生活相談員'] : others).join(', '))
   }
 
   function updateWorkConditions(patch: Partial<StaffWorkConditions>) {
@@ -85,6 +106,10 @@ export default function StaffFormPage() {
       const data: Staff = {
         ...form,
         qualifications: qualificationsText
+          .split(/[,、，]/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+        traits: traitsText
           .split(/[,、，]/)
           .map((s) => s.trim())
           .filter(Boolean),
@@ -163,6 +188,21 @@ export default function StaffFormPage() {
             placeholder="介護福祉士, 実務者研修"
           />
         </label>
+        <label className="row">
+          <input
+            type="checkbox"
+            checked={traitsList.includes('生活相談員')}
+            onChange={(e) => toggleTrait('生活相談員', e.target.checked)}
+          />
+          生活相談員を兼務（シフト表に兼務行が追加されます）
+        </label>
+        <label>
+          特性タグ（その他・カンマ区切り）
+          <input value={otherTraitsText} onChange={(e) => setOtherTraitsText(e.target.value)} />
+        </label>
+        <p className="muted" style={{ marginTop: -8 }}>
+          条件（ルール）の対象として使うタグです。
+        </p>
 
         <h3>勤務条件（任意・空欄可）</h3>
 

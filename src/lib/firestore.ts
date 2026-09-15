@@ -382,6 +382,25 @@ export async function setAssignment(
   })
 }
 
+/** 生活相談員などの兼務行（secondaryAssignments）を1セル更新する。assignmentsとは独立 */
+export async function setSecondaryAssignment(
+  facilityId: string,
+  yearMonth: string,
+  daysInMonth: number,
+  staffId: string,
+  day: number,
+  patternId: string | null,
+  uid: string,
+) {
+  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
+  await updateDoc(ref, {
+    [`secondaryAssignments.${staffId}.${day}`]: patternId ?? deleteField(),
+    updatedByUid: uid,
+    updatedAt: serverTimestamp(),
+    revision: increment(1),
+  })
+}
+
 export async function setLock(
   facilityId: string,
   yearMonth: string,

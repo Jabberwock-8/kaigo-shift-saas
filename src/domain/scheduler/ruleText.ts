@@ -33,6 +33,8 @@ function targetLabel(target: RuleTarget, ctx: RuleTextContext): string {
   switch (target.type) {
     case 'shift':
       return ctx.shiftLabel(String(target.value ?? ''))
+    case 'secondaryShift':
+      return `生活相談員: ${ctx.shiftLabel(String(target.value ?? ''))}`
     case 'qualification':
       return `資格「${target.value ?? ''}」`
     case 'trait':

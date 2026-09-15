@@ -19,6 +19,8 @@ export interface EvalCtx {
   staff: StaffWithId[]
   patternById: Map<string, PatternWithId>
   assignedOf: (staffId: string, day: number) => string | undefined
+  /** 生活相談員などの兼務行（secondaryShift ターゲットの評価にだけ使う）。未対応の呼び出し元ではundefinedのままでよい */
+  assignedOfSecondary?: (staffId: string, day: number) => string | undefined
   isWorkPattern: (patternId: string | undefined) => boolean
   ruleTextCtx: RuleTextContext
 }
@@ -35,6 +37,12 @@ export function evalRuleDay(rule: Rule, day: number, ctx: EvalCtx): RuleViolatio
   if (target.type === 'shift') {
     const patternId = target.value as string
     const n = ctx.staff.filter((s) => ctx.assignedOf(s.id, day) === patternId).length
+    return countViolation(cond, n, label)
+  }
+
+  if (target.type === 'secondaryShift') {
+    const patternId = target.value as string
+    const n = ctx.staff.filter((s) => ctx.assignedOfSecondary?.(s.id, day) === patternId).length
     return countViolation(cond, n, label)
   }
 
@@ -131,6 +139,7 @@ export function checkMonth(input: CheckInput): CheckResult {
     employmentTypes,
     shiftPatterns,
     assignments,
+    secondaryAssignments,
     rules,
     compatibilities,
     settings,
@@ -156,6 +165,7 @@ export function checkMonth(input: CheckInput): CheckResult {
   }
 
   const assignedOf = (staffId: string, day: number) => assignments[staffId]?.[String(day)]
+  const assignedOfSecondary = (staffId: string, day: number) => secondaryAssignments?.[staffId]?.[String(day)]
   const patternOf = (staffId: string, day: number) => {
     const id = assignedOf(staffId, day)
     return id ? patternById.get(id) : undefined
@@ -335,7 +345,7 @@ export function checkMonth(input: CheckInput): CheckResult {
     shiftLabel: (id) => patternById.get(id)?.label ?? '?',
     staffName: (id) => staffById.get(id)?.name ?? '?',
   }
-  const evalCtx: EvalCtx = { staff, patternById, assignedOf, isWorkPattern, ruleTextCtx }
+  const evalCtx: EvalCtx = { staff, patternById, assignedOf, assignedOfSecondary, isWorkPattern, ruleTextCtx }
 
   const enabledRules: RuleWithId[] = rules.filter((r) => r.enabled)
   for (const r of enabledRules) {
