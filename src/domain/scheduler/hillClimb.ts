@@ -5,14 +5,17 @@
 import { canWork } from './canWork'
 import { checkMonth } from './check'
 import { demandFor } from './demand'
-import { getCell, makeCanWorkContext, makeCheckInput, setCell } from './gridUtils'
+import { getCell, makeCanWorkContext, makeCheckInput, setCell, workCountOf } from './gridUtils'
+import { resolveLimits } from './limits'
 import { scoreGrid } from './score'
 import type { AssignmentGrid, GenerateInput } from './types'
 import type { GenerationProfile } from './defaults'
 
 export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: GenerationProfile, ms: number) {
-  const { staff, daysInMonth, yearMonth, shiftPatterns, rules, lockedCells, wishes } = input
+  const { staff, daysInMonth, yearMonth, shiftPatterns, rules, lockedCells, wishes, employmentTypes, settings, monthlyMaxDaysOverride } =
+    input
   const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
+  const employmentTypeById = new Map(employmentTypes.map((e) => [e.id, e]))
   const offPattern = shiftPatterns.find((p) => p.category === 'off')
   if (!offPattern || staff.length === 0) return
 
@@ -21,6 +24,30 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
   const isNightPattern = (id: string | undefined) => !!id && !!patternById.get(id)?.isNight
   const isAfterNight = (id: string | undefined) => !!id && patternById.get(id)?.category === 'afterNight'
   const workableOf = (staffId: string) => staff.find((s) => s.id === staffId)?.workConditions?.workablePatternIds
+  const targetWorkdaysOf = (staffId: string) => {
+    const s = staff.find((x) => x.id === staffId)
+    if (!s) return null
+    return resolveLimits(
+      s,
+      employmentTypeById.get(s.employmentTypeId ?? ''),
+      settings,
+      monthlyMaxDaysOverride?.[staffId],
+    ).targetWorkdays
+  }
+  /**
+   * 必要出勤日数をすでに満たしている職員から勤務日を1日取り上げる交換は許可しない。
+   * hillClimbは必須違反の「件数」しか見ないため、無策だと「出勤日数の未達」が
+   * 別の必須違反（連続勤務上限など）と入れ替わってしまうことがある。
+   * パート等で「決まった日数を必ず入れてほしい」職員がいるため、この違反は
+   * 一度満たしたら手放さない（達成前の職員がさらに減る移動は従来通り許可する）。
+   */
+  const wouldDropBelowTarget = (staffId: string, losingWorkday: boolean) => {
+    if (!losingWorkday) return false
+    const target = targetWorkdaysOf(staffId)
+    if (target == null) return false
+    const current = workCountOf(grid, staffId, daysInMonth, patternById)
+    return current - 1 < target
+  }
 
   const evaluate = () => {
     const chk = checkMonth(makeCheckInput(grid, input))
@@ -89,6 +116,12 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
       const pb = d > 1 ? getCell(grid, b.id, d - 1) : undefined
       if (isAfterNight(pa) || isAfterNight(pb)) continue
       if (isNightPattern(pa) || isNightPattern(pb)) continue
+
+      const workA = !!sa && !!patternById.get(sa)?.isWork
+      const workB = !!sb && !!patternById.get(sb)?.isWork
+      if (workA !== workB) {
+        if (wouldDropBelowTarget(a.id, workA) || wouldDropBelowTarget(b.id, workB)) continue
+      }
 
       setCell(grid, a.id, d, sb ?? null)
       setCell(grid, b.id, d, sa ?? null)
