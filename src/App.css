@@ -947,6 +947,51 @@ table.shift-grid tr.event-row td.clickable:hover {
   }
 }
 
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: #2f3a33;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  box-shadow: 0 8px 24px rgba(34, 39, 31, 0.3);
+  z-index: 200;
+  pointer-events: none;
+  animation:
+    toast-in 0.2s ease,
+    toast-out 0.2s ease 1.6s;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .toast {
+    background: #e4e2db;
+    color: #22271f;
+  }
+}
+
 /* ------------------------------------------------------------------
    違反の一覧
    ------------------------------------------------------------------ */
@@ -1218,6 +1263,12 @@ button.primary:disabled {
 .candidate-actions button:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.candidate-actions button.primary {
+  background: #1d7a63;
+  border-color: #1d7a63;
+  color: #fff;
 }
 
 @media (prefers-color-scheme: dark) {

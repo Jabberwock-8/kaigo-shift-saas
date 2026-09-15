@@ -202,6 +202,20 @@ export interface ShiftRulesSettings {
   }
 }
 
+/** 勤務パターン1件分の TimePro-VG 表記（kotai=勤怠区分／shift=シフト区分） */
+export interface TimeproPatternMapEntry {
+  kotai?: string
+  shift?: string
+}
+
+/**
+ * facilities/{fid}/settings/timeproExport。未作成なら patternMap は空とし、
+ * 画面側で勤務パターンから既定値を生成して表示する（lib/firestore.ts 参照）。
+ */
+export interface TimeproExportSettings {
+  patternMap: Record<string, TimeproPatternMapEntry>
+}
+
 export type ScheduleStatus = 'draft' | 'confirmed' | 'archived'
 
 export type ScheduleGenerationSource = 'manual' | 'auto'

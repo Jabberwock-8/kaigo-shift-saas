@@ -39,6 +39,7 @@ import type {
   ShiftPattern,
   ShiftRulesSettings,
   Staff,
+  TimeproExportSettings,
 } from '../types/models'
 
 function requireDb() {
@@ -476,6 +477,25 @@ export async function fetchShiftRulesSettings(facilityId: string): Promise<Shift
 
 export async function saveShiftRulesSettings(facilityId: string, data: ShiftRulesSettings) {
   await setDoc(shiftRulesRef(facilityId), data, { merge: true })
+}
+
+// ------------------------------------------------------------------
+// settings/timeproExport（未作成 = patternMap 空。既定値は buildTimeproRows.ts 側で生成）
+// ------------------------------------------------------------------
+
+function timeproExportRef(facilityId: string) {
+  return doc(requireDb(), 'facilities', facilityId, 'settings', 'timeproExport')
+}
+
+export async function fetchTimeproExportSettings(facilityId: string): Promise<TimeproExportSettings> {
+  const snap = await getDoc(timeproExportRef(facilityId))
+  if (!snap.exists()) return { patternMap: {} }
+  const data = snap.data() as Partial<TimeproExportSettings>
+  return { patternMap: data.patternMap ?? {} }
+}
+
+export async function saveTimeproExportSettings(facilityId: string, data: TimeproExportSettings) {
+  await setDoc(timeproExportRef(facilityId), data, { merge: true })
 }
 
 // ------------------------------------------------------------------

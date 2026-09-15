@@ -11,12 +11,14 @@ import {
   fetchSchedule,
   fetchShiftRulesSettings,
   fetchStaffList,
+  fetchTimeproExportSettings,
   listCandidates,
   listCompatibilities,
   listRules,
   loadGenerateInput,
   saveCandidates,
   saveMonthlyMaxDaysOverride,
+  saveTimeproExportSettings,
   setAssignment,
   setEvent,
   setLock,
@@ -28,6 +30,7 @@ import type {
   Schedule,
   ShiftRulesSettings,
   Staff,
+  TimeproPatternMapEntry,
 } from '../../types/models'
 import {
   currentYearMonth,
@@ -49,6 +52,7 @@ import EventPicker from './EventPicker'
 import NightTargetPanel from './NightTargetPanel'
 import CandidatesPanel from '../generate/CandidatesPanel'
 import MonthlyLimitsModal from './MonthlyLimitsModal'
+import TimeproModal from '../timepro/TimeproModal'
 
 type StaffWithId = Staff & { id: string }
 
@@ -85,6 +89,8 @@ export default function ShiftGridPage() {
 
   const [showLimitsModal, setShowLimitsModal] = useState(false)
   const [showViolationList, setShowViolationList] = useState(false)
+  const [showTimeproModal, setShowTimeproModal] = useState(false)
+  const [timeproPatternMap, setTimeproPatternMap] = useState<Record<string, TimeproPatternMapEntry>>({})
 
   const days = daysInMonthOf(yearMonth)
   const dayList = Array.from({ length: days }, (_, i) => i + 1)
@@ -96,7 +102,7 @@ export default function ShiftGridPage() {
     setCandidates(null)
     setPreviewId(null)
     try {
-      const [sl, sc, rl, cl, wl, st, cd] = await Promise.all([
+      const [sl, sc, rl, cl, wl, st, cd, tp] = await Promise.all([
         fetchStaffList(selectedFacilityId),
         fetchSchedule(selectedFacilityId, yearMonth),
         listRules(selectedFacilityId),
@@ -104,6 +110,7 @@ export default function ShiftGridPage() {
         fetchLeaveRequestsForMonth(selectedFacilityId, yearMonth),
         fetchShiftRulesSettings(selectedFacilityId),
         listCandidates(selectedFacilityId, yearMonth),
+        fetchTimeproExportSettings(selectedFacilityId),
       ])
       setStaffList(sl.filter((s) => s.active !== false))
       setSchedule(sc)
@@ -112,6 +119,7 @@ export default function ShiftGridPage() {
       setWishes(wl)
       setSettings(st)
       setStoredCandidates(cd)
+      setTimeproPatternMap(tp.patternMap)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -371,6 +379,9 @@ export default function ShiftGridPage() {
               📅 月の上限を調整
             </button>
           )}
+          <button type="button" onClick={() => setShowTimeproModal(true)} disabled={staffList.length === 0}>
+            📋 TimePro貼付用
+          </button>
           {isAdmin && (
             <button
               type="button"
@@ -675,6 +686,24 @@ export default function ShiftGridPage() {
             await load()
           }}
           onClose={() => setShowLimitsModal(false)}
+        />
+      )}
+
+      {showTimeproModal && (
+        <TimeproModal
+          yearMonth={yearMonth}
+          daysInMonth={days}
+          staffList={staffList}
+          shiftPatterns={shiftPatterns}
+          assignments={effectiveAssignments}
+          savedPatternMap={timeproPatternMap}
+          isAdmin={isAdmin}
+          onSave={async (patternMap) => {
+            if (!selectedFacilityId) return
+            await saveTimeproExportSettings(selectedFacilityId, { patternMap })
+            setTimeproPatternMap(patternMap)
+          }}
+          onClose={() => setShowTimeproModal(false)}
         />
       )}
 
