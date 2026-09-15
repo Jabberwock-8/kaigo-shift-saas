@@ -39,6 +39,21 @@ export interface StaffWorkConditions {
   notes?: string
 }
 
+/**
+ * 有給休暇の残日数を計算するための設定（features/paidLeave/calcPaidLeave.ts が使う）。
+ * 「基準年月時点の残日数」を起点に、以後の付与（毎年grantMonthに+grantDays）と
+ * 消化（勤務パターンcategory='paidLeave'の日数）を積み上げて計算する。
+ */
+export interface PaidLeaveInfo {
+  /** 毎年の付与月（1〜12）。null=付与なし（残日数は基準からの消化のみで減っていく） */
+  grantMonth?: number | null
+  /** 1回の付与日数 */
+  grantDays?: number | null
+  /** 残日数の基準年月（"YYYY-MM"）。この年月の消化・付与を反映する前の残日数を baselineDays に持つ */
+  baselineYearMonth?: string | null
+  baselineDays?: number | null
+}
+
 export interface Staff {
   name: string
   nameKana?: string
@@ -49,6 +64,7 @@ export interface Staff {
   qualifications?: string[]
   traits?: string[]
   workConditions?: StaffWorkConditions
+  paidLeave?: PaidLeaveInfo
 }
 
 export interface JobType {
@@ -200,6 +216,8 @@ export interface ShiftRulesSettings {
     maxWorkdays: number | null
     maxNightShifts: number | null
   }
+  /** 希望休（有給希望含む）の月間上限日数。null = 上限なし */
+  maxWishesPerMonth: number | null
 }
 
 /** 勤務パターン1件分の TimePro-VG 表記（kotai=勤怠区分／shift=シフト区分） */

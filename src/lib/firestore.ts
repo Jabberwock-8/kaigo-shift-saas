@@ -34,6 +34,7 @@ import type {
   Facility,
   JobType,
   LeaveRequest,
+  PaidLeaveInfo,
   Rule,
   Schedule,
   ShiftPattern,
@@ -180,6 +181,26 @@ export function upsertStaff(facilityId: string, id: string | null, data: Staff) 
 
 export function deleteStaff(facilityId: string, id: string) {
   return deleteSub(facilityId, 'staff', id)
+}
+
+/** 有給休暇の残日数設定（付与月・付与日数・基準年月・基準残日数）だけを部分更新する */
+export async function updateStaffPaidLeave(
+  facilityId: string,
+  staffId: string,
+  patch: PaidLeaveInfo,
+) {
+  await updateDoc(doc(requireDb(), 'facilities', facilityId, 'staff', staffId), { paidLeave: patch })
+}
+
+/** 複数月分の schedules をまとめて取得する（有給残日数ページで消化日数を積算するために使う） */
+export async function fetchSchedulesForMonths(
+  facilityId: string,
+  yearMonths: string[],
+): Promise<Record<string, Schedule | null>> {
+  const entries = await Promise.all(
+    yearMonths.map(async (ym) => [ym, await fetchSchedule(facilityId, ym)] as const),
+  )
+  return Object.fromEntries(entries)
 }
 
 // ------------------------------------------------------------------
@@ -497,6 +518,7 @@ export const DEFAULT_SHIFT_RULES_SETTINGS: ShiftRulesSettings = {
   treatRestHoursAsHard: null,
   maxConsecutiveWorkdaysDefault: null,
   monthlyLimitsDefault: { targetWorkdays: null, maxWorkdays: null, maxNightShifts: null },
+  maxWishesPerMonth: null,
 }
 
 function shiftRulesRef(facilityId: string) {

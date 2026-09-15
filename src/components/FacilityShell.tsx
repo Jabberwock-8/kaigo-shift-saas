@@ -9,6 +9,7 @@ import JobTypesPage from '../features/masters/JobTypesPage'
 import EmploymentTypesPage from '../features/masters/EmploymentTypesPage'
 import ShiftGridPage from '../features/shift/ShiftGridPage'
 import WishesPage from '../features/wishes/WishesPage'
+import PaidLeavePage from '../features/paidLeave/PaidLeavePage'
 import CompatibilityPage from '../features/compatibility/CompatibilityPage'
 import RulesPage from '../features/rules/RulesPage'
 import SettingsPage from '../features/settings/SettingsPage'
@@ -18,6 +19,7 @@ import ExcelPage from '../features/excel/ExcelPage'
 const TABS = [
   { to: '/shift', label: 'シフト表', icon: '📅' },
   { to: '/wishes', label: '希望休', icon: '🙋' },
+  { to: '/paid-leave', label: '有給休暇', icon: '🌴' },
   { to: '/staff', label: '職員', icon: '👤' },
   { to: '/compatibility', label: '相性', icon: '🤝' },
   { to: '/rules', label: '条件', icon: '📋' },
@@ -88,6 +90,7 @@ export default function FacilityShell() {
             <Routes>
               <Route path="/shift" element={<ShiftGridPage />} />
               <Route path="/wishes" element={<WishesPage />} />
+              <Route path="/paid-leave" element={<PaidLeavePage />} />
               <Route path="/staff" element={<StaffListPage />} />
               <Route path="/staff/new" element={<StaffFormPage />} />
               <Route path="/staff/:staffId" element={<StaffFormPage />} />

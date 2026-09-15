@@ -58,3 +58,13 @@ export function parseTimeToHours(hhmm: string | undefined | null): number | null
   if (Number.isNaN(h) || Number.isNaN(m)) return null
   return h + m / 60
 }
+
+/** 開始〜終了の勤務時間（時間）。日をまたぐ場合も対応。時刻未設定なら既定の8時間とする */
+export function shiftDurationHours(startTime: string | undefined, endTime: string | undefined): number {
+  const start = parseTimeToHours(startTime)
+  const end = parseTimeToHours(endTime)
+  if (start == null || end == null) return 8
+  let diff = end - start
+  if (diff <= 0) diff += 24
+  return diff
+}

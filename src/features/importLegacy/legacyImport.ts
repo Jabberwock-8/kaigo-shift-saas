@@ -343,6 +343,7 @@ export async function runLegacyImport(backup: LegacyBackup, ctx: ImportContext):
     treatRestHoursAsHard: null,
     maxConsecutiveWorkdaysDefault: null,
     monthlyLimitsDefault: { targetWorkdays: null, maxWorkdays: null, maxNightShifts: null },
+    maxWishesPerMonth: null,
   })
   log.push('設定（夜勤運用・連続日数上限・休息時間など）を反映しました')
 

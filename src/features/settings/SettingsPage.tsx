@@ -237,6 +237,26 @@ export default function SettingsPage() {
       </fieldset>
 
       <fieldset className="settings-fieldset">
+        <legend>希望休</legend>
+        <label className="field-row">
+          月の上限（日数）
+          <input
+            type="number"
+            min={0}
+            max={31}
+            value={settings.maxWishesPerMonth ?? ''}
+            disabled={!isAdmin}
+            placeholder="未設定（上限なし）"
+            onChange={(e) => update({ maxWishesPerMonth: toNumberOrNull(e.target.value) })}
+            style={{ width: 80 }}
+          />
+        </label>
+        <p className="muted">
+          職員1人あたり、1ヶ月に入力できる希望休の日数の上限です（有給希望も同じ枠でカウントします）。超えて選ぼうとすると入力できません。
+        </p>
+      </fieldset>
+
+      <fieldset className="settings-fieldset">
         <legend>相性</legend>
         <label className="row">
           <input

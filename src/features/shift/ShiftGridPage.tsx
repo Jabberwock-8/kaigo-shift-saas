@@ -38,6 +38,7 @@ import {
   formatDate,
   formatMonthDayWeekday,
   formatYearMonthLabel,
+  shiftDurationHours,
   shiftYearMonth,
   weekdayOf,
   WEEKDAY_LABELS,
@@ -45,6 +46,7 @@ import {
 import { checkMonth } from '../../domain/scheduler/check'
 import { demandFor, shiftGroupDeficitPatternIds } from '../../domain/scheduler/demand'
 import { generate } from '../../domain/scheduler/generate'
+import { resolveLimits } from '../../domain/scheduler/limits'
 import type { Candidate } from '../../domain/scheduler/types'
 import PrintableShiftGrid from './PrintableShiftGrid'
 import CellPicker from './CellPicker'
@@ -218,8 +220,27 @@ export default function ShiftGridPage() {
   if (!selectedFacilityId) return null
 
   const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
+  const employmentTypeById = new Map(employmentTypes.map((e) => [e.id, e]))
   const summaryPatterns = shiftPatterns.filter((p) => p.isWork || p.category === 'off')
   const workPatterns = shiftPatterns.filter((p) => p.isWork)
+
+  // 常勤換算の分母（所定労働時間 = その月の常勤の必要勤務日数 × 8時間）。
+  // 「月の上限を調整」で施設一律に上書きされる想定のため、常勤の誰か1人の値を代表として使う。
+  const standardWorkdays = staffList
+    .map((s) => resolveLimits(s, employmentTypeById.get(s.employmentTypeId ?? ''), settings, schedule?.monthlyMaxDaysOverride?.[s.id]).targetWorkdays)
+    .find((v): v is number => v != null)
+  const standardHours = standardWorkdays != null ? standardWorkdays * 8 : null
+
+  function fteFor(staffId: string): number | null {
+    if (standardHours == null || standardHours <= 0) return null
+    let hours = 0
+    for (let d = 1; d <= days; d++) {
+      const patternId = effectiveAssignments[staffId]?.[String(d)]
+      const pattern = patternId ? patternById.get(patternId) : undefined
+      if (pattern?.isWork) hours += shiftDurationHours(pattern.startTime, pattern.endTime)
+    }
+    return Math.min(1, Math.round((hours / standardHours) * 10) / 10)
+  }
 
   function actualCountFor(patternId: string, day: number): number {
     let count = 0
@@ -511,6 +532,9 @@ export default function ShiftGridPage() {
                     {p.code}
                   </th>
                 ))}
+                <th className="sumcol" title="常勤換算（実労働時間 ÷ 常勤の所定労働時間）">
+                  常勤換算
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -535,6 +559,7 @@ export default function ShiftGridPage() {
                 {summaryPatterns.map((p) => (
                   <td key={p.id} className="sumcol" />
                 ))}
+                <td className="sumcol" />
               </tr>
               {staffList.map((staff) => {
                 const staffMsgs = checkResult.staffMessages[staff.id] ?? []
@@ -599,6 +624,7 @@ export default function ShiftGridPage() {
                         </td>
                       )
                     })}
+                    <td className="sumcol">{fteFor(staff.id)?.toFixed(1) ?? ''}</td>
                   </tr>
                 )
               })}
@@ -625,6 +651,7 @@ export default function ShiftGridPage() {
                   {summaryPatterns.map((sp) => (
                     <td key={sp.id} className="sumcol" />
                   ))}
+                  <td className="sumcol" />
                 </tr>
               ))}
             </tbody>
