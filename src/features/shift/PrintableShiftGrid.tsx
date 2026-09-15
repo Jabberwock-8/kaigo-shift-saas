@@ -5,7 +5,7 @@ import {
   weekdayOf,
   WEEKDAY_LABELS,
 } from '../../lib/dateUtils'
-import { demandFor } from '../../domain/scheduler/demand'
+import { demandFor, shiftGroupDeficitPatternIds } from '../../domain/scheduler/demand'
 
 type StaffWithId = Staff & { id: string }
 type PatternWithId = ShiftPattern & { id: string }
@@ -70,6 +70,16 @@ export default function PrintableShiftGrid({
           </tr>
         </thead>
         <tbody>
+          {schedule?.events && Object.keys(schedule.events).length > 0 && (
+            <tr className="event-row">
+              <td className="namecol">行事</td>
+              {dayList.map((d) => (
+                <td key={d} className="print-cell">
+                  {schedule.events?.[String(d)] ?? ''}
+                </td>
+              ))}
+            </tr>
+          )}
           {staffList.map((staff) => (
             <tr key={staff.id}>
               <td className="namecol">{staff.name}</td>
@@ -98,9 +108,16 @@ export default function PrintableShiftGrid({
               {dayList.map((d) => {
                 const need = demandFor(rules, yearMonth, d)[p.id]
                 const actual = countFor(p.id, d)
-                if (need == null) return <td key={d}>{actual || ''}</td>
+                if (need == null) {
+                  const deficit = shiftGroupDeficitPatternIds(rules, yearMonth, d, (id) => countFor(id, d))
+                  return (
+                    <td key={d} className={deficit.has(p.id) ? 'tally-short' : undefined}>
+                      {actual}
+                    </td>
+                  )
+                }
                 return (
-                  <td key={d} className={actual !== need ? 'tally-short' : undefined}>
+                  <td key={d} className={actual < need ? 'tally-short' : undefined}>
                     {actual}/{need}
                   </td>
                 )

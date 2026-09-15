@@ -66,3 +66,31 @@ export function findDuplicatePatternGroups(
   }
   return groups
 }
+
+export interface DuplicateRuleGroup {
+  /** 表示用（対象・条件のJSON。人間可読なラベルはUI側で作る） */
+  signature: string
+  keepId: string
+  removeIds: string[]
+}
+
+/** enabled/kind/days/target/cond の内容が完全一致するルールが複数あるものだけを重複グループとして返す */
+export function findDuplicateRuleGroups(rules: RuleWithId[]): DuplicateRuleGroup[] {
+  const bySignature = new Map<string, RuleWithId[]>()
+  for (const r of rules) {
+    const signature = JSON.stringify({ enabled: r.enabled, kind: r.kind, days: r.days, target: r.target, cond: r.cond })
+    const list = bySignature.get(signature) ?? []
+    list.push(r)
+    bySignature.set(signature, list)
+  }
+
+  const groups: DuplicateRuleGroup[] = []
+  for (const [signature, list] of bySignature) {
+    if (list.length < 2) continue
+    const sorted = [...list].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    const keep = sorted[0]
+    const removeIds = list.filter((r) => r.id !== keep.id).map((r) => r.id)
+    groups.push({ signature, keepId: keep.id, removeIds })
+  }
+  return groups
+}

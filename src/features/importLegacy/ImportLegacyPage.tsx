@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
 import {
+  deleteRule,
   deleteShiftPattern,
   fetchShiftRulesSettings,
   fetchStaffList,
@@ -10,7 +11,8 @@ import {
   listRules,
   listShiftPatterns,
 } from '../../lib/firestore'
-import { findDuplicatePatternGroups, type DuplicateGroup } from './dedupe'
+import { ruleText } from '../../domain/scheduler/ruleText'
+import { findDuplicatePatternGroups, findDuplicateRuleGroups, type DuplicateGroup, type DuplicateRuleGroup } from './dedupe'
 import { runLegacyImport, type LegacyBackup } from './legacyImport'
 import { applyRosterFix, ROSTER } from './rosterFix'
 
@@ -35,6 +37,10 @@ export default function ImportLegacyPage() {
   const [dupGroups, setDupGroups] = useState<DuplicateGroup[] | null>(null)
   const [checkingDup, setCheckingDup] = useState(false)
   const [cleaningDup, setCleaningDup] = useState(false)
+
+  const [ruleDupGroups, setRuleDupGroups] = useState<{ group: DuplicateRuleGroup; label: string }[] | null>(null)
+  const [checkingRuleDup, setCheckingRuleDup] = useState(false)
+  const [cleaningRuleDup, setCleaningRuleDup] = useState(false)
 
   const [runningRoster, setRunningRoster] = useState(false)
   const [rosterLog, setRosterLog] = useState<string[] | null>(null)
@@ -147,6 +153,53 @@ export default function ImportLegacyPage() {
     }
   }
 
+  async function handleCheckRuleDuplicates() {
+    if (!selectedFacilityId) return
+    setCheckingRuleDup(true)
+    setError(null)
+    try {
+      const [rules, staff] = await Promise.all([
+        listRules(selectedFacilityId),
+        fetchStaffList(selectedFacilityId),
+      ])
+      const shiftLabel = (id: string) => shiftPatterns.find((p) => p.id === id)?.label ?? id
+      const staffName = (id: string) => staff.find((s) => s.id === id)?.name ?? id
+      const groups = findDuplicateRuleGroups(rules)
+      const labeled = groups.map((group) => {
+        const keptRule = rules.find((r) => r.id === group.keepId)
+        return {
+          group,
+          label: keptRule ? ruleText(keptRule, { shiftLabel, staffName }) : group.signature,
+        }
+      })
+      setRuleDupGroups(labeled)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setCheckingRuleDup(false)
+    }
+  }
+
+  async function handleCleanRuleDuplicates() {
+    if (!selectedFacilityId || !ruleDupGroups) return
+    const total = ruleDupGroups.reduce((n, { group }) => n + group.removeIds.length, 0)
+    if (!confirm(`重複した条件ルールを${total}件削除します。よろしいですか？`)) return
+    setCleaningRuleDup(true)
+    setError(null)
+    try {
+      for (const { group } of ruleDupGroups) {
+        for (const id of group.removeIds) {
+          await deleteRule(selectedFacilityId, id)
+        }
+      }
+      setRuleDupGroups(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setCleaningRuleDup(false)
+    }
+  }
+
   async function handleRosterFix() {
     if (!selectedFacilityId) return
     if (!confirm(`職員名簿どおりに職種・資格・上限日数を反映します（対象${ROSTER.length}名）。よろしいですか？`)) return
@@ -229,6 +282,35 @@ export default function ImportLegacyPage() {
             </ul>
             <button type="button" onClick={() => void handleCleanDuplicates()} disabled={cleaningDup}>
               {cleaningDup ? '削除中…' : '未使用の重複を削除する'}
+            </button>
+          </>
+        )}
+      </div>
+
+      <div className="card inner" style={{ marginTop: 14 }}>
+        <h3>重複した条件ルールの整理</h3>
+        <p className="muted" style={{ marginBottom: 10 }}>
+          「この内容で取り込む」を複数回実行した場合など、条件ルールが同じ内容のまま重複して増えてしまうことがあります。
+          内容が完全に一致するルールをグループ化し、1件だけ残して他を削除します。
+        </p>
+        <button type="button" onClick={() => void handleCheckRuleDuplicates()} disabled={checkingRuleDup}>
+          {checkingRuleDup ? '確認中…' : '重複をチェック'}
+        </button>
+
+        {ruleDupGroups && ruleDupGroups.length === 0 && (
+          <p className="ok" style={{ marginTop: 10 }}>重複はありませんでした。</p>
+        )}
+        {ruleDupGroups && ruleDupGroups.length > 0 && (
+          <>
+            <ul style={{ marginTop: 10 }}>
+              {ruleDupGroups.map(({ group, label }) => (
+                <li key={group.signature}>
+                  {label}: {group.removeIds.length}件を削除予定
+                </li>
+              ))}
+            </ul>
+            <button type="button" onClick={() => void handleCleanRuleDuplicates()} disabled={cleaningRuleDup}>
+              {cleaningRuleDup ? '削除中…' : '重複を削除する'}
             </button>
           </>
         )}

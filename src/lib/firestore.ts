@@ -332,6 +332,24 @@ export async function setLock(
   })
 }
 
+/** 行事・予定（日付→テキスト）を1日分だけ更新する。空文字なら削除する */
+export async function setEvent(
+  facilityId: string,
+  yearMonth: string,
+  daysInMonth: number,
+  day: number,
+  text: string,
+  uid: string,
+) {
+  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
+  await updateDoc(ref, {
+    [`events.${day}`]: text.trim() ? text.trim() : deleteField(),
+    updatedByUid: uid,
+    updatedAt: serverTimestamp(),
+    revision: increment(1),
+  })
+}
+
 /** その月だけの勤務日数上限の上書き（P5）をまとめて保存する */
 export async function saveMonthlyMaxDaysOverride(
   facilityId: string,

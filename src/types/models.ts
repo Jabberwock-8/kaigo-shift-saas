@@ -223,8 +223,10 @@ export interface Schedule {
   assignments?: Record<string, Record<string, string>>
   /** staffId -> 日 -> ロック中か */
   locks?: Record<string, Record<string, boolean>>
-  /** ★P5で編集UIを追加予定。この月だけの勤務日数上限の上書き */
+  /** この月だけの勤務日数上限の上書き（P5） */
   monthlyMaxDaysOverride?: Record<string, { targetWorkdays?: number | null; maxWorkdays?: number | null }>
+  /** 日(1始まりの文字列) -> 行事・予定のテキスト（P5） */
+  events?: Record<string, string>
   generationMeta?: ScheduleGenerationMeta
   revision?: number
 }

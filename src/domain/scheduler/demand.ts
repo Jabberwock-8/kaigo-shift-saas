@@ -25,3 +25,26 @@ export function demandFor(
   }
   return demand
 }
+
+/**
+ * shiftGroup(atLeastGroup) の hard ルールが、指定の日に不足しているかを判定する。
+ * 不足しているルールの対象パターンID一式を返す（画面の日次集計行で赤枠表示するために使う）。
+ * demandFor はこの種のルールを含めない（旧版どおり repair 側で扱うため）ので別関数にしている。
+ */
+export function shiftGroupDeficitPatternIds(
+  rules: RuleWithId[],
+  yearMonth: string,
+  day: number,
+  actualCountFor: (patternId: string) => number,
+): Set<string> {
+  const deficit = new Set<string>()
+  for (const rule of rules) {
+    if (!rule.enabled || rule.kind !== 'hard') continue
+    if (rule.target.type !== 'shiftGroup' || rule.cond.type !== 'atLeastGroup') continue
+    if (!ruleAppliesToDate(rule.days, yearMonth, day)) continue
+    const ids = (rule.target.value as string[] | undefined) ?? []
+    const total = ids.reduce((sum, id) => sum + actualCountFor(id), 0)
+    if (total < (rule.cond.count ?? 0)) ids.forEach((id) => deficit.add(id))
+  }
+  return deficit
+}

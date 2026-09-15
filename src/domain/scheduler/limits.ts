@@ -28,7 +28,11 @@ export function resolveLimits(
   monthlyOverride?: MonthlyLimitsOverride,
 ): ResolvedLimits {
   const wc = staff.workConditions ?? {}
-  const hasTargetWorkdays = employmentType?.hasTargetWorkdays ?? false
+  // 旧版は「常勤」という文字列を直接判定して必要出勤日数(下限)チェックを適用していた（設定不要で常に有効）。
+  // 新版は雇用区分ごとに hasTargetWorkdays を管理者が設定する方式に一般化したが、
+  // 設定を忘れると下限チェックが効かなくなる事故が起きたため、「常勤」という表示名なら
+  // フラグの設定に関わらず常に有効にする救済策を入れている（フラグでの追加指定はそのまま尊重）。
+  const hasTargetWorkdays = (employmentType?.hasTargetWorkdays ?? false) || employmentType?.label === '常勤'
 
   const targetWorkdays = hasTargetWorkdays
     ? (monthlyOverride?.targetWorkdays ??

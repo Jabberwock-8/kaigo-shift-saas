@@ -17,6 +17,7 @@ import {
   saveCandidates,
   saveMonthlyMaxDaysOverride,
   setAssignment,
+  setEvent,
   setLock,
 } from '../../lib/firestore'
 import type {
@@ -38,11 +39,13 @@ import {
   WEEKDAY_LABELS,
 } from '../../lib/dateUtils'
 import { checkMonth } from '../../domain/scheduler/check'
-import { demandFor } from '../../domain/scheduler/demand'
+import { demandFor, shiftGroupDeficitPatternIds } from '../../domain/scheduler/demand'
 import { generate } from '../../domain/scheduler/generate'
 import type { Candidate } from '../../domain/scheduler/types'
 import PrintableShiftGrid from './PrintableShiftGrid'
 import CellPicker from './CellPicker'
+import EventPicker from './EventPicker'
+import NightTargetPanel from './NightTargetPanel'
 import CandidatesPanel from '../generate/CandidatesPanel'
 import MonthlyLimitsModal from './MonthlyLimitsModal'
 
@@ -67,6 +70,7 @@ export default function ShiftGridPage() {
   const [picker, setPicker] = useState<{ staffId: string; day: number; rect: DOMRect } | null>(
     null,
   )
+  const [eventPicker, setEventPicker] = useState<{ day: number; rect: DOMRect } | null>(null)
 
   const [storedCandidates, setStoredCandidates] = useState<(Candidate & { id: string })[]>([])
   const [candidates, setCandidates] = useState<(Candidate & { id: string })[] | null>(null)
@@ -283,6 +287,28 @@ export default function ShiftGridPage() {
     }
   }
 
+  async function handleSetEvent(day: number, text: string) {
+    if (!user) return
+    setSchedule((prev) => {
+      const base: Schedule = prev ?? {
+        yearMonth,
+        daysInMonth: days,
+        assignments: {},
+        locks: {},
+      }
+      const events = { ...(base.events ?? {}) }
+      if (text.trim()) events[String(day)] = text.trim()
+      else delete events[String(day)]
+      return { ...base, events }
+    })
+    try {
+      await setEvent(selectedFacilityId!, yearMonth, days, day, text, user.uid)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      await load()
+    }
+  }
+
   return (
     <section className="card">
       <div className="page-header no-print">
@@ -361,6 +387,15 @@ export default function ShiftGridPage() {
             閉じる
           </button>
         </p>
+      )}
+
+      {!loading && (
+        <NightTargetPanel
+          staffList={staffList}
+          shiftPatterns={shiftPatterns}
+          assignments={effectiveAssignments}
+          daysInMonth={days}
+        />
       )}
 
       {!loading && !mastersLoading && (checkResult.hardCount > 0 || checkResult.softCount > 0) && (
@@ -442,6 +477,28 @@ export default function ShiftGridPage() {
               </tr>
             </thead>
             <tbody>
+              <tr className="event-row">
+                <td className="namecol">行事</td>
+                {dayList.map((d) => {
+                  const text = schedule?.events?.[String(d)] ?? ''
+                  return (
+                    <td
+                      key={d}
+                      className={isAdmin && !previewCandidate ? 'clickable' : undefined}
+                      title={text || undefined}
+                      onClick={(e) => {
+                        if (!isAdmin || previewCandidate) return
+                        setEventPicker({ day: d, rect: e.currentTarget.getBoundingClientRect() })
+                      }}
+                    >
+                      {text}
+                    </td>
+                  )
+                })}
+                {summaryPatterns.map((p) => (
+                  <td key={p.id} className="sumcol" />
+                ))}
+              </tr>
               {staffList.map((staff) => {
                 const staffMsgs = checkResult.staffMessages[staff.id] ?? []
                 const staffAssignments = effectiveAssignments[staff.id] ?? {}
@@ -514,9 +571,16 @@ export default function ShiftGridPage() {
                   {dayList.map((d) => {
                     const need = demandFor(rules, yearMonth, d)[p.id]
                     const actual = actualCountFor(p.id, d)
-                    if (need == null) return <td key={d}>{actual || ''}</td>
+                    if (need == null) {
+                      const deficit = shiftGroupDeficitPatternIds(rules, yearMonth, d, (id) => actualCountFor(id, d))
+                      return (
+                        <td key={d} className={deficit.has(p.id) ? 'tally-short' : undefined}>
+                          {actual}
+                        </td>
+                      )
+                    }
                     return (
-                      <td key={d} className={actual !== need ? 'tally-short' : undefined}>
+                      <td key={d} className={actual < need ? 'tally-short' : undefined}>
                         {actual}/{need}
                       </td>
                     )
@@ -561,6 +625,16 @@ export default function ShiftGridPage() {
             />
           )
         })()}
+
+      {eventPicker && (
+        <EventPicker
+          anchorRect={eventPicker.rect}
+          dateLabel={formatMonthDayWeekday(yearMonth, eventPicker.day)}
+          current={schedule?.events?.[String(eventPicker.day)] ?? ''}
+          onSave={(text) => void handleSetEvent(eventPicker.day, text)}
+          onClose={() => setEventPicker(null)}
+        />
+      )}
 
       {showLimitsModal && (
         <MonthlyLimitsModal

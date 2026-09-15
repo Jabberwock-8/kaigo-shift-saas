@@ -39,6 +39,10 @@
   color: #8a5a0a;
 }
 
+.danger {
+  color: #b4372e;
+}
+
 code {
   background: #f1f0eb;
   padding: 1px 5px;
@@ -802,6 +806,43 @@ table.shift-grid tr.tally-row td {
 table.shift-grid tr.tally-row td.tally-short {
   color: #b4372e;
   font-weight: 700;
+}
+
+table.shift-grid tr.event-row td {
+  background: #fbf6e6;
+  color: #6b7066;
+  font-size: 0.7rem;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+table.shift-grid tr.event-row td.clickable {
+  cursor: pointer;
+}
+
+table.shift-grid tr.event-row td.clickable:hover {
+  outline: 2px solid #c9971f;
+  outline-offset: -2px;
+}
+
+.night-target-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  background: #fbfaf7;
+  border: 1px solid #e4e2db;
+  border-radius: 8px;
+  padding: 8px 14px;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+}
+
+.night-target-title {
+  font-weight: 700;
+  color: #6b7066;
 }
 
 @media print {

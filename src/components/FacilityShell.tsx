@@ -13,6 +13,7 @@ import CompatibilityPage from '../features/compatibility/CompatibilityPage'
 import RulesPage from '../features/rules/RulesPage'
 import SettingsPage from '../features/settings/SettingsPage'
 import ImportLegacyPage from '../features/importLegacy/ImportLegacyPage'
+import ExcelPage from '../features/excel/ExcelPage'
 
 const TABS = [
   { to: '/shift', label: 'シフト表', icon: '📅' },
@@ -24,6 +25,7 @@ const TABS = [
   { to: '/job-types', label: '職種', icon: '🏷️' },
   { to: '/employment-types', label: '雇用区分', icon: '📁' },
   { to: '/settings', label: '設定', icon: '⚙️' },
+  { to: '/excel', label: 'Excel入出力', icon: '📊' },
   { to: '/import-legacy', label: '旧データ取込', icon: '🗂️' },
 ]
 
@@ -90,6 +92,7 @@ export default function FacilityShell() {
               <Route path="/job-types" element={<JobTypesPage />} />
               <Route path="/employment-types" element={<EmploymentTypesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/excel" element={<ExcelPage />} />
               <Route path="/import-legacy" element={<ImportLegacyPage />} />
               <Route path="*" element={<Navigate to="/shift" replace />} />
             </Routes>
