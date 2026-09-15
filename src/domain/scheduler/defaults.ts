@@ -6,6 +6,11 @@
  * facilities/{fid}/settings/generationConfig ドキュメントが存在すれば、
  * mergeGenerationConfig() でフィールド単位に上書きする。編集UIは当面作らない
  * （必要になれば Firestore コンソールで直接編集）。
+ *
+ * ※ score.interval.penaltyPerHour と engine.restPenalty は、2026-09-15に
+ *   利用者の要望（休息時間不足が頻発するため重みを強めたい）で旧版の値(18/3)から
+ *   変更している（旧版忠実移植からの意図的な逸脱）。将来、施設ごとに違う値にしたい
+ *   場合は settings/generationConfig 側で上書きする。
  */
 
 export interface GenerationProfile {
@@ -41,6 +46,8 @@ export interface GenerationConfig {
     dayPickTopN: number
     typeCountWeight: number
     restPenalty: number
+    /** 休みが連続している職員を優先的に選ぶための、連続休み1日あたりの優先度ボーナス（週単位の偏り緩和） */
+    offStreakBonusWeight: number
   }
 }
 
@@ -65,7 +72,7 @@ export const GENERATION_DEFAULTS_V1: GenerationConfig = {
   score: {
     fair: { workdaySd: 10, nightTargetDev: 12, weekendSd: 8, typeFairDev: 7 },
     comp: { double: 2, caution: -2, x: -6 },
-    interval: { penaltyPerHour: 18 },
+    interval: { penaltyPerHour: 45 },
     spread: { overallWeight: 0.5, typeWeight: 0.5, overallK: 60, typeK: 35 },
   },
   engine: {
@@ -77,7 +84,8 @@ export const GENERATION_DEFAULTS_V1: GenerationConfig = {
     nightPickTopN: 2,
     dayPickTopN: 3,
     typeCountWeight: 0.8,
-    restPenalty: 3,
+    restPenalty: 20,
+    offStreakBonusWeight: 4,
   },
 }
 

@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import Modal from '../../components/Modal'
-import { resolveLimits } from '../../domain/scheduler/limits'
 import { formatYearMonthLabel } from '../../lib/dateUtils'
-import type { EmploymentType, ShiftRulesSettings, Staff } from '../../types/models'
+import type { EmploymentType, Staff } from '../../types/models'
 
 type StaffWithId = Staff & { id: string }
 type EmploymentTypeWithId = EmploymentType & { id: string }
@@ -17,7 +16,6 @@ interface Props {
   daysInMonth: number
   staffList: StaffWithId[]
   employmentTypes: EmploymentTypeWithId[]
-  settings: ShiftRulesSettings
   initialOverride: MonthlyOverrideMap
   onSave: (override: MonthlyOverrideMap) => Promise<void>
   onClose: () => void
@@ -39,7 +37,6 @@ export default function MonthlyLimitsModal({
   daysInMonth,
   staffList,
   employmentTypes,
-  settings,
   initialOverride,
   onSave,
   onClose,
@@ -139,20 +136,17 @@ export default function MonthlyLimitsModal({
             <tr>
               <th>職員</th>
               <th>雇用形態</th>
-              <th>通常</th>
               <th>この月の上限</th>
             </tr>
           </thead>
           <tbody>
             {targetStaff.map((s) => {
               const et = employmentTypeById.get(s.employmentTypeId ?? '')
-              const normal = resolveLimits(s, et, settings).maxWorkdays
               const current = override[s.id]?.maxWorkdays ?? override[s.id]?.targetWorkdays ?? null
               return (
                 <tr key={s.id}>
                   <td>{s.name}</td>
                   <td>{et?.label ?? ''}</td>
-                  <td>{normal != null ? `${normal}日` : '未設定'}</td>
                   <td>
                     <input
                       type="number"

@@ -51,6 +51,22 @@ export function typeCountOf(
   return count
 }
 
+/** 指定日の直前まで何日連続で休み（未配置扱いも含む）だったか。週単位の偏り緩和に使う */
+export function consecutiveOffStreakBefore(
+  grid: AssignmentGrid,
+  staffId: string,
+  day: number,
+  patternById: Map<string, PatternWithId>,
+): number {
+  let streak = 0
+  for (let d = day - 1; d >= 1; d--) {
+    const pid = getCell(grid, staffId, d)
+    if (pid && patternById.get(pid)?.isWork) break
+    streak++
+  }
+  return streak
+}
+
 /** Fisher-Yates。引数の配列をその場でシャッフルして返す */
 export function shuffle<T>(arr: T[]): T[] {
   for (let i = arr.length - 1; i > 0; i--) {

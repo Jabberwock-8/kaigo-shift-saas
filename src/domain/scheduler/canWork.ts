@@ -1,7 +1,18 @@
-import { weekdayOf } from '../../lib/dateUtils'
+import { parseTimeToHours, weekdayOf } from '../../lib/dateUtils'
 import { resolveLimits } from './limits'
 import { ruleAppliesToDate } from './ruleMatch'
-import type { CanWorkContext, StaffWithId } from './types'
+import type { CanWorkContext, PatternWithId, StaffWithId } from './types'
+
+/** 前日終業〜当日出勤の休息時間（時間）。夜勤絡み・時刻未設定は対象外でnull */
+function restIntervalHours(prev: PatternWithId | undefined, next: PatternWithId | undefined): number | null {
+  if (!prev?.isWork || !next?.isWork || prev.isNight || next.isNight) return null
+  const end1 = parseTimeToHours(prev.endTime)
+  const start2 = parseTimeToHours(next.startTime)
+  if (end1 == null || start2 == null) return null
+  let gap = 24 - end1 + start2
+  if (gap > 24) gap -= 24
+  return gap
+}
 
 function patternIdAt(ctx: CanWorkContext, staffId: string, day: number): string | undefined {
   if (day < 1 || day > ctx.daysInMonth) return undefined
@@ -76,6 +87,18 @@ export function canWork(
       if (patternIdAt(ctx, staff.id, day + 1)) return false
       if (patternIdAt(ctx, staff.id, day + 2)) return false
     }
+  }
+
+  // 5.5 休息時間（null/true=必須扱い。false のときだけ推奨(soft)に緩める）
+  if (ctx.settings.minRestHours != null && ctx.settings.treatRestHoursAsHard !== false) {
+    const minRest = ctx.settings.minRestHours
+    const prevPattern = ctx.patternById.get(patternIdAt(ctx, staff.id, day - 1) ?? '')
+    const gapBefore = restIntervalHours(prevPattern, pattern)
+    if (gapBefore != null && gapBefore < minRest) return false
+
+    const nextPattern = ctx.patternById.get(patternIdAt(ctx, staff.id, day + 1) ?? '')
+    const gapAfter = restIntervalHours(pattern, nextPattern)
+    if (gapAfter != null && gapAfter < minRest) return false
   }
 
   const limits = resolveLimits(

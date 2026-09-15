@@ -7,11 +7,11 @@ import { canWork } from './canWork'
 import { checkMonth } from './check'
 import { demandFor } from './demand'
 import {
+  consecutiveOffStreakBefore,
   getCell,
   makeCanWorkContext,
   makeCheckInput,
   setCell,
-  shuffle,
   typeCountOf,
   workCountOf,
 } from './gridUtils'
@@ -80,6 +80,28 @@ function timeDistance(
   return Math.abs(s - prefStart) + Math.abs(e - prefEnd)
 }
 
+/** dayを含む「休み（未配置扱いも含む）」の連続の長さ。最も長い休み連続を優先して埋めるために使う */
+function offStreakSizeAt(
+  grid: AssignmentGrid,
+  staffId: string,
+  day: number,
+  daysInMonth: number,
+  patternById: Map<string, PatternWithId>,
+): number {
+  let size = 1
+  for (let d = day - 1; d >= 1; d--) {
+    const pid = getCell(grid, staffId, d)
+    if (pid && patternById.get(pid)?.isWork) break
+    size++
+  }
+  for (let d = day + 1; d <= daysInMonth; d++) {
+    const pid = getCell(grid, staffId, d)
+    if (pid && patternById.get(pid)?.isWork) break
+    size++
+  }
+  return size
+}
+
 function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
   const { staff, employmentTypes, settings, daysInMonth, shiftPatterns, monthlyMaxDaysOverride, lockedCells } = input
   const employmentTypeById = new Map(employmentTypes.map((e) => [e.id, e]))
@@ -89,6 +111,7 @@ function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
   const prefStart = parseTimeToHours(settings.preferredFillTimeRange.start)
   const prefEnd = parseTimeToHours(settings.preferredFillTimeRange.end)
   const chunkSize = 7
+  const weekOf = (d: number) => Math.floor((d - 1) / chunkSize)
 
   for (const s of staff) {
     const limits = resolveLimits(
@@ -101,28 +124,6 @@ function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
     let current = workCountOf(grid, s.id, daysInMonth, patternById)
     if (current >= limits.targetWorkdays) continue
 
-    // 週(7日)単位でグループ化し、各週から順番に選ぶことで特定週への偏りを防ぐ
-    const chunks: number[][] = []
-    for (let start = 1; start <= daysInMonth; start += chunkSize) {
-      const end = Math.min(start + chunkSize - 1, daysInMonth)
-      const days: number[] = []
-      for (let d = start; d <= end; d++) {
-        if (getCell(grid, s.id, d) === offPattern.id && !lockedCells[s.id]?.[String(d)]) days.push(d)
-      }
-      chunks.push(shuffle(days))
-    }
-    const orderedDays: number[] = []
-    let more = true
-    while (more) {
-      more = false
-      for (const chunk of chunks) {
-        if (chunk.length) {
-          orderedDays.push(chunk.shift()!)
-          more = true
-        }
-      }
-    }
-
     const allowed = s.workConditions?.workablePatternIds
     const workPatternIds =
       allowed && allowed.length > 0
@@ -132,7 +133,6 @@ function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
           })
         : shiftPatterns.filter((p) => p.isWork && !p.isNight).map((p) => p.id)
 
-    const weekOf = (d: number) => Math.floor((d - 1) / chunkSize)
     const weekTypeCount: Record<string, number> = {}
     for (let d = 1; d <= daysInMonth; d++) {
       const pid = getCell(grid, s.id, d)
@@ -143,24 +143,40 @@ function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
       }
     }
 
-    for (const d of orderedDays) {
-      if (current >= limits.targetWorkdays) break
-      const wk = weekOf(d)
-      const sortedTypes = [...workPatternIds].sort((a, b) => {
-        const scoreA = timeDistance(patternById.get(a), prefStart, prefEnd) + (weekTypeCount[`${wk}:${a}`] ?? 0) * 1.5
-        const scoreB = timeDistance(patternById.get(b), prefStart, prefEnd) + (weekTypeCount[`${wk}:${b}`] ?? 0) * 1.5
-        return scoreA - scoreB
-      })
-      for (const patternId of sortedTypes) {
-        setCell(grid, s.id, d, null)
-        if (canWork(s, d, patternId, makeCanWorkContext(grid, input))) {
-          setCell(grid, s.id, d, patternId)
-          current++
-          weekTypeCount[`${wk}:${patternId}`] = (weekTypeCount[`${wk}:${patternId}`] ?? 0) + 1
-          break
+    // 休みの連続が最も長い日から優先して埋める（週の中に散らばるより、まず大きな休み連続を崩す）。
+    // 1件埋めるたびに残りの連続日数が変わるため、毎回候補を洗い出し直す。
+    while (current < limits.targetWorkdays) {
+      const candidates = []
+      for (let d = 1; d <= daysInMonth; d++) {
+        if (getCell(grid, s.id, d) === offPattern.id && !lockedCells[s.id]?.[String(d)]) {
+          candidates.push({ d, streak: offStreakSizeAt(grid, s.id, d, daysInMonth, patternById) })
         }
-        setCell(grid, s.id, d, offPattern.id)
       }
+      if (!candidates.length) break
+      candidates.sort((a, b) => b.streak - a.streak || Math.random() - 0.5)
+
+      let filled = false
+      for (const { d } of candidates) {
+        const wk = weekOf(d)
+        const sortedTypes = [...workPatternIds].sort((a, b) => {
+          const scoreA = timeDistance(patternById.get(a), prefStart, prefEnd) + (weekTypeCount[`${wk}:${a}`] ?? 0) * 1.5
+          const scoreB = timeDistance(patternById.get(b), prefStart, prefEnd) + (weekTypeCount[`${wk}:${b}`] ?? 0) * 1.5
+          return scoreA - scoreB
+        })
+        for (const patternId of sortedTypes) {
+          setCell(grid, s.id, d, null)
+          if (canWork(s, d, patternId, makeCanWorkContext(grid, input))) {
+            setCell(grid, s.id, d, patternId)
+            current++
+            weekTypeCount[`${wk}:${patternId}`] = (weekTypeCount[`${wk}:${patternId}`] ?? 0) + 1
+            filled = true
+            break
+          }
+          setCell(grid, s.id, d, offPattern.id)
+        }
+        if (filled) break
+      }
+      if (!filled) break
     }
   }
 }
@@ -233,7 +249,8 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
             priority:
               workCountOf(grid, s.id, daysInMonth, patternById) +
               typeCountOf(grid, s.id, patternId, daysInMonth) * config.engine.typeCountWeight +
-              restPenaltyFor(grid, s.id, d, patternId, patternById, settings.minRestHours, config.engine.restPenalty),
+              restPenaltyFor(grid, s.id, d, patternId, patternById, settings.minRestHours, config.engine.restPenalty) -
+              consecutiveOffStreakBefore(grid, s.id, d, patternById) * config.engine.offStreakBonusWeight,
           }))
           .sort((a, b) => a.priority - b.priority || Math.random() - 0.5)
         if (!candidates.length) break

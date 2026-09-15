@@ -5,6 +5,7 @@ import { useMasters } from '../../context/MastersContext'
 import {
   DEFAULT_SHIFT_RULES_SETTINGS,
   adoptCandidate,
+  clearAllLocks,
   fetchCurrentGenerationConfig,
   fetchLeaveRequestsForMonth,
   fetchSchedule,
@@ -309,6 +310,22 @@ export default function ShiftGridPage() {
     }
   }
 
+  async function handleClearAllLocks() {
+    if (!selectedFacilityId || !user) return
+    const lockedCount = Object.values(schedule?.locks ?? {}).reduce(
+      (n, byDay) => n + Object.keys(byDay).length,
+      0,
+    )
+    if (lockedCount === 0) return
+    if (!confirm(`${formatYearMonthLabel(yearMonth)}のロックを${lockedCount}件すべて解除します。よろしいですか？`)) return
+    try {
+      await clearAllLocks(selectedFacilityId, yearMonth, days, user.uid)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   return (
     <section className="card">
       <div className="page-header no-print">
@@ -352,6 +369,15 @@ export default function ShiftGridPage() {
           {isAdmin && (
             <button type="button" onClick={() => setShowLimitsModal(true)}>
               📅 月の上限を調整
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => void handleClearAllLocks()}
+              disabled={Object.values(schedule?.locks ?? {}).every((byDay) => Object.keys(byDay).length === 0)}
+            >
+              🔓 ロックを全解除
             </button>
           )}
         </div>
@@ -642,7 +668,6 @@ export default function ShiftGridPage() {
           daysInMonth={days}
           staffList={staffList}
           employmentTypes={employmentTypes}
-          settings={settings}
           initialOverride={schedule?.monthlyMaxDaysOverride ?? {}}
           onSave={async (override) => {
             if (!selectedFacilityId || !user) return

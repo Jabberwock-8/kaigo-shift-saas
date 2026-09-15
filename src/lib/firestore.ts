@@ -332,6 +332,17 @@ export async function setLock(
   })
 }
 
+/** その月のセルロックをすべて解除する（古いロックが原因で自動生成に不要な制約が残るのを防ぐための一括操作） */
+export async function clearAllLocks(facilityId: string, yearMonth: string, daysInMonth: number, uid: string) {
+  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
+  await updateDoc(ref, {
+    locks: {},
+    updatedByUid: uid,
+    updatedAt: serverTimestamp(),
+    revision: increment(1),
+  })
+}
+
 /** 行事・予定（日付→テキスト）を1日分だけ更新する。空文字なら削除する */
 export async function setEvent(
   facilityId: string,
@@ -436,6 +447,7 @@ export const DEFAULT_SHIFT_RULES_SETTINGS: ShiftRulesSettings = {
   minRestHours: null,
   preferredFillTimeRange: { start: null, end: null },
   treatCompatibilityXAsHard: null,
+  treatRestHoursAsHard: null,
   maxConsecutiveWorkdaysDefault: null,
   monthlyLimitsDefault: { targetWorkdays: null, maxWorkdays: null, maxNightShifts: null },
 }

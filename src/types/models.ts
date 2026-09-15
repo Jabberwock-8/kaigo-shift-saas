@@ -187,11 +187,13 @@ export interface ShiftRulesSettings {
   nightAvoidPatternIdsAfter2: string[]
   /** patternId -> 連続日数の上限 */
   shiftConsecutiveCaps: Record<string, number>
-  /** 勤務間インターバル（時間）。下回るとsoft違反 */
+  /** 勤務間インターバル（時間）。下回ると違反（treatRestHoursAsHardでhard/softを切替） */
   minRestHours: number | null
   preferredFillTimeRange: { start: string | null; end: string | null }
   /** null/true = 相性×を必須(hard)扱い。false = スコア減点のみ */
   treatCompatibilityXAsHard: boolean | null
+  /** null/true = 休息時間不足を必須(hard)扱いにし、自動生成でも配置しない。false = 推奨(soft)のみに緩める */
+  treatRestHoursAsHard: boolean | null
   maxConsecutiveWorkdaysDefault: number | null
   monthlyLimitsDefault: {
     targetWorkdays: number | null

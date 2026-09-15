@@ -340,6 +340,7 @@ export async function runLegacyImport(backup: LegacyBackup, ctx: ImportContext):
       end: m.preferredFillShift?.end ?? null,
     },
     treatCompatibilityXAsHard: m.compHard ?? null,
+    treatRestHoursAsHard: null,
     maxConsecutiveWorkdaysDefault: null,
     monthlyLimitsDefault: { targetWorkdays: null, maxWorkdays: null, maxNightShifts: null },
   })

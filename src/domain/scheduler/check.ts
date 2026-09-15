@@ -270,7 +270,7 @@ export function checkMonth(input: CheckInput): CheckResult {
         }
       }
 
-      // ---- 休息時間（soft） ----
+      // ---- 休息時間（既定は推奨(soft)。treatRestHoursAsHard=true なら必須(hard)扱い） ----
       if (settings.minRestHours != null && d < daysInMonth) {
         const p1 = patternOf(s.id, d)
         const p2 = patternOf(s.id, d + 1)
@@ -281,9 +281,14 @@ export function checkMonth(input: CheckInput): CheckResult {
             let gap = 24 - end1 + start2
             if (gap > 24) gap -= 24
             if (gap < settings.minRestHours) {
-              soft.push(
-                `${s.name}: ${d}〜${d + 1}日 休息時間が${gap.toFixed(1)}時間しかありません（${p1.label} ${p1.endTime}終業→${p2.label} ${p2.startTime}出勤）`,
-              )
+              const msg = `${s.name}: ${d}〜${d + 1}日 休息時間が${gap.toFixed(1)}時間しかありません（${p1.label} ${p1.endTime}終業→${p2.label} ${p2.startTime}出勤）`
+              if (settings.treatRestHoursAsHard !== false) {
+                hard.push(msg)
+                addCell(s.id, d, '休息時間不足')
+                addCell(s.id, d + 1, '休息時間不足')
+              } else {
+                soft.push(msg)
+              }
             }
           }
         }

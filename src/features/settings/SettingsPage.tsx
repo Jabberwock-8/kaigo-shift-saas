@@ -198,8 +198,17 @@ export default function SettingsPage() {
           />
         </label>
         <p className="muted">
-          前日の勤務終了から翌日の勤務開始までの間隔がこれより短い並びを、推奨違反として表示します。
+          前日の勤務終了から翌日の勤務開始までの間隔がこれより短い並びを、違反として表示します。
         </p>
+        <label className="row">
+          <input
+            type="checkbox"
+            checked={settings.treatRestHoursAsHard !== false}
+            disabled={!isAdmin}
+            onChange={(e) => update({ treatRestHoursAsHard: e.target.checked })}
+          />
+          休息時間不足を必須条件として扱う（自動生成でも配置しない。既定でオン。外すと推奨のみに戻ります）
+        </label>
 
         <label className="field-row">
           不足分を埋める時間帯
