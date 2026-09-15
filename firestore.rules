@@ -49,9 +49,18 @@ service cloud.firestore {
     }
 
     match /facilities/{fid} {
-      allow read:   if inFacility(fid);
-      allow update: if isAdmin(fid);
-      allow create, delete: if false;
+      // 所属施設は誰でも読める。未所属でも、同一組織の管理者なら横展開の管理画面用に読める
+      allow read:   if inFacility(fid)
+                    || (signedIn() && me().role == 'admin' && me().organizationId == resource.data.organizationId);
+      // 更新: その施設の管理者、または（施設・ユーザー管理画面用に）同一組織の管理者なら未所属でも可
+      allow update: if isAdmin(fid)
+                    || (signedIn() && me().role == 'admin'
+                        && me().organizationId == resource.data.organizationId
+                        && request.resource.data.organizationId == resource.data.organizationId);
+      // 新規施設の作成は、自分の組織宛てになら管理者が行える（施設・ユーザー管理画面）
+      allow create: if signedIn() && me().role == 'admin'
+                    && request.resource.data.organizationId == me().organizationId;
+      allow delete: if false;
 
       match /jobTypes/{id}        { allow read: if inFacility(fid); allow write: if isAdmin(fid); }
       match /employmentTypes/{id} { allow read: if inFacility(fid); allow write: if isAdmin(fid); }
@@ -106,7 +115,18 @@ service cloud.firestore {
     match /users/{uid} {
       allow read:  if signedIn() && (request.auth.uid == uid
                    || (me().role == 'admin' && me().organizationId == resource.data.organizationId));
-      allow write: if false; // 当面コンソール管理
+
+      // 管理者アカウントの招待（施設・ユーザー管理画面）。v1は招待できる役割を admin に限定
+      allow create: if signedIn() && me().role == 'admin'
+                    && request.resource.data.organizationId == me().organizationId
+                    && request.resource.data.role == 'admin';
+
+      // 所属施設・主施設の付け替え。組織を跨いだ付け替えは不可
+      allow update: if signedIn() && me().role == 'admin'
+                    && me().organizationId == resource.data.organizationId
+                    && request.resource.data.organizationId == resource.data.organizationId;
+
+      allow delete: if false; // 当面コンソール管理
     }
   }
 }

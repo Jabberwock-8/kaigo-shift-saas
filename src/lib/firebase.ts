@@ -37,4 +37,7 @@ export const firebaseStatus = {
   projectId: config.projectId ?? null,
 }
 
+/** 管理者ユーザー招待用のセカンダリAppを作るときに再利用する（features/orgAdmin/inviteAdmin.ts） */
+export const firebaseConfig = config
+
 export { app, auth, db }

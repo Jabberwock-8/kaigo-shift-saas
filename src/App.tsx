@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import './App.css'
 import { useAuth } from './context/AuthContext'
 import { FacilityProvider, useFacility } from './context/FacilityContext'
@@ -6,6 +6,7 @@ import { firebaseStatus } from './lib/firebase'
 import LoginPage from './features/auth/LoginPage'
 import FacilityPickerPage from './features/facilities/FacilityPickerPage'
 import FacilityShell from './components/FacilityShell'
+import OrgAdminPage from './features/orgAdmin/OrgAdminPage'
 
 function ConfigMissing() {
   return (
@@ -81,6 +82,23 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/org-admin"
+        element={
+          <RequireAuth>
+            <FacilityProvider>
+              <main className="app-shell wide">
+                <p style={{ marginBottom: 14 }}>
+                  <Link to="/" className="link-btn">
+                    ← シフト表に戻る
+                  </Link>
+                </p>
+                <OrgAdminPage />
+              </main>
+            </FacilityProvider>
+          </RequireAuth>
+        }
+      />
       <Route
         path="/*"
         element={

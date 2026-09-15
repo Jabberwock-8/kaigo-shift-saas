@@ -71,6 +71,52 @@ export async function fetchFacilities(
 }
 
 // ------------------------------------------------------------------
+// 施設・ユーザー管理（横展開）。org-admin機能。role='admin'のみアクセス可（firestore.rules参照）
+// ------------------------------------------------------------------
+
+/** 自分がまだ所属していない施設も含め、組織内の全施設を返す（施設・ユーザー管理画面用） */
+export async function fetchOrganizationFacilities(
+  organizationId: string,
+): Promise<(Facility & { id: string })[]> {
+  const snap = await getDocs(
+    query(collection(requireDb(), 'facilities'), where('organizationId', '==', organizationId)),
+  )
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Facility) }))
+}
+
+export async function createFacility(
+  organizationId: string,
+  data: { name: string; shortName?: string },
+): Promise<string> {
+  const ref = await addDoc(collection(requireDb(), 'facilities'), { ...data, organizationId })
+  return ref.id
+}
+
+export async function updateFacility(
+  facilityId: string,
+  patch: Partial<Pick<Facility, 'name' | 'shortName'>>,
+) {
+  await updateDoc(doc(requireDb(), 'facilities', facilityId), patch)
+}
+
+export async function fetchOrganizationUsers(
+  organizationId: string,
+): Promise<(AppUser & { id: string })[]> {
+  const snap = await getDocs(
+    query(collection(requireDb(), 'users'), where('organizationId', '==', organizationId)),
+  )
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as AppUser) }))
+}
+
+/** 招待済みユーザーの所属施設・主施設・表示名を更新する（組織を跨いだ付け替えは firestore.rules で禁止） */
+export async function updateOrgUser(
+  uid: string,
+  patch: Partial<Pick<AppUser, 'facilityIds' | 'primaryFacilityId' | 'displayName'>>,
+) {
+  await updateDoc(doc(requireDb(), 'users', uid), patch)
+}
+
+// ------------------------------------------------------------------
 // 施設のサブコレクションへの汎用アクセス
 // ------------------------------------------------------------------
 

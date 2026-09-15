@@ -1,7 +1,8 @@
+import { Link } from 'react-router-dom'
 import { useFacility } from '../../context/FacilityContext'
 
 export default function FacilityPickerPage() {
-  const { facilities, selectFacility } = useFacility()
+  const { appUser, facilities, selectFacility } = useFacility()
 
   return (
     <main className="app-shell">
@@ -16,6 +17,13 @@ export default function FacilityPickerPage() {
             </li>
           ))}
         </ul>
+        {appUser?.role === 'admin' && (
+          <p style={{ marginTop: 14 }}>
+            <Link to="/org-admin" className="header-link-btn">
+              ⚙️ 施設・ユーザー管理
+            </Link>
+          </p>
+        )}
       </section>
     </main>
   )

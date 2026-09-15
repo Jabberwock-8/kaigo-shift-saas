@@ -1,4 +1,4 @@
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useFacility } from '../context/FacilityContext'
 import { MastersProvider } from '../context/MastersContext'
@@ -41,9 +41,9 @@ export default function FacilityShell() {
       <div className="app-layout">
         <aside className="sidebar no-print">
           <div className="sidebar-logo">
-            介護
+            SHIFT
             <br />
-            シフト
+            MAKER
           </div>
           <nav className="sidebar-nav">
             {TABS.map((t) => (
@@ -68,6 +68,11 @@ export default function FacilityShell() {
               )}
             </div>
             <div className="header-actions">
+              {appUser?.role === 'admin' && (
+                <Link to="/org-admin" className="header-link-btn">
+                  ⚙️ 施設・ユーザー管理
+                </Link>
+              )}
               {facilities.length > 1 && (
                 <button type="button" onClick={() => selectFacility('')}>
                   施設を変更
