@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -19,6 +20,8 @@ interface FacilityContextValue {
   /** 所属施設が複数あるとき、選択待ちなら null */
   selectedFacilityId: string | null
   selectFacility: (facilityId: string) => void
+  /** 施設を新規作成した直後などに、appUser/facilitiesを再取得する（選択中の施設は変えない） */
+  refreshFacilities: () => Promise<void>
 }
 
 const FacilityContext = createContext<FacilityContextValue | null>(null)
@@ -32,6 +35,22 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
   )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const refreshFacilities = useCallback(async () => {
+    if (!user) return
+    const u = await fetchUser(user.uid)
+    if (!u) return
+    setAppUser(u)
+    const fac = await fetchFacilities(u.facilityIds ?? [])
+    setFacilities(fac)
+    // 選択中の施設が引き続き所属先に含まれていればそのまま、無くなっていたら選択し直す
+    setSelectedFacilityId((cur) => {
+      if (cur && fac.some((f) => f.id === cur)) return cur
+      if (fac.length === 1) return fac[0].id
+      if (u.primaryFacilityId && fac.some((f) => f.id === u.primaryFacilityId)) return u.primaryFacilityId
+      return null
+    })
+  }, [user])
 
   useEffect(() => {
     let cancelled = false
@@ -91,6 +110,7 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
         error,
         selectedFacilityId,
         selectFacility: setSelectedFacilityId,
+        refreshFacilities,
       }}
     >
       {children}

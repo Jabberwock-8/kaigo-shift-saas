@@ -15,6 +15,7 @@ import RulesPage from '../features/rules/RulesPage'
 import SettingsPage from '../features/settings/SettingsPage'
 import ImportLegacyPage from '../features/importLegacy/ImportLegacyPage'
 import ExcelPage from '../features/excel/ExcelPage'
+import FacilityTabs from './FacilityTabs'
 
 const TABS = [
   { to: '/shift', label: 'シフト表', icon: '📅' },
@@ -33,7 +34,7 @@ const TABS = [
 
 export default function FacilityShell() {
   const { signOut } = useAuth()
-  const { appUser, facilities, selectedFacilityId, selectFacility } = useFacility()
+  const { appUser, facilities, selectedFacilityId } = useFacility()
   const facility = facilities.find((f) => f.id === selectedFacilityId)
 
   if (!selectedFacilityId) return null
@@ -62,6 +63,7 @@ export default function FacilityShell() {
         </aside>
 
         <div className="main-area">
+          <FacilityTabs />
           <div className="page-header no-print">
             <div>
               <h1>{facility?.name ?? ''}</h1>
@@ -74,11 +76,6 @@ export default function FacilityShell() {
                 <Link to="/org-admin" className="header-link-btn">
                   ⚙️ 施設・ユーザー管理
                 </Link>
-              )}
-              {facilities.length > 1 && (
-                <button type="button" onClick={() => selectFacility('')}>
-                  施設を変更
-                </button>
               )}
               <button type="button" onClick={() => void signOut()}>
                 ログアウト
