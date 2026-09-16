@@ -1,3 +1,4 @@
+import { buildDayPatternCaps, type DayPatternCaps } from './caps'
 import type { AssignmentGrid, CanWorkContext, CheckInput, GenerateInput, PatternWithId } from './types'
 
 export function getCell(grid: AssignmentGrid, staffId: string, day: number): string | undefined {
@@ -82,6 +83,7 @@ export function shuffle<T>(arr: T[]): T[] {
  */
 const patternMapCache = new WeakMap<GenerateInput, Map<string, PatternWithId>>()
 const employmentTypeMapCache = new WeakMap<GenerateInput, CanWorkContext['employmentTypeById']>()
+const dayPatternCapsCache = new WeakMap<GenerateInput, DayPatternCaps>()
 
 function cachedPatternById(input: GenerateInput) {
   let m = patternMapCache.get(input)
@@ -101,6 +103,18 @@ function cachedEmploymentTypeById(input: GenerateInput) {
   return m
 }
 
+/** 施設ごとに無効化できるようにしてあるため、切られている間は空マップ（＝上限なし）を返す */
+export function cachedDayPatternCaps(input: GenerateInput): DayPatternCaps {
+  let m = dayPatternCapsCache.get(input)
+  if (!m) {
+    m = input.config.engine.enforceDayPatternCaps === false
+      ? new Map()
+      : buildDayPatternCaps(input.rules, input.yearMonth, input.daysInMonth)
+    dayPatternCapsCache.set(input, m)
+  }
+  return m
+}
+
 export function makeCanWorkContext(grid: AssignmentGrid, input: GenerateInput): CanWorkContext {
   return {
     grid,
@@ -112,6 +126,7 @@ export function makeCanWorkContext(grid: AssignmentGrid, input: GenerateInput): 
     rules: input.rules,
     compatibilities: input.compatibilities,
     monthlyMaxDaysOverride: input.monthlyMaxDaysOverride,
+    dayPatternCaps: cachedDayPatternCaps(input),
   }
 }
 

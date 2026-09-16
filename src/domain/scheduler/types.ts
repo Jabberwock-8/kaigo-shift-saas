@@ -8,6 +8,7 @@ import type {
 } from '../../types/models'
 import type { MonthlyLimitsOverride } from './limits'
 import type { GenerationConfig } from './defaults'
+import type { DayPatternCaps } from './caps'
 
 export type StaffWithId = Staff & { id: string }
 export type PatternWithId = ShiftPattern & { id: string }
@@ -67,6 +68,8 @@ export interface CanWorkContext {
   rules: RuleWithId[]
   compatibilities: CompatibilityWithId[]
   monthlyMaxDaysOverride?: Record<string, MonthlyLimitsOverride>
+  /** 「配置しない」「N名以下」の人数上限。未設定なら上限チェックをしない */
+  dayPatternCaps?: DayPatternCaps
 }
 
 export interface GenerateInput {

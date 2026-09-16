@@ -172,6 +172,19 @@ export interface Candidate {
 2. 既にその日に割当あり → 不可
 3. `fixedOffWeekdays` に該当曜日 → 不可
 4. 「特定職員を勤務させない」hard ルール（target:staff / cond:off）該当日 → 不可
+4.5. **人数上限（2026-09-17 追加。旧HTML版からの意図的な逸脱）**:
+   target:shift かつ cond:none（配置しない）/ cond:atMost（N名以下）の hard ルールから
+   日ごと・パターンごとの上限を作り（`caps.ts` の `buildDayPatternCaps`）、上限に達していたら不可。
+   同一パターンに複数ルールがあれば min、最後に同日の `demandFor` と比較して大きい方を採用する
+   （「N名以上」と「配置しない」が同居する矛盾データでは上限が必要人数まで上がり、
+   従来と完全に同一の挙動になる＝充足率が下がる回帰が起きない）。
+   - 逸脱の理由: 旧版は違反を作ってから hillClimb が偶然見つけたときだけ消す作りだが、
+     手順8の repair は不足の補充しかせず**過剰配置を除去しない**ため取りこぼしが残り続けていた
+     （アミティホーム寺田で毎回2〜4件、発生日はランダム）。`defaults.ts` の restPenalty 変更と同じ扱い。
+   - `exact` の超過は塞がない（fillMinimumWorkdays の配置先が狭まり「必要出勤日数未達」に化けるため）。
+     資格/特性の件数ルールも対象外（CanWorkContext に職員リストが無く型変更が要るため別フェーズ）。
+   - `engine.enforceDayPatternCaps`（既定 true）で施設ごとに旧挙動へ戻せる。
+   - ロック済みセルが既に上限超過の場合、その日そのパターンは全ブロックになる（checkMonth が違反として報告する）。
 5. 夜勤ブロック（nightMode設定時のみ）:
    - direct: 前日が夜勤なら夜勤以外不可（連続夜勤は許容、上限はcapsで管理）。
      前々日が夜勤で patternId が nightAvoid に含まれる → 不可。
@@ -231,6 +244,8 @@ export interface Candidate {
 7. **hillClimb**（時間制限 hillClimbMs=800ms）: ランダムに3種の近傍操作
    （35% 休↔勤務の日入替 / 30% 同日2人交換 / 35% 不足への充当）。
    各操作の事前ガードは旧版どおり（ロック・希望休・夜勤/明絡みはスキップ）。
+   ただし「休↔勤務の日入替」だけは canWork を通らないため、3-4 の 4.5（人数上限）を
+   ガード内で自前に判定する（同日2人交換はパターン別人数が不変なので不要、不足への充当は canWork 経由）。
    採用条件: `checkMonth の hardCount が減る` または `同数で total が上がる`。ダメなら巻き戻す。
    ※ 毎回フル checkMonth+score で良い（17名規模で旧版実証済み。増分計算は将来最適化）。
 8. **repair 再実行** → checkMonth + score → Candidate を返す。

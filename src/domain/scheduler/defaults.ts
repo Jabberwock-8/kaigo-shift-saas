@@ -48,6 +48,8 @@ export interface GenerationConfig {
     restPenalty: number
     /** 休みが連続している職員を優先的に選ぶための、連続休み1日あたりの優先度ボーナス（週単位の偏り緩和） */
     offStreakBonusWeight: number
+    /** 「配置しない」「N名以下」を配置時点でブロックするか。想定外が起きた施設だけ false で旧挙動へ戻せる */
+    enforceDayPatternCaps: boolean
   }
 }
 
@@ -86,6 +88,7 @@ export const GENERATION_DEFAULTS_V1: GenerationConfig = {
     typeCountWeight: 0.8,
     restPenalty: 20,
     offStreakBonusWeight: 4,
+    enforceDayPatternCaps: true,
   },
 }
 

@@ -1,4 +1,5 @@
 import { parseTimeToHours, weekdayOf } from '../../lib/dateUtils'
+import { withinDayPatternCap } from './caps'
 import { resolveLimits } from './limits'
 import { ruleAppliesToDate } from './ruleMatch'
 import type { CanWorkContext, PatternWithId, StaffWithId } from './types'
@@ -71,6 +72,17 @@ export function canWork(
       ruleAppliesToDate(r.days, ctx.yearMonth, day),
   )
   if (forcedOff) return false
+
+  // 4.5 「配置しない」「N名以下」の人数上限（旧HTML版からの意図的な逸脱。docs §3-4 参照）。
+  //     旧版は違反を作ってから hillClimb で偶然消していたが、repair は過剰配置を除去しないため
+  //     取りこぼしが残り続けていた。ここで塞ぐ。
+  if (
+    !withinDayPatternCap(ctx.dayPatternCaps, day, patternId, () =>
+      Object.values(ctx.grid).reduce((n, days) => (days[String(day)] === patternId ? n + 1 : n), 0),
+    )
+  ) {
+    return false
+  }
 
   // 5. 夜勤ブロック（settings.nightMode 設定時のみ）
   if (ctx.settings.nightMode === 'direct') {

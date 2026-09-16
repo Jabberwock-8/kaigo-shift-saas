@@ -3,9 +3,10 @@
  * docs/remaining-work-design.md §4-7 参照。
  */
 import { canWork } from './canWork'
+import { withinDayPatternCap } from './caps'
 import { checkMonth } from './check'
 import { demandFor } from './demand'
-import { getCell, makeCanWorkContext, makeCheckInput, setCell, workCountOf } from './gridUtils'
+import { cachedDayPatternCaps, getCell, makeCanWorkContext, makeCheckInput, setCell, workCountOf } from './gridUtils'
 import { resolveLimits } from './limits'
 import { scoreGrid } from './score'
 import type { AssignmentGrid, GenerateInput } from './types'
@@ -18,6 +19,7 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
   const employmentTypeById = new Map(employmentTypes.map((e) => [e.id, e]))
   const offPattern = shiftPatterns.find((p) => p.category === 'off')
   if (!offPattern || staff.length === 0) return
+  const dayPatternCaps = cachedDayPatternCaps(input)
 
   const isLocked = (staffId: string, day: number) => !!lockedCells[staffId]?.[String(day)]
   const isWish = (staffId: string, day: number) => wishes.some((w) => w.staffId === staffId && w.day === day)
@@ -85,6 +87,15 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
       if (isWish(p.id, d)) continue
       const prev = d > 1 ? getCell(grid, p.id, d - 1) : undefined
       if (isAfterNight(prev) || isNightPattern(prev)) continue
+      // この移動だけ canWork を通らないため、人数上限は自前で見る（移動Bは同日内の交換で
+      // パターン別人数が変わらないため不要、移動Cは canWork 経由で効く）
+      if (
+        !withinDayPatternCap(dayPatternCaps, d, s2, () =>
+          staff.reduce((n, q) => (getCell(grid, q.id, d) === s2 ? n + 1 : n), 0),
+        )
+      ) {
+        continue
+      }
 
       setCell(grid, p.id, d, s2)
       setCell(grid, p.id, d2, offPattern.id)
