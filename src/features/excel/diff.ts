@@ -143,8 +143,10 @@ export function buildDiff(draft: TemplateDraft, existing: ExistingData): DiffRes
     .filter((p) => !p.isSystem && !draftCodes.has(p.code))
     .map((pattern) => ({ pattern, usedElsewhere: usedPatternIds.has(pattern.id) }))
 
+  // 新規作成予定のパターンもルール参照先として解決できるよう、プレースホルダIDを割り当てる
+  // （実IDはapplyDiff実行時に確定するが、プレビューでは「参照できるかどうか」だけ分かればよい）
   const codeToId = new Map(existing.patterns.map((p) => [p.code, p.id]))
-  for (const p of patterns) if (!codeToId.has(p.code) && p.status !== 'new') codeToId.set(p.code, p.existing!.id)
+  for (const p of patterns) if (!codeToId.has(p.code)) codeToId.set(p.code, p.existing?.id ?? `__new__:${p.code}`)
 
   // 雇用区分
   const employmentLabels = new Set(existing.employmentTypes.map((e) => e.label))
@@ -152,7 +154,9 @@ export function buildDiff(draft: TemplateDraft, existing: ExistingData): DiffRes
 
   // 職員
   const existingByName = new Map(existing.staff.map((s) => [s.name, s]))
+  // パターンと同様、新規作成予定の職員もルール参照先として解決できるようにする
   const nameToId = new Map(existing.staff.map((s) => [s.name, s.id]))
+  for (const s of draft.staff) if (!nameToId.has(s.name)) nameToId.set(s.name, `__new__:${s.name}`)
   const staffDiffs: StaffDiff[] = draft.staff.map((s: ParsedStaff) => {
     const next: StaffDiff['next'] = {
       qualifications: s.qualifications,
@@ -204,7 +208,11 @@ export function buildDiff(draft: TemplateDraft, existing: ExistingData): DiffRes
   if (draft.facility.nightMode != null) settingsPatchObj.nightMode = draft.facility.nightMode
   if (draft.facility.minRestHours != null) settingsPatchObj.minRestHours = draft.facility.minRestHours
   if (draft.facility.nightAvoidPatternCodes.length > 0) {
-    const ids = draft.facility.nightAvoidPatternCodes.map((c) => codeToId.get(c)).filter((v): v is string => !!v)
+    // codeToIdには新規パターン用のプレースホルダも入っているため、実IDだけに絞る
+    // （新規パターンは反映後の実IDが確定してから、あらためて設定してもらう）
+    const ids = draft.facility.nightAvoidPatternCodes
+      .map((c) => codeToId.get(c))
+      .filter((v): v is string => !!v && !v.startsWith('__new__:'))
     if (ids.length > 0) settingsPatchObj.nightAvoidPatternIdsAfter2 = ids
   }
   const settingsPatch = Object.keys(settingsPatchObj).length > 0 ? settingsPatchObj : null

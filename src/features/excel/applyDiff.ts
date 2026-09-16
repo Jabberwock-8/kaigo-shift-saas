@@ -15,6 +15,7 @@ import {
 import type { ExistingData, DiffResult } from './diff'
 import type { TemplateDraft } from './parseTemplate'
 import type { RuleCond, RuleTarget } from '../../types/models'
+import { defaultPairFor } from '../../lib/palette'
 
 export interface ApplyOptions {
   /** 削除してよい勤務パターンの記号 */
@@ -85,6 +86,8 @@ export async function applyDiff(
   for (const p of diff.patterns) {
     if (p.status === 'unchanged') continue
     if (p.status === 'new') patOrder += 1
+    // 新規パターンは既存の色を引き継げないため、他のマスタ画面（addRow）と同じくパレットから既定色を割り当てる
+    const defaultPair = defaultPairFor(patOrder)
     const id = await upsertShiftPattern(facilityId, p.existing?.id ?? null, {
       code: p.next.code,
       label: p.next.label,
@@ -96,8 +99,8 @@ export async function applyDiff(
       isNight: p.next.isNight,
       isSystem: false,
       order: p.existing?.order ?? patOrder,
-      color: p.existing?.color,
-      textColor: p.existing?.textColor,
+      color: p.existing?.color ?? defaultPair.bg,
+      textColor: p.existing?.textColor ?? defaultPair.text,
     })
     codeToId.set(p.code, id)
     if (p.status === 'new') createdPatterns++
