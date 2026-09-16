@@ -90,6 +90,7 @@ export async function applyDiff(
       label: p.next.label,
       startTime: p.next.startTime,
       endTime: p.next.endTime,
+      breakHours: p.next.breakHours,
       category: p.next.category,
       isWork: p.next.isWork,
       isNight: p.next.isNight,

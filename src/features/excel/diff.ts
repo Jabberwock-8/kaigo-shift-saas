@@ -64,6 +64,7 @@ function patternsEqual(a: PatternWithId, b: PatternDiff['next']): boolean {
     a.label === b.label &&
     (a.startTime ?? '') === (b.startTime ?? '') &&
     (a.endTime ?? '') === (b.endTime ?? '') &&
+    (a.breakHours ?? 0) === (b.breakHours ?? 0) &&
     a.isWork === b.isWork &&
     a.isNight === b.isNight
   )
@@ -88,10 +89,10 @@ function resolveRuleIds(
   nameToId: Map<string, string>,
 ): { target: RuleTarget; cond: RuleCond } | null {
   let target: RuleTarget
-  if (r.target.type === 'shift') {
+  if (r.target.type === 'shift' || r.target.type === 'secondaryShift') {
     const id = codeToId.get(r.target.value as string)
     if (!id) return null
-    target = { type: 'shift', value: id }
+    target = { type: r.target.type, value: id }
   } else if (r.target.type === 'staff') {
     const id = nameToId.get(r.target.value as string)
     if (!id) return null
@@ -122,6 +123,7 @@ export function buildDiff(draft: TemplateDraft, existing: ExistingData): DiffRes
       label: p.label,
       startTime: p.startTime,
       endTime: p.endTime,
+      breakHours: p.breakHours,
       isWork: p.isWork,
       isNight: p.isNight,
       category: guessCategory(p.isWork),

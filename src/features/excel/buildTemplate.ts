@@ -57,14 +57,23 @@ function facilityInfoSheet(facilityName: string, settings: ShiftRulesSettings | 
 }
 
 function shiftPatternsSheet(patterns: PatternWithId[]): XLSX.WorkSheet {
-  const header = ['記号', '名称', '開始', '終了', '勤務', '夜勤']
+  // 休憩列は既存ファイルとの互換性のため末尾に追加（既存列の並びは変えない）
+  const header = ['記号', '名称', '開始', '終了', '勤務', '夜勤', '休憩(時間・中抜け分)']
   const rows: (string | number)[][] = [header]
   if (patterns.length === 0) {
-    rows.push(['※A2', '※A2（早出）', '07:00', '16:00', 'はい', 'いいえ'])
+    rows.push(['※A2', '※A2（早出）', '07:00', '16:00', 'はい', 'いいえ', 0])
   }
   for (const p of patterns) {
     if (p.isSystem) continue // 公休・有給・夜勤明けはシステム固定のため出力しない（旧版も固定付与）
-    rows.push([p.code, p.label, p.startTime ?? '', p.endTime ?? '', boolLabel(p.isWork), boolLabel(p.isNight)])
+    rows.push([
+      p.code,
+      p.label,
+      p.startTime ?? '',
+      p.endTime ?? '',
+      boolLabel(p.isWork),
+      boolLabel(p.isNight),
+      p.breakHours ?? 0,
+    ])
   }
   return XLSX.utils.aoa_to_sheet(rows)
 }

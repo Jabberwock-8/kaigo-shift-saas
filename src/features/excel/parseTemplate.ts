@@ -22,6 +22,7 @@ export interface ParsedShiftPattern {
   endTime: string
   isWork: boolean
   isNight: boolean
+  breakHours: number
 }
 
 export interface ParsedStaff {
@@ -112,8 +113,19 @@ export function parseTemplateWorkbook(wb: XLSX.WorkBook): ParseResult {
       const label = cell(row, 1) || code
       const isWork = excelBool(row[4])
       const isNight = excelBool(row[5])
+      // 休憩列は末尾追加（旧形式のファイルには無いので、未入力なら0扱い）
+      const breakRaw = cell(row, 6)
+      const breakHours = breakRaw !== '' ? Math.max(0, parseFloat(breakRaw) || 0) : 0
       knownCodes.add(code)
-      draft.shiftPatterns.push({ code, label, startTime: normTime(row[2]), endTime: normTime(row[3]), isWork, isNight })
+      draft.shiftPatterns.push({
+        code,
+        label,
+        startTime: normTime(row[2]),
+        endTime: normTime(row[3]),
+        isWork,
+        isNight,
+        breakHours,
+      })
     }
   } else {
     warnings.push('「勤務記号」シートが見つかりませんでした')

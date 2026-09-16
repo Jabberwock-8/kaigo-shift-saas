@@ -105,6 +105,7 @@ export default function ShiftPatternsPage() {
             <th>名称</th>
             <th>開始</th>
             <th>終了</th>
+            <th>休憩(h)</th>
             <th>勤務</th>
             <th>夜勤</th>
             <th>種別</th>
@@ -144,6 +145,24 @@ export default function ShiftPatternsPage() {
                   value={row.endTime ?? ''}
                   disabled={!isAdmin || row.isSystem}
                   onChange={(e) => updateRow(i, { endTime: e.target.value })}
+                />
+              </td>
+              <td>
+                <input
+                  type="number"
+                  min={0}
+                  max={12}
+                  step={0.5}
+                  value={row.breakHours ?? ''}
+                  disabled={!isAdmin || row.isSystem}
+                  placeholder="0"
+                  title="中抜け・休憩時間。開始〜終了からこの時間を差し引いた分が実労働時間になります"
+                  onChange={(e) =>
+                    updateRow(i, {
+                      breakHours: e.target.value.trim() === '' ? undefined : Number(e.target.value),
+                    })
+                  }
+                  style={{ width: 56 }}
                 />
               </td>
               <td>

@@ -59,12 +59,20 @@ export function parseTimeToHours(hhmm: string | undefined | null): number | null
   return h + m / 60
 }
 
-/** 開始〜終了の勤務時間（時間）。日をまたぐ場合も対応。時刻未設定なら既定の8時間とする */
-export function shiftDurationHours(startTime: string | undefined, endTime: string | undefined): number {
+/**
+ * 開始〜終了の実労働時間（時間）。日をまたぐ場合も対応。時刻未設定なら既定の8時間とする。
+ * breakHours（中抜け・休憩）を渡すと、開始〜終了の時間からその分を差し引く
+ * （例: 7:00〜20:00・休憩5時間の中抜け勤務 → 実働8時間）。
+ */
+export function shiftDurationHours(
+  startTime: string | undefined,
+  endTime: string | undefined,
+  breakHours = 0,
+): number {
   const start = parseTimeToHours(startTime)
   const end = parseTimeToHours(endTime)
   if (start == null || end == null) return 8
   let diff = end - start
   if (diff <= 0) diff += 24
-  return diff
+  return Math.max(0, diff - breakHours)
 }

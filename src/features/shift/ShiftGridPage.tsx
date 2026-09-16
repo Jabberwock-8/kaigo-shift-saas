@@ -273,11 +273,12 @@ export default function ShiftGridPage() {
     for (let d = 1; d <= days; d++) {
       const patternId = effectiveAssignments[staffId]?.[String(d)]
       const pattern = patternId ? patternById.get(patternId) : undefined
-      if (pattern?.isWork) hours += shiftDurationHours(pattern.startTime, pattern.endTime)
+      if (pattern?.isWork) hours += shiftDurationHours(pattern.startTime, pattern.endTime, pattern.breakHours)
 
       const secondaryPatternId = schedule?.secondaryAssignments?.[staffId]?.[String(d)]
       const secondaryPattern = secondaryPatternId ? patternById.get(secondaryPatternId) : undefined
-      if (secondaryPattern?.isWork) hours += shiftDurationHours(secondaryPattern.startTime, secondaryPattern.endTime)
+      if (secondaryPattern?.isWork)
+        hours += shiftDurationHours(secondaryPattern.startTime, secondaryPattern.endTime, secondaryPattern.breakHours)
     }
     return Math.min(1, Math.round((hours / standardHours) * 10) / 10)
   }

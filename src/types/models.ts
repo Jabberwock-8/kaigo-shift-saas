@@ -96,6 +96,8 @@ export interface ShiftPattern {
   label: string
   startTime?: string
   endTime?: string
+  /** 中抜け（休憩）時間。開始〜終了からこの時間を差し引いたものが実労働時間になる */
+  breakHours?: number
   category?: ShiftCategory
   isWork: boolean
   isNight: boolean
