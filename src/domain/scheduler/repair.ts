@@ -135,11 +135,31 @@ export function repair(grid: AssignmentGrid, input: GenerateInput) {
 
 /** shiftGroup 系 hard ルールの atLeastGroup 不足補充 / notTogetherGroup の後勝ち解消 */
 export function repairGroups(grid: AssignmentGrid, input: GenerateInput) {
-  const { staff, daysInMonth, yearMonth, rules, config, lockedCells } = input
+  const { staff, daysInMonth, yearMonth, rules, config, lockedCells, wishes } = input
   const patternById = new Map(input.shiftPatterns.map((p) => [p.id, p]))
   const isLocked = (staffId: string, day: number) => !!lockedCells[staffId]?.[String(day)]
+  const isWish = (staffId: string, day: number) => wishes.some((w) => w.staffId === staffId && w.day === day)
+  const countAt = (day: number, patternId: string) =>
+    staff.filter((s) => getCell(grid, s.id, day) === patternId).length
   const groupRules = rules.filter((r) => r.enabled && r.kind === 'hard' && r.target.type === 'shiftGroup')
   if (!groupRules.length) return
+
+  /**
+   * day の patternId を1人減らしても、その日の atLeastGroup が満たされ続けるか。
+   * demandFor は shiftGroup を含まないため、これを見ないと「余剰」と誤判定して
+   * 別の日のグループ条件を壊してしまう。
+   */
+  const canSpare = (day: number, patternId: string) => {
+    for (const r of groupRules) {
+      if (r.cond.type !== 'atLeastGroup') continue
+      if (!ruleAppliesToDate(r.days, yearMonth, day)) continue
+      const ids = (r.target.value as string[] | undefined) ?? []
+      if (!ids.includes(patternId)) continue
+      const total = ids.reduce((n, id) => n + countAt(day, id), 0)
+      if (total - 1 < (r.cond.count ?? 0)) return false
+    }
+    return true
+  }
 
   const deadline = Date.now() + config.engine.groupRepairMaxMs
 
@@ -172,6 +192,42 @@ export function repairGroups(grid: AssignmentGrid, input: GenerateInput) {
               setCell(grid, s.id, d, offPattern.id)
             }
             if (done) break
+          }
+
+          // 2手修復: 全員が月間上限に達している等で単純な充当ができない場合、
+          // 別日の余剰勤務を休みに振り替えて枠を空けてから充当する（repair の③と同じ考え方）。
+          // これが無いと「その日に休みの職員はいるのに上限で入れられない」状態を解消できない。
+          if (!done) {
+            const candidates = offs.filter((s) => !isWish(s.id, d))
+            for (const s of candidates) {
+              if (done) break
+              if (Date.now() > deadline) break
+              for (let d2 = 1; d2 <= daysInMonth && !done; d2++) {
+                if (d2 === d) continue
+                const pid2 = getCell(grid, s.id, d2)
+                if (!pid2 || isLocked(s.id, d2)) continue
+                const p2 = patternById.get(pid2)
+                if (!p2?.isWork || p2.isNight) continue
+                const dem2 = demandFor(rules, yearMonth, d2)
+                if (countAt(d2, pid2) <= (dem2[pid2] ?? 0)) continue
+                if (!canSpare(d2, pid2)) continue
+
+                setCell(grid, s.id, d2, offPattern.id)
+                for (const id of ids) {
+                  setCell(grid, s.id, d, null)
+                  if (tryAssign(grid, input, s, d, id)) {
+                    done = true
+                    fixed = true
+                    break
+                  }
+                  setCell(grid, s.id, d, offPattern.id)
+                }
+                if (!done) {
+                  setCell(grid, s.id, d, offPattern.id)
+                  setCell(grid, s.id, d2, pid2)
+                }
+              }
+            }
           }
         }
 
