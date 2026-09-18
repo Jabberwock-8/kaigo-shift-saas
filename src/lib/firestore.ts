@@ -161,10 +161,15 @@ async function deleteSub(facilityId: string, name: string, id: string) {
 export async function fetchStaffList(
   facilityId: string,
 ): Promise<(Staff & { id: string })[]> {
-  const snap = await getDocs(
-    query(subCollection(facilityId, 'staff'), orderBy('name')),
-  )
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Staff) }))
+  // order 未設定のドキュメントが除外されてしまうため orderBy クエリは使わず、取得後にJS側で並べ替える
+  const snap = await getDocs(subCollection(facilityId, 'staff'))
+  const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Staff) }))
+  return rows.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name, 'ja'))
+}
+
+/** 職員カードの並び順だけを更新する。merge なので他のフィールドには触れない */
+export async function updateStaffOrder(facilityId: string, id: string, order: number) {
+  await setDoc(doc(requireDb(), 'facilities', facilityId, 'staff', id), { order }, { merge: true })
 }
 
 export async function fetchStaff(

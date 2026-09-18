@@ -1126,6 +1126,15 @@ table.shift-grid tr.secondary-role-row td.namecol {
   margin-bottom: 8px;
 }
 
+.staff-order-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
 .staff-avatar {
   flex-shrink: 0;
   width: 36px;
