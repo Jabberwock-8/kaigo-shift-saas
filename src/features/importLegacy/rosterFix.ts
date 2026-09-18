@@ -88,7 +88,7 @@ export async function applyRosterFix(facilityId: string): Promise<string[]> {
       await upsertStaff(facilityId, existing.id, {
         ...existingData,
         employmentTypeId: employmentIdByLabel.get(entry.employment) ?? existingData.employmentTypeId ?? '',
-        jobTypeId,
+        jobTypeIds: [jobTypeId],
         qualifications,
         workConditions,
       })
@@ -98,7 +98,7 @@ export async function applyRosterFix(facilityId: string): Promise<string[]> {
       await upsertStaff(facilityId, null, {
         name: entry.name,
         employmentTypeId: employmentIdByLabel.get(entry.employment) ?? '',
-        jobTypeId,
+        jobTypeIds: [jobTypeId],
         active: true,
         order: staffOrder,
         qualifications,

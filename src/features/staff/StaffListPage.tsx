@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
 import { deleteStaff, fetchLeaveRequestsForMonth, fetchStaffList, updateStaffOrder } from '../../lib/firestore'
+import { staffJobTypeIds } from '../../lib/staffUtils'
 import type { Staff } from '../../types/models'
 import { currentYearMonth } from '../../lib/dateUtils'
 
@@ -49,7 +50,11 @@ export default function StaffListPage() {
 
   if (!selectedFacilityId) return null
 
-  const jobTypeLabel = (id?: string) => jobTypes.find((j) => j.id === id)?.label ?? ''
+  const jobTypeLabels = (s: Staff) =>
+    staffJobTypeIds(s)
+      .map((id) => jobTypes.find((j) => j.id === id)?.label)
+      .filter(Boolean)
+      .join('・')
   const employmentTypeLabel = (id?: string) => employmentTypes.find((e) => e.id === id)?.label ?? ''
 
   async function handleDelete(s: Staff & { id: string }) {
@@ -117,7 +122,8 @@ export default function StaffListPage() {
             const tags = [...(s.qualifications ?? []), ...(s.traits ?? [])]
             const wishCount = wishCounts[s.id] ?? 0
             const metaText = [
-              jobTypeLabel(s.jobTypeId),
+              s.position,
+              jobTypeLabels(s),
               employmentTypeLabel(s.employmentTypeId),
               wc.maxWorkdaysPerMonth != null ? `月${wc.maxWorkdaysPerMonth}日まで` : null,
               wc.maxConsecutiveWorkdays != null ? `連続${wc.maxConsecutiveWorkdays}日まで` : null,
@@ -130,46 +136,46 @@ export default function StaffListPage() {
                 <div className="staff-card-head">
                   <span className="staff-avatar">{s.name.slice(0, 1)}</span>
                   <div className="staff-card-title">
-                    <div className="staff-name">
+                    <div className="staff-name" title={s.name}>
                       {s.name}
                       {s.active === false && <span className="muted"> （無効）</span>}
                     </div>
-                    {metaText && <div className="staff-meta muted">{metaText}</div>}
+                    {metaText && (
+                      <div className="staff-meta muted" title={metaText}>
+                        {metaText}
+                      </div>
+                    )}
                   </div>
                   {isAdmin && (
-                    <label className="staff-order-field muted" title="並び順">
-                      並び順
+                    <div className="staff-card-actions">
                       <input
                         type="number"
+                        className="staff-order-input"
+                        title="並び順"
+                        aria-label="並び順"
                         value={orderEdits[s.id] ?? s.order ?? 0}
                         onChange={(e) => {
                           const v = Number(e.target.value)
                           setOrderEdits((prev) => ({ ...prev, [s.id]: v }))
                           setOrderMessage(null)
                         }}
-                        style={{ width: 56 }}
                       />
-                    </label>
-                  )}
-                  {isAdmin && (
-                    <Link to={`/staff/${s.id}`} className="header-link-btn">
-                      ✎ 編集
-                    </Link>
+                      <Link to={`/staff/${s.id}`} className="staff-edit-btn" title="編集">
+                        ✎
+                      </Link>
+                      <button
+                        type="button"
+                        className="staff-delete-btn"
+                        onClick={() => void handleDelete(s)}
+                        title="削除"
+                      >
+                        🗑
+                      </button>
+                    </div>
                   )}
                 </div>
 
-                {isAdmin && (
-                  <button
-                    type="button"
-                    className="staff-delete-btn"
-                    onClick={() => void handleDelete(s)}
-                    title="削除"
-                  >
-                    🗑
-                  </button>
-                )}
-
-                {workablePatterns.length > 0 && (
+                {(workablePatterns.length > 0 || tags.length > 0) && (
                   <div className="staff-chip-row">
                     {workablePatterns.map((p) => (
                       <span
@@ -180,11 +186,6 @@ export default function StaffListPage() {
                         {p.label}
                       </span>
                     ))}
-                  </div>
-                )}
-
-                {tags.length > 0 && (
-                  <div className="staff-chip-row">
                     {tags.map((t) => (
                       <span key={t} className="tag-chip">
                         {t}
@@ -193,9 +194,15 @@ export default function StaffListPage() {
                   </div>
                 )}
 
-                {wishCount > 0 && <div className="staff-card-footer muted">希望休 {wishCount}件</div>}
-                {wc.nightShiftTarget != null && (
-                  <div className="staff-card-footer muted">夜勤回数目標 月{wc.nightShiftTarget}回</div>
+                {(wishCount > 0 || wc.nightShiftTarget != null) && (
+                  <div className="staff-card-footer muted">
+                    {[
+                      wishCount > 0 ? `希望休 ${wishCount}件` : null,
+                      wc.nightShiftTarget != null ? `夜勤目標 月${wc.nightShiftTarget}回` : null,
+                    ]
+                      .filter(Boolean)
+                      .join('・')}
+                  </div>
                 )}
               </div>
             )

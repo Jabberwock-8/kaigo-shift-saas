@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
 import { fetchStaff, upsertStaff } from '../../lib/firestore'
+import { staffJobTypeIds } from '../../lib/staffUtils'
 import type { Staff, StaffWorkConditions } from '../../types/models'
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
@@ -10,7 +11,8 @@ const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 const emptyStaff: Staff = {
   name: '',
   nameKana: '',
-  jobTypeId: '',
+  jobTypeIds: [],
+  position: '',
   employmentTypeId: '',
   active: true,
   qualifications: [],
@@ -36,6 +38,7 @@ export default function StaffFormPage() {
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const selectedJobTypeIds = staffJobTypeIds(form)
 
   useEffect(() => {
     if (isNew || !selectedFacilityId || !staffId) return
@@ -83,6 +86,13 @@ export default function StaffFormPage() {
     setForm((f) => ({ ...f, workConditions: { ...(f.workConditions ?? {}), ...patch } }))
   }
 
+  function toggleJobType(jobTypeId: string, checked: boolean) {
+    const cur = new Set(staffJobTypeIds(form))
+    if (checked) cur.add(jobTypeId)
+    else cur.delete(jobTypeId)
+    updateForm({ jobTypeIds: [...cur] })
+  }
+
   function toggleWorkablePattern(patternId: string, checked: boolean) {
     const cur = new Set(wc.workablePatternIds ?? [])
     if (checked) cur.add(patternId)
@@ -105,6 +115,9 @@ export default function StaffFormPage() {
     try {
       const data: Staff = {
         ...form,
+        jobTypeIds: selectedJobTypeIds,
+        // 旧・単数の職種は空にする。残すと以後の読み取りで復活し得るため
+        jobTypeId: '',
         qualifications: qualificationsText
           .split(/[,、，]/)
           .map((s) => s.trim())
@@ -145,19 +158,28 @@ export default function StaffFormPage() {
           />
         </label>
         <label>
-          職種
-          <select
-            value={form.jobTypeId ?? ''}
-            onChange={(e) => updateForm({ jobTypeId: e.target.value })}
-          >
-            <option value="">（未設定）</option>
-            {jobTypes.map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.label}
-              </option>
-            ))}
-          </select>
+          役職
+          <input
+            value={form.position ?? ''}
+            placeholder="管理者・統括・リーダーなど"
+            onChange={(e) => updateForm({ position: e.target.value })}
+          />
         </label>
+        <fieldset>
+          <legend>職種（兼務は複数選択）</legend>
+          <div className="check-grid">
+            {jobTypes.map((j) => (
+              <label key={j.id} className="row">
+                <input
+                  type="checkbox"
+                  checked={selectedJobTypeIds.includes(j.id)}
+                  onChange={(e) => toggleJobType(j.id, e.target.checked)}
+                />
+                {j.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <label>
           雇用区分
           <select

@@ -1103,15 +1103,15 @@ table.shift-grid tr.secondary-role-row td.namecol {
 
 .staff-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
 }
 
 .staff-card {
   position: relative;
   border: 1px solid #e4e2db;
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 10px;
+  padding: 10px 12px;
   background: #fbfaf7;
 }
 
@@ -1121,24 +1121,50 @@ table.shift-grid tr.secondary-role-row td.namecol {
 
 .staff-card-head {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 8px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
-.staff-order-field {
+/* 並び順・編集・削除。氏名の幅を奪わないよう、縮まない最小限の横並びにする */
+.staff-card-actions {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
-  font-size: 0.78rem;
-  white-space: nowrap;
+  margin-left: auto;
+}
+
+.staff-order-input {
+  width: 42px;
+  padding: 3px 4px;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.staff-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid #d8d5cc;
+  border-radius: 6px;
+  background: #fff;
+  color: #4a4a44;
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.staff-edit-btn:hover {
+  border-color: #1d7a63;
+  color: #1d7a63;
 }
 
 .staff-avatar {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: #e4f2ed;
   color: #0c4a3b;
@@ -1154,24 +1180,31 @@ table.shift-grid tr.secondary-role-row td.namecol {
   min-width: 0;
 }
 
+/* 氏名は折り返さない。入り切らない場合は省略記号（全文は title 属性で出す） */
 .staff-name {
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .staff-meta {
-  font-size: 0.78rem;
-  margin-top: 2px;
+  font-size: 0.74rem;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .staff-delete-btn {
   border: none;
   background: none;
-  padding: 0;
-  margin-bottom: 8px;
-  font-size: 0.85rem;
+  padding: 0 2px;
+  font-size: 1.1rem;
+  line-height: 1;
   cursor: pointer;
   color: #b4372e;
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 .staff-delete-btn:hover {
@@ -1181,28 +1214,28 @@ table.shift-grid tr.secondary-role-row td.namecol {
 .staff-chip-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 4px;
+  margin-bottom: 4px;
 }
 
 .chip.small {
-  padding: 3px 8px;
-  font-size: 0.72rem;
+  padding: 2px 6px;
+  font-size: 0.7rem;
   font-weight: 600;
   border-radius: 6px;
   cursor: default;
 }
 
 .tag-chip {
-  padding: 3px 8px;
-  font-size: 0.72rem;
+  padding: 2px 6px;
+  font-size: 0.7rem;
   border-radius: 6px;
   background: #f1f0eb;
   color: #6b7066;
 }
 
 .staff-card-footer {
-  font-size: 0.78rem;
+  font-size: 0.74rem;
 }
 
 /* ------------------------------------------------------------------

@@ -57,7 +57,12 @@ export interface PaidLeaveInfo {
 export interface Staff {
   name: string
   nameKana?: string
+  /** 職種。兼務があるため複数持てる（例: サービス管理責任者 + 世話人） */
+  jobTypeIds?: string[]
+  /** 旧・単数の職種。既存データの読み取り互換のために残している。書き込みは jobTypeIds を使う */
   jobTypeId?: string
+  /** 役職（管理者・統括・リーダーなど）。職種とは別軸で、表示・書類用 */
+  position?: string
   employmentTypeId?: string
   active: boolean
   order?: number
