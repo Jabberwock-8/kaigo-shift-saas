@@ -673,6 +673,12 @@ export default function ShiftGridPage() {
                                   kind: 'primary',
                                 })
                               }}
+                              onContextMenu={(e) => {
+                                // ロックはパネルを開かず右クリックだけで切り替えられるようにする
+                                if (!isAdmin || previewCandidate) return
+                                e.preventDefault()
+                                void handleToggleLock(staff.id, d, locked)
+                              }}
                             >
                               {pattern?.code ?? ''}
                             </div>
@@ -870,7 +876,8 @@ export default function ShiftGridPage() {
       )}
 
       <p className="muted no-print" style={{ marginTop: 10 }}>
-        セルをクリックすると勤務パターンを選択できます。パネル内の「ロック切替」は自動生成でこのセルを固定する目印です（🔒が付きます）。
+        セルをクリックすると勤務パターンを選択できます。<strong>セルを右クリックするとロックを切り替えられます</strong>
+        （パネル内の「ロック切替」でも同じ操作ができます）。ロックは自動生成でこのセルを固定する目印です（🔒が付きます）。
         「!」は必須条件・相性・勤務条件などの違反（マウスを乗せると詳細）、金の枠は希望休が守れている日、赤の枠は希望休なのに勤務が入っている日です。
       </p>
 
