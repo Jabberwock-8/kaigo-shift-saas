@@ -17,6 +17,7 @@ import {
 } from './gridUtils'
 import { hillClimb } from './hillClimb'
 import { resolveLimits } from './limits'
+import { ruleAppliesToDate } from './ruleMatch'
 import { repair } from './repair'
 import { fulfillmentRate, scoreGrid } from './score'
 import type { AssignmentGrid, Candidate, GenerateInput, PatternWithId, StaffWithId } from './types'
@@ -65,6 +66,32 @@ function restPenaltyFor(
   let gap = 24 - end1 + start2
   if (gap > 24) gap -= 24
   return gap < minRestHours ? penalty : 0
+}
+
+/**
+ * 「〜を優先」ルールを配置時の優先度へ反映する（数値が小さいほど選ばれやすい）。
+ *
+ * 旧版・移植直後はこのルールを配置時にまったく見ておらず、最後の採点にわずかに効くだけだった。
+ * そのため「臼井はM5勤を優先」と書いても実際にはほとんど反映されていなかった。
+ * 本人の優先勤務なら選ばれやすく、別の勤務を優先している人なら後回しにする。
+ */
+function preferAdjust(
+  staffId: string,
+  day: number,
+  patternId: string,
+  input: GenerateInput,
+): number {
+  const weight = input.config.engine.preferShiftWeight
+  if (!weight) return 0
+  let adjust = 0
+  for (const rule of input.rules) {
+    if (!rule.enabled) continue
+    if (rule.target.type !== 'staff' || rule.target.value !== staffId) continue
+    if (rule.cond.type !== 'preferShift') continue
+    if (!ruleAppliesToDate(rule.days, input.yearMonth, day)) continue
+    adjust += rule.cond.value === patternId ? -weight : weight
+  }
+  return adjust
 }
 
 function timeDistance(
@@ -159,8 +186,14 @@ function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
       for (const { d } of candidates) {
         const wk = weekOf(d)
         const sortedTypes = [...workPatternIds].sort((a, b) => {
-          const scoreA = timeDistance(patternById.get(a), prefStart, prefEnd) + (weekTypeCount[`${wk}:${a}`] ?? 0) * 1.5
-          const scoreB = timeDistance(patternById.get(b), prefStart, prefEnd) + (weekTypeCount[`${wk}:${b}`] ?? 0) * 1.5
+          const scoreA =
+            timeDistance(patternById.get(a), prefStart, prefEnd) +
+            (weekTypeCount[`${wk}:${a}`] ?? 0) * 1.5 +
+            preferAdjust(s.id, d, a, input)
+          const scoreB =
+            timeDistance(patternById.get(b), prefStart, prefEnd) +
+            (weekTypeCount[`${wk}:${b}`] ?? 0) * 1.5 +
+            preferAdjust(s.id, d, b, input)
           return scoreA - scoreB
         })
         for (const patternId of sortedTypes) {
@@ -250,7 +283,8 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
               workCountOf(grid, s.id, daysInMonth, patternById) +
               typeCountOf(grid, s.id, patternId, daysInMonth) * config.engine.typeCountWeight +
               restPenaltyFor(grid, s.id, d, patternId, patternById, settings.minRestHours, config.engine.restPenalty) -
-              consecutiveOffStreakBefore(grid, s.id, d, patternById) * config.engine.offStreakBonusWeight,
+              consecutiveOffStreakBefore(grid, s.id, d, patternById) * config.engine.offStreakBonusWeight +
+              preferAdjust(s.id, d, patternId, input),
           }))
           .sort((a, b) => a.priority - b.priority || Math.random() - 0.5)
         if (!candidates.length) break

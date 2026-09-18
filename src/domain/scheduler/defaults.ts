@@ -50,6 +50,11 @@ export interface GenerationConfig {
     offStreakBonusWeight: number
     /** 「配置しない」「N名以下」を配置時点でブロックするか。想定外が起きた施設だけ false で旧挙動へ戻せる */
     enforceDayPatternCaps: boolean
+    /**
+     * 「〜を優先」ルールを配置時の優先度へ反映する重み（勤務日数◯日分に相当）。
+     * 0 にすると旧挙動（採点にしか効かない）に戻る。
+     */
+    preferShiftWeight: number
   }
 }
 
@@ -89,6 +94,7 @@ export const GENERATION_DEFAULTS_V1: GenerationConfig = {
     restPenalty: 20,
     offStreakBonusWeight: 4,
     enforceDayPatternCaps: true,
+    preferShiftWeight: 4,
   },
 }
 
