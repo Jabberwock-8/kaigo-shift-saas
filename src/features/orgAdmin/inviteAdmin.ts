@@ -10,6 +10,7 @@
 import { deleteApp, initializeApp } from 'firebase/app'
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
   getAuth,
   sendPasswordResetEmail,
   signOut,
@@ -30,16 +31,32 @@ function randomTempPassword(): string {
   return crypto.randomUUID() + crypto.randomUUID()
 }
 
+/**
+ * 招待する管理者の users ドキュメントの中身。
+ * Firestore は値が undefined の項目を含む書き込みを拒否するため、表示名が空なら項目ごと入れない
+ * （以前は undefined のまま書き込み、表示名を空欄で招待すると必ず失敗していた）。
+ */
+export function buildInvitedUserDoc(input: InviteAdminInput): AppUser {
+  return {
+    email: input.email,
+    ...(input.displayName ? { displayName: input.displayName } : {}),
+    organizationId: input.organizationId,
+    facilityIds: input.facilityIds,
+    primaryFacilityId: input.primaryFacilityId,
+    role: 'admin',
+    linkedStaffId: null,
+  }
+}
+
 export async function inviteAdminUser(input: InviteAdminInput): Promise<void> {
   if (!db) throw new Error('Firestore が初期化されていません。')
 
   const secondaryApp = initializeApp(firebaseConfig, `invite-${crypto.randomUUID()}`)
   const secondaryAuth = getAuth(secondaryApp)
   try {
-    let uid: string
+    let cred
     try {
-      const cred = await createUserWithEmailAndPassword(secondaryAuth, input.email, randomTempPassword())
-      uid = cred.user.uid
+      cred = await createUserWithEmailAndPassword(secondaryAuth, input.email, randomTempPassword())
     } catch (e) {
       if (e instanceof Error && 'code' in e && (e as { code: string }).code === 'auth/email-already-in-use') {
         throw new Error(
@@ -49,19 +66,17 @@ export async function inviteAdminUser(input: InviteAdminInput): Promise<void> {
       throw e
     }
 
+    // 管理者としての登録を先に行い、失敗したら作ったアカウントを消す。消さないと、同じメールアドレスで
+    // 招待し直しても「既に登録されています」になり、画面からは二度と登録できなくなるため
+    try {
+      await setDoc(doc(db, 'users', cred.user.uid), buildInvitedUserDoc(input))
+    } catch (e) {
+      await deleteUser(cred.user).catch(() => {})
+      throw e
+    }
+
     await sendPasswordResetEmail(secondaryAuth, input.email)
     await signOut(secondaryAuth)
-
-    const userDoc: AppUser = {
-      email: input.email,
-      displayName: input.displayName || undefined,
-      organizationId: input.organizationId,
-      facilityIds: input.facilityIds,
-      primaryFacilityId: input.primaryFacilityId,
-      role: 'admin',
-      linkedStaffId: null,
-    }
-    await setDoc(doc(db, 'users', uid), userDoc)
   } finally {
     await deleteApp(secondaryApp)
   }
