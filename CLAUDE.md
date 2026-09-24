@@ -42,3 +42,10 @@
 - `src/domain/scheduler/` は React/Firestore を import しない純ロジック層。
 - oxlint の `set-state-in-effect` / `only-export-components` 警告は既知・許容（エラーのみ対処）。
 - ユーザーは開発初心者。専門用語・コマンドは1〜2文で説明してから提示し、1工程ずつ確認しながら進める。
+
+## 作業ルール
+- 返答は簡潔に。変更の説明は要点だけでよい
+- コードの変更は差分（変えた部分）だけ示し、ファイル全体を貼り直さない
+- node_modules、dist、build、.firebase フォルダは読まない
+- どこを直すか不明なときは、フォルダ全体を探す前に質問する
+- 決めたことは docs/決定事項.md に追記する（必要なときだけ参照する）
