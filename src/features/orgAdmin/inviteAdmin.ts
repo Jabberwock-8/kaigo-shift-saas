@@ -53,6 +53,8 @@ export async function inviteAdminUser(input: InviteAdminInput): Promise<void> {
 
   const secondaryApp = initializeApp(firebaseConfig, `invite-${crypto.randomUUID()}`)
   const secondaryAuth = getAuth(secondaryApp)
+  // パスワード再設定メールを日本語で送る（未指定だと Firebase の既定の英語テンプレートになる）
+  secondaryAuth.languageCode = 'ja'
   try {
     let cred
     try {
