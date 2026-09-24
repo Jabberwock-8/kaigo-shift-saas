@@ -9,6 +9,7 @@ import type {
 import type { MonthlyLimitsOverride } from './limits'
 import type { GenerationConfig } from './defaults'
 import type { DayPatternCaps } from './caps'
+import type { TraitPairBlock } from './traitPairs'
 
 export type StaffWithId = Staff & { id: string }
 export type PatternWithId = ShiftPattern & { id: string }
@@ -70,6 +71,8 @@ export interface CanWorkContext {
   monthlyMaxDaysOverride?: Record<string, MonthlyLimitsOverride>
   /** 「配置しない」「N名以下」の人数上限。未設定なら上限チェックをしない */
   dayPatternCaps?: DayPatternCaps
+  /** 必須の「タグのペアを同一シフトに入れない」。未設定ならチェックしない */
+  traitPairBlocks?: TraitPairBlock[]
 }
 
 export interface GenerateInput {

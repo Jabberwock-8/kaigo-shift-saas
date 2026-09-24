@@ -29,6 +29,15 @@ export function assertGenerationPrerequisites(input: GenerateInput) {
   if (!offPattern) {
     throw new Error('勤務パターンに「公休」カテゴリの登録がありません。先に「勤務パターン」で登録してください。')
   }
+  // 公休が勤務扱いだと、空きを公休で埋めた時点で全員が必要出勤日数を満たした扱いになり、
+  // 実際の勤務がほとんど入らないうえ「対応外の勤務（公休）」の違反が全セルに出る。
+  // 黙って崩れた結果を出すより、原因を示して止める
+  if (offPattern.isWork) {
+    throw new Error(
+      `勤務パターン「${offPattern.label}」（種別：公休）の「勤務」にチェックが入っています。` +
+        '休みの日が勤務日として数えられてしまうため、「勤務パターン」画面でチェックを外してから生成してください。',
+    )
+  }
   if (input.settings.nightMode === 'ake') {
     const afterNight = input.shiftPatterns.find((p) => p.category === 'afterNight')
     if (!afterNight) {
@@ -68,14 +77,20 @@ function restPenaltyFor(
   return gap < minRestHours ? penalty : 0
 }
 
+/** 必須の「必ず勤務させる」を、ほぼ確実に上位へ出すための値（夜勤の目標未達を優先する nightPriority と同じ考え方） */
+const HARD_MUST_WORK = 1000
+
 /**
- * 「〜を優先」ルールを配置時の優先度へ反映する（数値が小さいほど選ばれやすい）。
+ * 職員ごとのルール（「〜を優先」「必ず勤務させる」「勤務させない（推奨）」）を配置時の優先度へ反映する
+ * （数値が小さいほど選ばれやすい）。
  *
- * 旧版・移植直後はこのルールを配置時にまったく見ておらず、最後の採点にわずかに効くだけだった。
- * そのため「臼井はM5勤を優先」と書いても実際にはほとんど反映されていなかった。
- * 本人の優先勤務なら選ばれやすく、別の勤務を優先している人なら後回しにする。
+ * 旧版・移植直後はこれらを配置時にまったく見ておらず、最後の採点にわずかに効くだけだった。
+ * そのため「臼井はM5勤を優先」「金曜は臼井を必ず勤務させる」と書いても実際にはほとんど反映されなかった。
+ * - 優先: 本人の優先勤務なら選ばれやすく、別の勤務を優先している人なら後回し
+ * - 必ず勤務させる: その日はどの勤務でも選ばれやすく（必須はほぼ確実に）
+ * - 勤務させない（推奨）: その日は後回し。必須は canWork で配置自体を止めているのでここでは扱わない
  */
-function preferAdjust(
+function staffRuleAdjust(
   staffId: string,
   day: number,
   patternId: string,
@@ -87,11 +102,24 @@ function preferAdjust(
   for (const rule of input.rules) {
     if (!rule.enabled) continue
     if (rule.target.type !== 'staff' || rule.target.value !== staffId) continue
-    if (rule.cond.type !== 'preferShift') continue
     if (!ruleAppliesToDate(rule.days, input.yearMonth, day)) continue
-    adjust += rule.cond.value === patternId ? -weight : weight
+    if (rule.cond.type === 'preferShift') adjust += rule.cond.value === patternId ? -weight : weight
+    else if (rule.cond.type === 'work') adjust -= rule.kind === 'hard' ? HARD_MUST_WORK : weight
+    else if (rule.cond.type === 'off' && rule.kind === 'soft') adjust += weight
   }
   return adjust
+}
+
+/** その日に「必ず勤務させる」ルールがあるか（必要出勤日数を埋める日の選び方で使う） */
+function mustWorkOn(staffId: string, day: number, input: GenerateInput): boolean {
+  return input.rules.some(
+    (r) =>
+      r.enabled &&
+      r.target.type === 'staff' &&
+      r.target.value === staffId &&
+      r.cond.type === 'work' &&
+      ruleAppliesToDate(r.days, input.yearMonth, day),
+  )
 }
 
 function timeDistance(
@@ -176,11 +204,16 @@ function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
       const candidates = []
       for (let d = 1; d <= daysInMonth; d++) {
         if (getCell(grid, s.id, d) === offPattern.id && !lockedCells[s.id]?.[String(d)]) {
-          candidates.push({ d, streak: offStreakSizeAt(grid, s.id, d, daysInMonth, patternById) })
+          candidates.push({
+            d,
+            mustWork: mustWorkOn(s.id, d, input),
+            streak: offStreakSizeAt(grid, s.id, d, daysInMonth, patternById),
+          })
         }
       }
       if (!candidates.length) break
-      candidates.sort((a, b) => b.streak - a.streak || Math.random() - 0.5)
+      // 「必ず勤務させる」日を最優先で埋め、その次に休みが長く続いている日を崩す
+      candidates.sort((a, b) => Number(b.mustWork) - Number(a.mustWork) || b.streak - a.streak || Math.random() - 0.5)
 
       let filled = false
       for (const { d } of candidates) {
@@ -189,11 +222,11 @@ function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
           const scoreA =
             timeDistance(patternById.get(a), prefStart, prefEnd) +
             (weekTypeCount[`${wk}:${a}`] ?? 0) * 1.5 +
-            preferAdjust(s.id, d, a, input)
+            staffRuleAdjust(s.id, d, a, input)
           const scoreB =
             timeDistance(patternById.get(b), prefStart, prefEnd) +
             (weekTypeCount[`${wk}:${b}`] ?? 0) * 1.5 +
-            preferAdjust(s.id, d, b, input)
+            staffRuleAdjust(s.id, d, b, input)
           return scoreA - scoreB
         })
         for (const patternId of sortedTypes) {
@@ -277,18 +310,33 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
       while (cur < need) {
         const candidates = staff
           .filter((s) => canWork(s, d, patternId, makeCanWorkContext(grid, input)))
-          .map((s) => ({
-            s,
-            priority:
-              workCountOf(grid, s.id, daysInMonth, patternById) +
-              typeCountOf(grid, s.id, patternId, daysInMonth) * config.engine.typeCountWeight +
-              restPenaltyFor(grid, s.id, d, patternId, patternById, settings.minRestHours, config.engine.restPenalty) -
-              consecutiveOffStreakBefore(grid, s.id, d, patternById) * config.engine.offStreakBonusWeight +
-              preferAdjust(s.id, d, patternId, input),
-          }))
+          .map((s) => {
+            const prefer = staffRuleAdjust(s.id, d, patternId, input)
+            return {
+              s,
+              prefer,
+              priority:
+                workCountOf(grid, s.id, daysInMonth, patternById) +
+                typeCountOf(grid, s.id, patternId, daysInMonth) * config.engine.typeCountWeight +
+                restPenaltyFor(grid, s.id, d, patternId, patternById, settings.minRestHours, config.engine.restPenalty) -
+                consecutiveOffStreakBefore(grid, s.id, d, patternById) * config.engine.offStreakBonusWeight +
+                prefer,
+            }
+          })
           .sort((a, b) => a.priority - b.priority || Math.random() - 0.5)
         if (!candidates.length) break
-        const pick = candidates[Math.floor(Math.random() * Math.min(config.engine.dayPickTopN, candidates.length))].s
+        // 上位から均等に抽選するため、優先度を上げ下げするだけでは抽選で打ち消されてしまう
+        // （抽選で3番手を引く状況では、優先している職員が30日中0日しか選ばれず、
+        //  「勤務させない（推奨）」はどの条件でもまったく効いていなかった）。
+        // 上位の中で、職員ルールで後押しされている人（この勤務を優先・この日は必ず勤務）がいればその人たちから、
+        // いなければ押し下げられていない人（別の勤務を優先・この日は勤務させない、に当たらない人）から選ぶ。
+        // 全員が押し下げ対象のときは誰かが入る必要があるので全員から選ぶ。
+        // 上位に入るかどうかは従来どおり勤務日数などで決まるので、公平性の歯止めは残る
+        const top = candidates.slice(0, Math.min(config.engine.dayPickTopN, candidates.length))
+        const boosted = top.filter((c) => c.prefer < 0)
+        const neutral = top.filter((c) => c.prefer === 0)
+        const pool = boosted.length > 0 ? boosted : neutral.length > 0 ? neutral : top
+        const pick = pool[Math.floor(Math.random() * pool.length)].s
         setCell(grid, pick.id, d, patternId)
         cur++
       }

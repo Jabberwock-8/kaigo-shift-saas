@@ -51,10 +51,13 @@ export interface GenerationConfig {
     /** 「配置しない」「N名以下」を配置時点でブロックするか。想定外が起きた施設だけ false で旧挙動へ戻せる */
     enforceDayPatternCaps: boolean
     /**
-     * 「〜を優先」ルールを配置時の優先度へ反映する重み（勤務日数◯日分に相当）。
-     * 0 にすると旧挙動（採点にしか効かない）に戻る。
+     * 職員ごとの推奨ルール（「〜を優先」「必ず勤務させる」「勤務させない」）を配置時の優先度へ反映する重み
+     * （勤務日数◯日分に相当）。0 にすると旧挙動（採点にしか効かない）に戻る。
+     * 名前は最初に対応した「〜を優先」に由来する（既存の上書き設定を壊さないため据え置き）。
      */
     preferShiftWeight: number
+    /** 必須の「タグのペアを同一シフトに入れない」を配置時点でブロックするか。false で旧挙動へ戻せる */
+    enforceTraitPairs: boolean
   }
 }
 
@@ -95,6 +98,7 @@ export const GENERATION_DEFAULTS_V1: GenerationConfig = {
     offStreakBonusWeight: 4,
     enforceDayPatternCaps: true,
     preferShiftWeight: 4,
+    enforceTraitPairs: true,
   },
 }
 

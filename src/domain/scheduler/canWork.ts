@@ -1,5 +1,6 @@
 import { parseTimeToHours, weekdayOf } from '../../lib/dateUtils'
 import { withinDayPatternCap } from './caps'
+import { conflictsWithTraitPair } from './traitPairs'
 import { resolveLimits } from './limits'
 import { ruleAppliesToDate } from './ruleMatch'
 import type { CanWorkContext, PatternWithId, StaffWithId } from './types'
@@ -81,6 +82,12 @@ export function canWork(
       Object.values(ctx.grid).reduce((n, days) => (days[String(day)] === patternId ? n + 1 : n), 0),
     )
   ) {
+    return false
+  }
+
+  // 4.6 必須の「タグのペアを同一シフトに入れない」（4.5 と同じく旧HTML版からの意図的な逸脱。docs §3-4 参照）。
+  //     勤務でないパターン（公休など）はペアの判定対象外
+  if (pattern.isWork && conflictsWithTraitPair(ctx.traitPairBlocks, ctx.grid, ctx.yearMonth, staff.id, day, patternId)) {
     return false
   }
 
