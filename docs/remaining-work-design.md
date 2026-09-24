@@ -423,3 +423,19 @@ export interface Candidate {
 2. 本番の管理者アカウント作成（Authentication。パスワードを伴うためユーザーが実施）→
    Firestore コンソールで `organizations/{id}` と `users/{uid}`（role: admin, facilityIds: []）を作成
 3. dev で各施設を書き出し → prod で読み込み
+
+---
+
+## 13. アプリとしてのインストール（PWA。2026-09-24 追加・ユーザー承認済み）
+
+- `public/manifest.webmanifest`（名前「SHIFT MAKER（介護シフト作成）」、短縮名「SHIFT MAKER」、`display: standalone`）と
+  アイコン PNG を置き、`index.html` から読み込む。Chrome / Edge のアドレスバーの「インストール」で、デスクトップや
+  スタートメニューにアイコン付きで入り、専用ウィンドウで開く。iPad・スマホは「ホーム画面に追加」。
+- **Service Worker は入れない。** 現在の Chrome はインストールに必須としておらず、入れるとキャッシュのせいで
+  デプロイ後も古い画面が残る問題（2026-09-24 に `firebase.json` のキャッシュ設定で解消済み）が再発しうるため。
+  オフライン動作も不要（データは Firestore にあり、ネット接続が前提）。
+- アイコンの図案は `scripts/build-icons.mjs` の `ART` が正本（案2「カレンダー＋文字」、ユーザー選定）。
+  アプリと同じ M PLUS Rounded 1c で描くため、手元の Chrome を headless で起動して PNG を撮る（npm の追加依存なし）。
+  図案を直したら `npm run icons` → 生成された PNG をコミット。
+  - 角丸・四隅透明: `icons/icon-192.png` `icons/icon-512.png` `favicon-32.png` `favicon-16.png`
+  - 全面塗り（OS が切り抜く）: `icons/maskable-512.png`（中身80%）、`apple-touch-icon.png`（中身90%）

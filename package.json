@@ -9,6 +9,7 @@
     "build:dev": "tsc -b && vite build --mode development",
     "lint": "oxlint",
     "test": "vitest run",
+    "icons": "node scripts/build-icons.mjs",
     "preview": "vite preview",
     "deploy:dev": "npm run build:dev && firebase.cmd deploy --project dev",
     "deploy:prod": "npm run build && firebase.cmd deploy --project prod"
