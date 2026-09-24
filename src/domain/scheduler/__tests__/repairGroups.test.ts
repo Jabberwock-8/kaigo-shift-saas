@@ -70,3 +70,62 @@ describe('repairGroups: 2手修復', () => {
     expect(g.s2['10']).toBe('off')
   })
 })
+
+describe('repairGroups: 同じ日の余っている勤務から付け替え', () => {
+  // s1 だけの職場。10日は M 勤に入っていて、休みの職員がいない＝「休みの人を入れる」「別日から振り替える」手が使えない。
+  // アミティホーム寺田の「M5 が2名いる日に A2 系が1名足りない」を模したもの
+  const s1 = staff('s1', { workConditions: { maxWorkdaysPerMonth: 3 } })
+
+  it('必要人数を超えて入っている勤務の人を、不足しているグループの勤務へ付け替える', () => {
+    const g = grid({ s1: { 1: 'A', 2: 'A', 10: 'M' } })
+
+    repairGroups(g, input({ staff: [s1], rules: [groupOn10] }))
+
+    expect(['A', 'B']).toContain(g.s1['10'])
+    // 同じ日の中での付け替えなので、勤務日数は変わらない
+    expect(Object.values(g.s1).filter((p) => p !== 'off')).toHaveLength(3)
+  })
+
+  it('付け替え元の勤務がその日に必要な人数ぴったりなら動かさない', () => {
+    const needM = rule({ kind: 'hard', days: { type: 'dates', values: ['2026-09-10'] }, target: { type: 'shift', value: 'M' }, cond: { type: 'atLeast', count: 1 } })
+    const g = grid({ s1: { 1: 'A', 2: 'A', 10: 'M' } })
+
+    repairGroups(g, input({ staff: [s1], rules: [groupOn10, needM] }))
+
+    expect(g.s1['10']).toBe('M')
+  })
+
+  it('付け替え元の勤務が別の組み合わせ条件で必要なら動かさない', () => {
+    const needMGroup = rule({
+      kind: 'hard',
+      days: { type: 'dates', values: ['2026-09-10'] },
+      target: { type: 'shiftGroup', value: ['M'] },
+      cond: { type: 'atLeastGroup', count: 1 },
+    })
+    const g = grid({ s1: { 1: 'A', 2: 'A', 10: 'M' } })
+
+    repairGroups(g, input({ staff: [s1], rules: [groupOn10, needMGroup] }))
+
+    expect(g.s1['10']).toBe('M')
+  })
+
+  it('「〜を優先」を崩さない人から付け替える', () => {
+    // s1 は M 勤を優先したい人で、並び順は先頭。s2 は特に希望なし。どちらを動かしても不足は埋まる
+    const s2 = staff('s2', { workConditions: { maxWorkdaysPerMonth: 3 } })
+    const s1PrefersM = rule({ kind: 'soft', days: { type: 'all' }, target: { type: 'staff', value: 's1' }, cond: { type: 'preferShift', value: 'M' } })
+    const g = grid({ s1: { 1: 'A', 2: 'A', 10: 'M' }, s2: { 3: 'A', 4: 'A', 10: 'M' } })
+
+    repairGroups(g, input({ staff: [s1, s2], rules: [groupOn10, s1PrefersM] }))
+
+    expect(g.s1['10']).toBe('M')
+    expect(['A', 'B']).toContain(g.s2['10'])
+  })
+
+  it('ロックされた勤務は動かさない', () => {
+    const g = grid({ s1: { 1: 'A', 2: 'A', 10: 'M' } })
+
+    repairGroups(g, input({ staff: [s1], rules: [groupOn10], lockedCells: { s1: { '10': true } } }))
+
+    expect(g.s1['10']).toBe('M')
+  })
+})

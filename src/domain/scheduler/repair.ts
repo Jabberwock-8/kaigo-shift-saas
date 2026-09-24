@@ -161,6 +161,18 @@ export function repairGroups(grid: AssignmentGrid, input: GenerateInput) {
     return true
   }
 
+  /** 同じ日に from から to へ付け替えたとき、職員の「〜を優先」（推奨）がいくつ崩れるか（負なら満たす側に動く） */
+  const preferShiftCost = (staffId: string, day: number, from: string, to: string) => {
+    let cost = 0
+    for (const r of rules) {
+      if (!r.enabled || r.target.type !== 'staff' || r.target.value !== staffId || r.cond.type !== 'preferShift') continue
+      if (!ruleAppliesToDate(r.days, yearMonth, day)) continue
+      if (r.cond.value === from) cost += 1
+      if (r.cond.value === to) cost -= 1
+    }
+    return cost
+  }
+
   const deadline = Date.now() + config.engine.groupRepairMaxMs
 
   for (let iter = 0; iter < config.engine.groupRepairMaxIter; iter++) {
@@ -227,6 +239,37 @@ export function repairGroups(grid: AssignmentGrid, input: GenerateInput) {
                   setCell(grid, s.id, d2, pid2)
                 }
               }
+            }
+          }
+
+          // 最後の手段: 同日の余剰勤務から付け替え（repair の②と同じ考え方）。休みの職員が全員月間上限に
+          // 達していて2手修復でも動かせないとき、同じ日に必要人数を超えて入っている勤務の職員を
+          // 付け替えるだけで埋まることがある（例: M5 が2名いる日に1名を A2 へ）。これが無いと不足が
+          // 1件残り続けていた。付け替えは本人の勤務の種類が変わり「〜を優先」を崩しやすいため、
+          // 上の2つで埋まらないときだけ使う。付け替え元が別の組み合わせ条件で必要なら canSpare で守る
+          if (!done) {
+            const dem = demandFor(rules, yearMonth, d)
+            const surplus = staff.filter((s) => {
+              const pid = getCell(grid, s.id, d)
+              if (!pid || ids.includes(pid) || isLocked(s.id, d)) return false
+              const p = patternById.get(pid)
+              if (!p?.isWork || p.isNight) return false
+              return countAt(d, pid) > (dem[pid] ?? 0) && canSpare(d, pid)
+            })
+            // 「〜を優先」を崩さない人から試す（職員の並び順のままだと、M5を優先したい人が先頭にいるだけで
+            // 毎回その人がA2へ回されてしまう）
+            const moves = surplus
+              .flatMap((s) => ids.map((id) => ({ s, old: getCell(grid, s.id, d)!, id })))
+              .map((m) => ({ ...m, cost: preferShiftCost(m.s.id, d, m.old, m.id) }))
+              .sort((a, b) => a.cost - b.cost)
+            for (const { s, old, id } of moves) {
+              setCell(grid, s.id, d, null)
+              if (tryAssign(grid, input, s, d, id)) {
+                done = true
+                fixed = true
+                break
+              }
+              setCell(grid, s.id, d, old)
             }
           }
         }
