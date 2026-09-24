@@ -9,6 +9,7 @@ import {
 } from '../../lib/firestore'
 import type { AppUser, Facility } from '../../types/models'
 import FacilityMultiSelect from './FacilityMultiSelect'
+import FacilityTransferSection from './FacilityTransferSection'
 import { inviteAdminUser } from './inviteAdmin'
 
 type FacilityWithId = Facility & { id: string }
@@ -408,6 +409,8 @@ export default function OrgAdminPage() {
           </div>
         </div>
       </section>
+
+      <FacilityTransferSection facilities={facilities} onImported={load} />
     </>
   )
 }

@@ -381,3 +381,45 @@ export interface Candidate {
 - 生成エンジンのファイルは React/Firestore を import しない（レビュー時に import 文で機械的に確認できる）。
 - 各フェーズの動作確認はユーザーの手動テスト（パスワード入力を伴うため）。確認項目リストを毎回提示する。
 - コミットメッセージは日本語・フェーズ名先頭の既存慣例を踏襲。
+
+---
+
+## 12. 施設データの引っ越し（dev → prod 移行用。2026-09-24 追加・ユーザー承認済み）
+
+### 目的
+開発環境（dev）で作り込んだ施設データを、本番環境（prod）へ**そのまま**移す。P7 の Excel は
+職員名・記号で照合し直す差分取込のため、職種・相性・表示順・役職・月の上限・ロック・勤務表・希望休が移らない。
+本機能はドキュメントIDを保ったまま丸ごと写すので、条件・勤務表・ロックが参照する職員IDの結びつきが崩れない。
+本番開始前に何度やり直してもよい（読み込むたびにファイルの内容で置き換わる）。バックアップにも使える。
+
+### データ
+- ファイル: JSON 1つ = 1施設。`format: 'kaigo-shift-saas/facility-data'`, `version: 1`,
+  `exportedAt`, `sourceProjectId`, `facility {id, name, shortName?}`, `collections {名前: {docId: data}}`。
+- 対象サブコレクション: jobTypes / employmentTypes / shiftPatterns / staff / rules / compatibilities /
+  settings / schedules / leaveRequests。**schedules の下の candidates（生成した案の控え）は対象外**（採択前の一時データ）。
+- Firestore の Timestamp は `{"__timestamp__": {seconds, nanoseconds}}` に置き換えて書き出し、読み込み時に戻す。
+  それ以外の特殊な型が見つかったら書き出しを止める（黙って壊さない）。
+- `users` は写さない（環境ごとにログインアカウントが別のため）。leaveRequests.createdByUid は書き出し元の uid の
+  まま写る（管理者が全員分を入力する現運用では参照しない）。
+
+### 読み込みの手順（`lib/facilityTransfer.ts`）
+1. ファイルの形式・版を検証（`lib/facilityTransferCodec.ts` の純関数。vitest で検証）。
+2. `facilities/{同じID}` を作成または更新（organizationId は読み込む人の組織に置き換える）。
+3. 読み込む人の `users.facilityIds` にその施設が無ければ追加（firestore.rules の書き込み権限がこれに依存するため先に行う）。
+   主施設が未設定なら主施設にもする。
+4. 各サブコレクションで、ファイルにある文書は丸ごと上書き（merge しない）、ファイルに無い文書は削除。
+   `writeBatch` を200件ずつに分割。途中で止まってももう一度読み込めば正しい状態になる（冪等）。
+- 権限は既存の firestore.rules のまま（管理者なら施設作成・自分の所属施設への書き込み・同じ組織の users 更新が可能）。
+  rules の変更は不要。
+
+### UI（`features/orgAdmin/FacilityTransferSection.tsx`。`OrgAdminPage` の末尾に1行で差し込む）
+- 書き出し: 組織内の施設を選んで「書き出す」→ `施設データ_{施設名}_{YYYYMMDD}.json` をダウンロード。
+- 読み込み: ファイル選択 → 施設名・書き出し元・日時・件数を表示 → 確認ダイアログ → 実行 → 結果表示。
+  書き出し元と同じ環境への読み込み・既存施設の置き換えは、内容を明示して警告する。
+- 所属施設が0件の管理者は `HomeGate` から「施設・ユーザー管理」へ進めるリンクを出す（本番で最初にログインした直後に必要）。
+
+### 本番開始までの流れ（ユーザーと合意済み）
+1. `npm run deploy:prod`（2026-09-24 実施済み）
+2. 本番の管理者アカウント作成（Authentication。パスワードを伴うためユーザーが実施）→
+   Firestore コンソールで `organizations/{id}` と `users/{uid}`（role: admin, facilityIds: []）を作成
+3. dev で各施設を書き出し → prod で読み込み

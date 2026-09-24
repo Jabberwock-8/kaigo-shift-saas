@@ -59,9 +59,21 @@ function HomeGate() {
     return (
       <main className="app-shell">
         <section className="card">
-          <p className="warn">
-            所属施設が見つかりません。管理者に確認してください。
-          </p>
+          {appUser?.role === 'admin' ? (
+            <>
+              {/* 本番環境で最初にログインした直後など。施設の作成・施設データの読み込みは管理画面から行う */}
+              <p className="warn">所属施設がまだありません。</p>
+              <p style={{ marginTop: 14 }}>
+                <Link to="/org-admin" className="header-link-btn">
+                  ⚙️ 施設・ユーザー管理へ（施設の作成・施設データの読み込み）
+                </Link>
+              </p>
+            </>
+          ) : (
+            <p className="warn">
+              所属施設が見つかりません。管理者に確認してください。
+            </p>
+          )}
         </section>
       </main>
     )
