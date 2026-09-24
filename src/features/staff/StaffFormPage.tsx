@@ -4,6 +4,7 @@ import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
 import { fetchStaff, upsertStaff } from '../../lib/firestore'
 import { staffJobTypeIds } from '../../lib/staffUtils'
+import { employmentTypeUsesTargetWorkdays } from '../../domain/scheduler/limits'
 import type { Staff, StaffWorkConditions } from '../../types/models'
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
@@ -39,6 +40,11 @@ export default function StaffFormPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const selectedJobTypeIds = staffJobTypeIds(form)
+  const selectedEmploymentType = employmentTypes.find((e) => e.id === form.employmentTypeId)
+  // 下限を入れても雇用区分側で無効だと黙って無視される（非常勤が月5日しか入らなかった原因）。入力した時点で知らせる
+  const targetWorkdaysIgnored =
+    form.workConditions?.targetWorkdaysPerMonth != null &&
+    !employmentTypeUsesTargetWorkdays(selectedEmploymentType)
 
   useEffect(() => {
     if (isNew || !selectedFacilityId || !staffId) return
@@ -273,6 +279,12 @@ export default function StaffFormPage() {
                 updateWorkConditions({ targetWorkdaysPerMonth: toNumberOrNull(e.target.value) })
               }
             />
+            {targetWorkdaysIgnored && (
+              <span className="warn" style={{ fontSize: '0.78rem' }}>
+                雇用区分「{selectedEmploymentType?.label ?? '未設定'}」は「必要勤務日数あり」がOFFのため、
+                この下限は自動生成・違反チェックで使われません。「雇用区分」画面で有効にしてください。
+              </span>
+            )}
           </label>
           <label>
             最大勤務日数（上限・月）

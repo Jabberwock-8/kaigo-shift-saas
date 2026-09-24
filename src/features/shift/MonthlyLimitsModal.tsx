@@ -66,8 +66,26 @@ export default function MonthlyLimitsModal({
       return
     }
     const days = daysInMonth - holidays
+    // 入職前で0日にした人など、個別に違う値を入れた人を黙って上書きしない
+    // （蓑島さんの0日が20日に戻ってしまった事故があった）
+    const differing = fullTimeStaff.filter((s) => {
+      const cur = override[s.id]?.maxWorkdays ?? override[s.id]?.targetWorkdays
+      return cur != null && cur !== days
+    })
+    let keepIds = new Set<string>()
+    if (differing.length > 0) {
+      const list = differing
+        .map((s) => `・${s.name}：${override[s.id]?.maxWorkdays ?? override[s.id]?.targetWorkdays}日`)
+        .join('\n')
+      const overwrite = confirm(
+        `次の職員には、すでに${days}日と違う値が入っています。\n\n${list}\n\n` +
+          `［OK］これらも含めて全員を${days}日にする\n［キャンセル］これらの職員はそのままにする`,
+      )
+      if (!overwrite) keepIds = new Set(differing.map((s) => s.id))
+    }
     const next: MonthlyOverrideMap = { ...override }
     for (const s of fullTimeStaff) {
+      if (keepIds.has(s.id)) continue
       next[s.id] = { targetWorkdays: days, maxWorkdays: days }
     }
     setOverride(next)

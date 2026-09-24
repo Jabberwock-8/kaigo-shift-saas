@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useFacility } from '../context/FacilityContext'
@@ -13,9 +14,12 @@ import PaidLeavePage from '../features/paidLeave/PaidLeavePage'
 import CompatibilityPage from '../features/compatibility/CompatibilityPage'
 import RulesPage from '../features/rules/RulesPage'
 import SettingsPage from '../features/settings/SettingsPage'
-import ImportLegacyPage from '../features/importLegacy/ImportLegacyPage'
-import ExcelPage from '../features/excel/ExcelPage'
 import FacilityTabs from './FacilityTabs'
+
+// Excel入出力・旧データ取込は、たまにしか使わない取込用の画面で、Excel処理ライブラリ（xlsx）が大きい。
+// 常に読み込むと全画面の初回表示が重くなるため、開いたときだけ読み込む
+const ExcelPage = lazy(() => import('../features/excel/ExcelPage'))
+const ImportLegacyPage = lazy(() => import('../features/importLegacy/ImportLegacyPage'))
 
 const TABS = [
   { to: '/shift', label: 'シフト表', icon: '📅' },
@@ -97,8 +101,22 @@ export default function FacilityShell() {
               <Route path="/job-types" element={<JobTypesPage />} />
               <Route path="/employment-types" element={<EmploymentTypesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/excel" element={<ExcelPage />} />
-              <Route path="/import-legacy" element={<ImportLegacyPage />} />
+              <Route
+                path="/excel"
+                element={
+                  <Suspense fallback={<p className="muted">読み込み中…</p>}>
+                    <ExcelPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/import-legacy"
+                element={
+                  <Suspense fallback={<p className="muted">読み込み中…</p>}>
+                    <ImportLegacyPage />
+                  </Suspense>
+                }
+              />
               <Route path="*" element={<Navigate to="/shift" replace />} />
             </Routes>
           </div>

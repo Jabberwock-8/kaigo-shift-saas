@@ -185,7 +185,14 @@ export default function ShiftPatternsPage() {
                 <select
                   value={row.category ?? ''}
                   disabled={!isAdmin}
-                  onChange={(e) => updateRow(i, { category: (e.target.value || undefined) as ShiftCategory | undefined })}
+                  onChange={(e) => {
+                    const category = (e.target.value || undefined) as ShiftCategory | undefined
+                    // 追加直後の行は「勤務」がONのため、公休・有給を選んでも勤務日として数えられてしまう事故があった
+                    // （アミティホーム寺田で全職員が公休で必要出勤日数を満たした扱いになり、必須違反が600件超出た）。
+                    // 休みの種別を選んだ時点で外す。有給は施設によって出勤扱いにするため、あとから手動で戻せる
+                    const offLike = category === 'off' || category === 'paidLeave'
+                    updateRow(i, offLike ? { category, isWork: false, isNight: false } : { category })
+                  }}
                 >
                   <option value="">（未設定）</option>
                   {(Object.keys(CATEGORY_LABELS) as ShiftCategory[]).map((c) => (

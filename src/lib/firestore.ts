@@ -11,7 +11,6 @@ import {
   getDoc,
   getDocs,
   increment,
-  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -125,13 +124,15 @@ function subCollection(facilityId: string, name: string) {
   return collection(requireDb(), 'facilities', facilityId, name)
 }
 
-async function listSub<T>(
+async function listSub<T extends { order?: number }>(
   facilityId: string,
   name: string,
-  orderByField = 'order',
 ): Promise<(T & { id: string })[]> {
-  const snap = await getDocs(query(subCollection(facilityId, name), orderBy(orderByField)))
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as T) }))
+  // orderBy('order') は order 未設定のドキュメントを結果から黙って除外する（CLAUDE.md の注意事項）。
+  // 勤務パターンが1件でも消えると自動生成の入力からも消えるため、取得後にJS側で並べ替える
+  const snap = await getDocs(subCollection(facilityId, name))
+  const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as T) }))
+  return rows.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 }
 
 async function upsertSub<T extends object>(
