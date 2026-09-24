@@ -72,9 +72,13 @@ export default function OrgAdminPage() {
 
   const organizationId = appUser?.organizationId ?? null
 
-  async function load() {
+  /**
+   * showSpinner=false は画面を「読み込み中…」に切り替えずに一覧だけ更新する。
+   * 施設データの読み込み直後に使う（切り替えると引っ越し欄が作り直され、完了メッセージが消えるため）
+   */
+  async function load(showSpinner = true) {
     if (!organizationId) return
-    setLoading(true)
+    if (showSpinner) setLoading(true)
     setError(null)
     try {
       const [fl, ul] = await Promise.all([
@@ -410,7 +414,7 @@ export default function OrgAdminPage() {
         </div>
       </section>
 
-      <FacilityTransferSection facilities={facilities} onImported={load} />
+      <FacilityTransferSection facilities={facilities} onImported={() => load(false)} />
     </>
   )
 }
