@@ -20,7 +20,7 @@
 - `git push` と `firebase.cmd login` はアシスタントから実行できない。ユーザーに依頼する。
 - パスワードのフォーム入力はしない。ログインが必要な動作確認はユーザーに依頼する
   （dev管理者: takuro.ai.dev@gmail.com）。
-- 新規 npm 依存は設計書で許可されたもののみ（現時点: P7 の `xlsx` だけ）。
+- 新規 npm 依存は設計書で許可されたもののみ（現時点: P7 の `xlsx`、テスト用の `vitest`（devDependency、2026-09-24 許可））。
 - 秘密鍵・サービスアカウントキーをコミットしない。`.env.local` は使わない
   （dev/prod の firebaseConfig は `.env.development` / `.env.production` にコミット済み。秘密情報ではない）。
 
