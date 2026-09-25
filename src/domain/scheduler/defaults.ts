@@ -58,6 +58,8 @@ export interface GenerationConfig {
     preferShiftWeight: number
     /** 必須の「タグのペアを同一シフトに入れない」を配置時点でブロックするか。false で旧挙動へ戻せる */
     enforceTraitPairs: boolean
+    /** 希望休の日に勤務を入れない（人手不足でも崩さない）。false で旧挙動（不足時の最後の手段として崩す）へ戻せる */
+    enforceWishes: boolean
   }
 }
 
@@ -99,6 +101,7 @@ export const GENERATION_DEFAULTS_V1: GenerationConfig = {
     enforceDayPatternCaps: true,
     preferShiftWeight: 4,
     enforceTraitPairs: true,
+    enforceWishes: true,
   },
 }
 

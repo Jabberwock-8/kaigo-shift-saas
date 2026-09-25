@@ -23,6 +23,7 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
 
   const isLocked = (staffId: string, day: number) => !!lockedCells[staffId]?.[String(day)]
   const isWish = (staffId: string, day: number) => wishes.some((w) => w.staffId === staffId && w.day === day)
+  const enforceWishes = input.config.engine.enforceWishes !== false
   const isNightPattern = (id: string | undefined) => !!id && !!patternById.get(id)?.isNight
   const isAfterNight = (id: string | undefined) => !!id && patternById.get(id)?.category === 'afterNight'
   const workableOf = (staffId: string) => staff.find((s) => s.id === staffId)?.workConditions?.workablePatternIds
@@ -130,6 +131,8 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
 
       const workA = !!sa && !!patternById.get(sa)?.isWork
       const workB = !!sb && !!patternById.get(sb)?.isWork
+      // 交換は canWork を通らないため、希望休の日に勤務が移らないよう自前で見る
+      if (enforceWishes && ((workB && isWish(a.id, d)) || (workA && isWish(b.id, d)))) continue
       if (workA !== workB) {
         if (wouldDropBelowTarget(a.id, workA) || wouldDropBelowTarget(b.id, workB)) continue
       }

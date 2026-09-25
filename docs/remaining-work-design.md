@@ -194,6 +194,10 @@ export interface Candidate {
      hillClimb を止めた状態で比べると、ブロック無しでは配置の段階で同席が生まれ、有りでは0件になる。
    - `together`（必ず同席）は対象外。「置かない」判定では表せないため（必要になれば別途）。
    - `engine.enforceTraitPairs`（既定 true）で施設ごとに旧挙動へ戻せる。
+   - 2.5 希望休の日には勤務を置かない（2026-09-25 追加。旧HTML版からの意図的な逸脱）。旧版は不足時の最後の手段として
+     希望休を崩していたが、必要出勤日数の補充（fillMinimumWorkdays）と hillClimb の同日交換には希望休の確認自体が無く、
+     人手に余裕があっても希望休に勤務が入っていた。canWork で塞ぎ、canWork を通らない同日交換にも確認を足した。
+     守った結果の不足は必須違反として表に出る（管理者が手で判断する）。`engine.enforceWishes`（既定 true）で旧挙動へ戻せる。
 5. 夜勤ブロック（nightMode設定時のみ）:
    - direct: 前日が夜勤なら夜勤以外不可（連続夜勤は許容、上限はcapsで管理）。
      前々日が夜勤で patternId が nightAvoid に含まれる → 不可。

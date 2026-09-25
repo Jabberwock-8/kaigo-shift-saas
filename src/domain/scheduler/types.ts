@@ -73,6 +73,8 @@ export interface CanWorkContext {
   dayPatternCaps?: DayPatternCaps
   /** 必須の「タグのペアを同一シフトに入れない」。未設定ならチェックしない */
   traitPairBlocks?: TraitPairBlock[]
+  /** 希望休の日（`${staffId}_${day}`）。ここに含まれる日には勤務を入れない。未設定ならチェックしない */
+  wishDays?: Set<string>
 }
 
 export interface GenerateInput {

@@ -86,6 +86,7 @@ const patternMapCache = new WeakMap<GenerateInput, Map<string, PatternWithId>>()
 const employmentTypeMapCache = new WeakMap<GenerateInput, CanWorkContext['employmentTypeById']>()
 const dayPatternCapsCache = new WeakMap<GenerateInput, DayPatternCaps>()
 const traitPairBlocksCache = new WeakMap<GenerateInput, TraitPairBlock[]>()
+const wishDaysCache = new WeakMap<GenerateInput, Set<string>>()
 
 function cachedPatternById(input: GenerateInput) {
   let m = patternMapCache.get(input)
@@ -127,6 +128,16 @@ export function cachedTraitPairBlocks(input: GenerateInput): TraitPairBlock[] {
   return m
 }
 
+/** 施設ごとに無効化できるようにしてあるため、切られている間は空（＝チェックしない）を返す */
+export function cachedWishDays(input: GenerateInput): Set<string> {
+  let m = wishDaysCache.get(input)
+  if (!m) {
+    m = input.config.engine.enforceWishes === false ? new Set() : new Set(input.wishes.map((w) => `${w.staffId}_${w.day}`))
+    wishDaysCache.set(input, m)
+  }
+  return m
+}
+
 export function makeCanWorkContext(grid: AssignmentGrid, input: GenerateInput): CanWorkContext {
   return {
     grid,
@@ -140,6 +151,7 @@ export function makeCanWorkContext(grid: AssignmentGrid, input: GenerateInput): 
     monthlyMaxDaysOverride: input.monthlyMaxDaysOverride,
     dayPatternCaps: cachedDayPatternCaps(input),
     traitPairBlocks: cachedTraitPairBlocks(input),
+    wishDays: cachedWishDays(input),
   }
 }
 

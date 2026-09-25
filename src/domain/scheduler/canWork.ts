@@ -58,6 +58,10 @@ export function canWork(
   // 2. 既にその日に割当がある
   if (patternIdAt(ctx, staff.id, day)) return false
 
+  // 2.5 希望休の日には勤務を入れない（旧HTML版は人手不足時の最後の手段として崩していたが、
+  //     必要出勤日数の補充や同日交換では後回しすら効かず普通に崩れていたため、生成では必ず守る）
+  if (pattern.isWork && ctx.wishDays?.has(`${staff.id}_${day}`)) return false
+
   // 3. 固定休み曜日
   const weekday = weekdayOf(ctx.yearMonth, day)
   if ((wc.fixedOffWeekdays ?? []).includes(weekday)) return false
