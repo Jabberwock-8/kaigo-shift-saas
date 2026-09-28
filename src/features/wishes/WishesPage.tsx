@@ -199,7 +199,7 @@ export default function WishesPage() {
       )}
 
       <p className="muted" style={{ marginTop: 10 }}>
-        セルをクリックすると希望休のON/OFFを切り替えます。シフト表側での希望休の反映表示は今後のフェーズで対応します。
+        セルをクリックすると希望休のON/OFFを切り替えます。入れた希望休は自動生成で必ず守られ、シフト表では金の枠（守れている）・赤の枠（勤務が入っている）で表示されます。
       </p>
     </section>
   )
