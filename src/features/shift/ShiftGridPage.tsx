@@ -44,6 +44,7 @@ import {
   weekdayOf,
   WEEKDAY_LABELS,
 } from '../../lib/dateUtils'
+import { prepareBackupFolder, saveFacilityBackup } from '../../lib/autoBackup'
 import { checkMonth } from '../../domain/scheduler/check'
 import { demandFor, shiftGroupDeficitPatternIds } from '../../domain/scheduler/demand'
 import { generate } from '../../domain/scheduler/generate'
@@ -88,6 +89,7 @@ export default function ShiftGridPage() {
   const [generating, setGenerating] = useState(false)
   const [adoptingId, setAdoptingId] = useState<string | null>(null)
   const [genError, setGenError] = useState<string | null>(null)
+  const [backupMsg, setBackupMsg] = useState<string | null>(null)
   // クリック直後は state 更新がまだ描画に反映されておらず、連打でボタンの disabled が
   // 効く前に二重起動しうるため、同期的に効く ref でも二重起動を防ぐ
   const generatingRef = useRef(false)
@@ -206,8 +208,11 @@ export default function ShiftGridPage() {
     if (candidate.hardCount > 0 && !confirm(`この案には必須条件の違反が${candidate.hardCount}件あります。採択しますか？`)) {
       return
     }
+    // 保存先フォルダへの書き込み許可はボタン操作の直後でないと求められないため、採択の前に確認しておく
+    const useFolder = await prepareBackupFolder()
     setAdoptingId(candidate.id)
     setGenError(null)
+    setBackupMsg(null)
     try {
       const configSnapshot = await fetchCurrentGenerationConfig(selectedFacilityId)
       await adoptCandidate(selectedFacilityId, yearMonth, days, candidate, candidate.id, user.uid, configSnapshot)
@@ -215,6 +220,15 @@ export default function ShiftGridPage() {
       setPreviewId(null)
       setStoredCandidates([])
       await load()
+      // 採択後の自動バックアップ。失敗しても採択は済んでいるので、案内だけ出す
+      try {
+        const { fileName, savedTo } = await saveFacilityBackup(selectedFacilityId, facilityName, yearMonth, useFolder)
+        setBackupMsg(`バックアップを${savedTo}に保存しました（${fileName}）`)
+      } catch (e) {
+        setGenError(
+          `採択は完了しましたが、バックアップを保存できませんでした。施設・ユーザー管理の「書き出す」で手動で保存してください。（${e instanceof Error ? e.message : String(e)}）`,
+        )
+      }
     } catch (e) {
       setGenError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -479,6 +493,7 @@ export default function ShiftGridPage() {
       </div>
 
       {genError && <p className="warn no-print">{genError}</p>}
+      {backupMsg && <p className="muted no-print">💾 {backupMsg}</p>}
 
       {isAdmin && !candidates && storedCandidates.length > 0 && (
         <p className="no-print" style={{ marginBottom: 10 }}>

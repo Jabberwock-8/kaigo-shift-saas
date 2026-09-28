@@ -1,7 +1,8 @@
-import { useState, type ChangeEvent } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useFacility } from '../../context/FacilityContext'
 import { firebaseStatus } from '../../lib/firebase'
+import { canPickBackupFolder, clearBackupFolder, getBackupFolderName, pickBackupFolder } from '../../lib/autoBackup'
 import {
   exportFacilityData,
   importFacilityData,
@@ -64,6 +65,26 @@ export default function FacilityTransferSection({
   const [progress, setProgress] = useState<string | null>(null)
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const [backupFolder, setBackupFolder] = useState<string | null>(null)
+  useEffect(() => {
+    void getBackupFolderName().then(setBackupFolder)
+  }, [])
+
+  async function handlePickFolder() {
+    setError(null)
+    try {
+      const name = await pickBackupFolder()
+      if (name) setBackupFolder(name)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  async function handleClearFolder() {
+    await clearBackupFolder()
+    setBackupFolder(null)
+  }
 
   const currentEnv = environmentLabel(firebaseStatus.projectId)
   const selectedExportId = exportId || facilities[0]?.id || ''
@@ -154,6 +175,36 @@ export default function FacilityTransferSection({
       </p>
       {error && <p className="warn">{error}</p>}
       {result && <p className="orgadmin-invite-success">{result}</p>}
+
+      <h3>採択後の自動バックアップ</h3>
+      <p className="muted">
+        シフト表で案を「採択する」と、その施設のデータを自動で書き出して保存します（下の「書き出す」と同じファイルで、「読み込む」で元に戻せます）。
+        保存先はこのパソコンのこのブラウザごとに覚えます。
+      </p>
+      <div className="field-row">
+        <span>
+          保存先: <strong>{backupFolder ? `フォルダ「${backupFolder}」` : 'ダウンロードフォルダ'}</strong>
+        </span>
+        {canPickBackupFolder() ? (
+          <>
+            <button type="button" onClick={() => void handlePickFolder()}>
+              保存先フォルダを選ぶ
+            </button>
+            {backupFolder && (
+              <button type="button" onClick={() => void handleClearFolder()}>
+                ダウンロードフォルダに戻す
+              </button>
+            )}
+          </>
+        ) : (
+          <span className="muted">（このブラウザではフォルダを選べません。Chrome か Edge で開くと選べます）</span>
+        )}
+      </div>
+      {backupFolder && (
+        <p className="muted">
+          採択するときに、フォルダへの保存を許可するか聞かれることがあります。「許可」を押してください（許可しないとダウンロードフォルダに保存します）。
+        </p>
+      )}
 
       <h3>書き出す</h3>
       {facilities.length === 0 ? (
