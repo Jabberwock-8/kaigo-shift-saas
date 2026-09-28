@@ -35,6 +35,31 @@ export function formatYearMonthLabel(yearMonth: string): string {
   return `${year}年${month0 + 1}月`
 }
 
+/**
+ * 月を月曜始まりの週に区切った日の配列（月をまたがず、最初と最後の週は7日に満たないことがある）。
+ * 週表示で使う。例: 2026-09 は 1日が火曜なので [[1..6], [7..13], …]
+ */
+export function weeksOfMonth(yearMonth: string): number[][] {
+  const weeks: number[][] = []
+  let cur: number[] = []
+  for (let d = 1; d <= daysInMonth(yearMonth); d++) {
+    if (weekdayOf(yearMonth, d) === 1 && cur.length > 0) {
+      weeks.push(cur)
+      cur = []
+    }
+    cur.push(d)
+  }
+  if (cur.length > 0) weeks.push(cur)
+  return weeks
+}
+
+/** 今日を含む週の番号（今日が別の月なら 0） */
+export function weekIndexOfToday(yearMonth: string): number {
+  if (yearMonth !== currentYearMonth()) return 0
+  const today = new Date().getDate()
+  return Math.max(0, weeksOfMonth(yearMonth).findIndex((w) => w.includes(today)))
+}
+
 /** "YYYY-MM" と日 -> "YYYY-MM-DD" */
 export function formatDate(yearMonth: string, day: number): string {
   const { year, month0 } = parseYearMonth(yearMonth)

@@ -481,6 +481,64 @@ td.grid-cell {
   user-select: none;
 }
 
+/* 週表示: 7日分を広いセルで、記号の下に名称と時刻を出す */
+.view-toggle {
+  display: inline-flex;
+}
+
+.view-toggle button {
+  border-radius: 0;
+}
+
+.view-toggle button:first-child {
+  border-radius: 8px 0 0 8px;
+}
+
+.view-toggle button:last-child {
+  border-radius: 0 8px 8px 0;
+  margin-left: -1px;
+}
+
+.view-toggle button.active {
+  background: #1d7a63;
+  border-color: #1d7a63;
+  color: #fff;
+}
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+table.shift-grid.week td.grid-cell {
+  min-width: 110px;
+  height: 56px;
+}
+
+table.shift-grid.week .cell-code {
+  flex-direction: column;
+  gap: 2px;
+}
+
+table.shift-grid.week tr.event-row td {
+  max-width: 140px;
+}
+
+.week-cell-detail {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+table.shift-grid.week td.print-cell {
+  min-width: 80px;
+  height: 40px;
+}
+
 .cell-code:hover {
   outline: 2px solid #1d7a63;
   outline-offset: -1px;

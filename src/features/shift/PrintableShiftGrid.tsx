@@ -1,6 +1,7 @@
 import type { Rule, Schedule, ShiftPattern, Staff } from '../../types/models'
 import {
   daysInMonth as daysInMonthOf,
+  formatMonthDayWeekday,
   formatYearMonthLabel,
   weekdayOf,
   WEEKDAY_LABELS,
@@ -18,6 +19,8 @@ interface Props {
   schedule: Schedule | null
   shiftPatterns: PatternWithId[]
   rules: RuleWithId[]
+  /** 週表示の印刷: その週の日だけを A4縦・名称と時刻つきで出す。未指定なら月全体（A4横） */
+  days?: number[]
 }
 
 /**
@@ -31,9 +34,10 @@ export default function PrintableShiftGrid({
   schedule,
   shiftPatterns,
   rules,
+  days: weekDays,
 }: Props) {
-  const days = daysInMonthOf(yearMonth)
-  const dayList = Array.from({ length: days }, (_, i) => i + 1)
+  const isWeek = !!weekDays
+  const dayList = weekDays ?? Array.from({ length: daysInMonthOf(yearMonth) }, (_, i) => i + 1)
   const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
   const workPatterns = shiftPatterns.filter((p) => p.isWork)
 
@@ -47,13 +51,18 @@ export default function PrintableShiftGrid({
 
   return (
     <div className="print-only">
+      {/* @page は切り替えられないため、週の印刷のときだけ後勝ちで A4縦に上書きする */}
+      {isWeek && <style>{'@media print { @page { size: A4 portrait; margin: 10mm; } }'}</style>}
       <div className="print-head">
-        <span className="print-title">{formatYearMonthLabel(yearMonth)} 勤務表</span>
+        <span className="print-title">
+          {formatYearMonthLabel(yearMonth)} 勤務表
+          {isWeek && `（${formatMonthDayWeekday(yearMonth, dayList[0])}〜${formatMonthDayWeekday(yearMonth, dayList.at(-1)!)}）`}
+        </span>
         <span>
           {facilityName}　印刷日: {new Date().toLocaleDateString('ja-JP')}
         </span>
       </div>
-      <table className="shift-grid">
+      <table className={`shift-grid${isWeek ? ' week' : ''}`}>
         <thead>
           <tr>
             <th className="namecol">職員</th>
@@ -97,6 +106,16 @@ export default function PrintableShiftGrid({
                     }
                   >
                     {pattern?.code ?? ''}
+                    {isWeek && pattern && (
+                      <span className="week-cell-detail">
+                        {pattern.label && <span>{pattern.label}</span>}
+                        {pattern.startTime && pattern.endTime && (
+                          <span>
+                            {pattern.startTime}〜{pattern.endTime}
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </td>
                 )
               })}

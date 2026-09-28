@@ -42,6 +42,8 @@ import {
   shiftDurationHours,
   shiftYearMonth,
   weekdayOf,
+  weekIndexOfToday,
+  weeksOfMonth,
   WEEKDAY_LABELS,
 } from '../../lib/dateUtils'
 import { prepareBackupFolder, saveFacilityBackup } from '../../lib/autoBackup'
@@ -59,6 +61,17 @@ import MonthlyLimitsModal from './MonthlyLimitsModal'
 import TimeproModal from '../timepro/TimeproModal'
 
 type StaffWithId = Staff & { id: string }
+
+/** 週表示のセルに、記号の下へ名称と時刻を添える */
+function WeekCellDetail({ pattern }: { pattern: { label?: string; startTime?: string; endTime?: string } }) {
+  const time = pattern.startTime && pattern.endTime ? `${pattern.startTime}〜${pattern.endTime}` : ''
+  return (
+    <span className="week-cell-detail">
+      {pattern.label && <span>{pattern.label}</span>}
+      {time && <span>{time}</span>}
+    </span>
+  )
+}
 
 export default function ShiftGridPage() {
   const { user } = useAuth()
@@ -99,6 +112,8 @@ export default function ShiftGridPage() {
   const [showTimeproModal, setShowTimeproModal] = useState(false)
   const [timeproPatternMap, setTimeproPatternMap] = useState<Record<string, TimeproPatternMapEntry>>({})
 
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('month')
+  const [weekIndex, setWeekIndex] = useState(0)
   const [fitToScreen, setFitToScreen] = useState(false)
   const [fitScale, setFitScale] = useState({ x: 1, y: 1 })
   const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 })
@@ -107,6 +122,18 @@ export default function ShiftGridPage() {
 
   const days = daysInMonthOf(yearMonth)
   const dayList = Array.from({ length: days }, (_, i) => i + 1)
+  const weeks = weeksOfMonth(yearMonth)
+  const currentWeek = weeks[Math.min(weekIndex, weeks.length - 1)]
+  const isWeek = viewMode === 'week'
+  // 表に並べる日。月の集計（個人別の回数・常勤換算・夜勤目標・違反チェック）は常に月全体で数える
+  const visibleDays = isWeek ? currentWeek : dayList
+
+  /** 月を切り替える。週表示のときは、今月なら今日を含む週・それ以外は第1週を開く */
+  function moveMonth(next: string) {
+    setPicker(null)
+    setYearMonth(next)
+    setWeekIndex(weekIndexOfToday(next))
+  }
 
   async function load() {
     if (!selectedFacilityId) return
@@ -263,7 +290,7 @@ export default function ShiftGridPage() {
     recalc()
     window.addEventListener('resize', recalc)
     return () => window.removeEventListener('resize', recalc)
-  }, [fitToScreen, staffList.length, days, loading])
+  }, [fitToScreen, staffList.length, days, loading, viewMode, weekIndex])
 
   if (!selectedFacilityId) return null
 
@@ -436,33 +463,47 @@ export default function ShiftGridPage() {
         <div className="header-actions">
           <button
             type="button"
-            onClick={() => {
-              setPicker(null)
-              setYearMonth((ym) => shiftYearMonth(ym, -1))
-            }}
+            onClick={() => moveMonth(shiftYearMonth(yearMonth, -1))}
           >
             ◀
           </button>
           <button
             type="button"
-            onClick={() => {
-              setPicker(null)
-              setYearMonth(currentYearMonth())
-            }}
+            onClick={() => moveMonth(currentYearMonth())}
           >
             今月
           </button>
           <button
             type="button"
-            onClick={() => {
-              setPicker(null)
-              setYearMonth((ym) => shiftYearMonth(ym, 1))
-            }}
+            onClick={() => moveMonth(shiftYearMonth(yearMonth, 1))}
           >
             ▶
           </button>
+          <div className="view-toggle" role="group" aria-label="表示の切り替え">
+            <button
+              type="button"
+              className={!isWeek ? 'active' : undefined}
+              onClick={() => {
+                setPicker(null)
+                setViewMode('month')
+              }}
+            >
+              月
+            </button>
+            <button
+              type="button"
+              className={isWeek ? 'active' : undefined}
+              onClick={() => {
+                setPicker(null)
+                setViewMode('week')
+                setWeekIndex(weekIndexOfToday(yearMonth))
+              }}
+            >
+              週
+            </button>
+          </div>
           <button type="button" onClick={() => window.print()}>
-            🖨 印刷
+            🖨 {isWeek ? 'この週を印刷' : '印刷'}
           </button>
           <button type="button" onClick={() => setFitToScreen((v) => !v)}>
             {fitToScreen ? '🔍 実寸に戻す' : '🔍 画面に収める'}
@@ -491,6 +532,35 @@ export default function ShiftGridPage() {
           )}
         </div>
       </div>
+
+      {isWeek && (
+        <div className="week-nav no-print">
+          <button
+            type="button"
+            onClick={() => {
+              setPicker(null)
+              setWeekIndex((i) => Math.max(0, i - 1))
+            }}
+            disabled={weekIndex === 0}
+          >
+            ◀ 前の週
+          </button>
+          <strong>
+            第{weekIndex + 1}週（{formatMonthDayWeekday(yearMonth, currentWeek[0])}〜
+            {formatMonthDayWeekday(yearMonth, currentWeek.at(-1)!)}）
+          </strong>
+          <button
+            type="button"
+            onClick={() => {
+              setPicker(null)
+              setWeekIndex((i) => Math.min(weeks.length - 1, i + 1))
+            }}
+            disabled={weekIndex >= weeks.length - 1}
+          >
+            次の週 ▶
+          </button>
+        </div>
+      )}
 
       {genError && <p className="warn no-print">{genError}</p>}
       {backupMsg && <p className="muted no-print">💾 {backupMsg}</p>}
@@ -596,11 +666,11 @@ export default function ShiftGridPage() {
           style={fitToScreen ? { overflow: 'hidden', height: naturalSize.h ? naturalSize.h * fitScale.y : undefined } : undefined}
         >
           <div style={fitToScreen ? { transform: `scale(${fitScale.x}, ${fitScale.y})`, transformOrigin: 'top left', width: naturalSize.w || undefined } : undefined}>
-          <table className="shift-grid" ref={gridTableRef}>
+          <table className={`shift-grid${isWeek ? ' week' : ''}`} ref={gridTableRef}>
             <thead>
               <tr>
                 <th className="namecol">職員</th>
-                {dayList.map((d) => {
+                {visibleDays.map((d) => {
                   const w = weekdayOf(yearMonth, d)
                   return (
                     <th key={d} className={w === 0 ? 'sun' : w === 6 ? 'sat' : ''}>
@@ -610,20 +680,23 @@ export default function ShiftGridPage() {
                     </th>
                   )
                 })}
-                {summaryPatterns.map((p) => (
-                  <th key={p.id} className="sumcol">
-                    {p.code}
+                {!isWeek &&
+                  summaryPatterns.map((p) => (
+                    <th key={p.id} className="sumcol">
+                      {p.code}
+                    </th>
+                  ))}
+                {!isWeek && (
+                  <th className="sumcol" title="常勤換算（実労働時間 ÷ 常勤の所定労働時間）">
+                    常勤換算
                   </th>
-                ))}
-                <th className="sumcol" title="常勤換算（実労働時間 ÷ 常勤の所定労働時間）">
-                  常勤換算
-                </th>
+                )}
               </tr>
             </thead>
             <tbody>
               <tr className="event-row">
                 <td className="namecol">行事</td>
-                {dayList.map((d) => {
+                {visibleDays.map((d) => {
                   const text = schedule?.events?.[String(d)] ?? ''
                   return (
                     <td
@@ -639,10 +712,8 @@ export default function ShiftGridPage() {
                     </td>
                   )
                 })}
-                {summaryPatterns.map((p) => (
-                  <td key={p.id} className="sumcol" />
-                ))}
-                <td className="sumcol" />
+                {!isWeek && summaryPatterns.map((p) => <td key={p.id} className="sumcol" />)}
+                {!isWeek && <td className="sumcol" />}
               </tr>
               {staffList.map((staff) => {
                 const staffMsgs = checkResult.staffMessages[staff.id] ?? []
@@ -654,7 +725,7 @@ export default function ShiftGridPage() {
                       {staff.name}
                       {staffMsgs.length > 0 && <span className="warn"> ⚠</span>}
                     </td>
-                    {dayList.map((d) => {
+                    {visibleDays.map((d) => {
                       const patternId = staffAssignments[String(d)] ?? ''
                       const locked = !previewCandidate && (schedule?.locks?.[staff.id]?.[String(d)] ?? false)
                       const pattern = patternById.get(patternId)
@@ -696,6 +767,7 @@ export default function ShiftGridPage() {
                               }}
                             >
                               {pattern?.code ?? ''}
+                              {isWeek && pattern && <WeekCellDetail pattern={pattern} />}
                             </div>
                             {locked && <span className="lock-dot" title="ロック中" />}
                             {cellMsgs.length > 0 && <span className="viol-mark">!</span>}
@@ -703,7 +775,7 @@ export default function ShiftGridPage() {
                         </td>
                       )
                     })}
-                    {summaryPatterns.map((p) => {
+                    {!isWeek && summaryPatterns.map((p) => {
                       const count = dayList.filter((d) => staffAssignments[String(d)] === p.id).length
                       return (
                         <td
@@ -715,12 +787,12 @@ export default function ShiftGridPage() {
                         </td>
                       )
                     })}
-                    <td className="sumcol">{fteFor(staff.id)?.toFixed(1) ?? ''}</td>
+                    {!isWeek && <td className="sumcol">{fteFor(staff.id)?.toFixed(1) ?? ''}</td>}
                   </tr>
                   {staff.traits?.includes('生活相談員') && (
                     <tr key={`${staff.id}-secondary`} className="secondary-role-row">
                       <td className="namecol">└ 生活相談員</td>
-                      {dayList.map((d) => {
+                      {visibleDays.map((d) => {
                         const patternId = schedule?.secondaryAssignments?.[staff.id]?.[String(d)] ?? ''
                         const pattern = patternById.get(patternId)
                         return (
@@ -744,15 +816,14 @@ export default function ShiftGridPage() {
                                 }}
                               >
                                 {pattern?.code ?? ''}
+                                {isWeek && pattern && <WeekCellDetail pattern={pattern} />}
                               </div>
                             </div>
                           </td>
                         )
                       })}
-                      {summaryPatterns.map((p) => (
-                        <td key={p.id} className="sumcol" />
-                      ))}
-                      <td className="sumcol" />
+                      {!isWeek && summaryPatterns.map((p) => <td key={p.id} className="sumcol" />)}
+                      {!isWeek && <td className="sumcol" />}
                     </tr>
                   )}
                   </Fragment>
@@ -761,7 +832,7 @@ export default function ShiftGridPage() {
               {workPatterns.map((p) => (
                 <tr key={p.id} className="tally-row">
                   <td className="namecol">{p.code} 計</td>
-                  {dayList.map((d) => {
+                  {visibleDays.map((d) => {
                     const need = demandFor(rules, yearMonth, d)[p.id]
                     const actual = actualCountFor(p.id, d)
                     if (need == null) {
@@ -778,10 +849,8 @@ export default function ShiftGridPage() {
                       </td>
                     )
                   })}
-                  {summaryPatterns.map((sp) => (
-                    <td key={sp.id} className="sumcol" />
-                  ))}
-                  <td className="sumcol" />
+                  {!isWeek && summaryPatterns.map((sp) => <td key={sp.id} className="sumcol" />)}
+                  {!isWeek && <td className="sumcol" />}
                 </tr>
               ))}
             </tbody>
@@ -900,6 +969,7 @@ export default function ShiftGridPage() {
         <PrintableShiftGrid
           facilityName={facilityName}
           yearMonth={yearMonth}
+          days={isWeek ? currentWeek : undefined}
           staffList={staffList}
           schedule={schedule}
           shiftPatterns={shiftPatterns}
