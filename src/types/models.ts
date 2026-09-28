@@ -4,7 +4,11 @@
  * Phase 1 で使うものだけを先に定義し、以降のフェーズで拡張する。
  */
 
-export type Role = 'admin' | 'staff'
+/**
+ * removed = 施設・ユーザー管理で削除した管理者。ログイン用アカウントは Spark プランでは画面から消せないため、
+ * users は残したまま権限と所属施設を外す（firestore.rules は role == 'admin' しか権限を与えない）
+ */
+export type Role = 'admin' | 'staff' | 'removed'
 
 export interface AppUser {
   email: string

@@ -15,7 +15,7 @@ import {
   sendPasswordResetEmail,
   signOut,
 } from 'firebase/auth'
-import { doc, setDoc } from 'firebase/firestore'
+import { doc, setDoc, updateDoc } from 'firebase/firestore'
 import { db, firebaseConfig } from '../../lib/firebase'
 import type { AppUser } from '../../types/models'
 
@@ -48,6 +48,58 @@ export function buildInvitedUserDoc(input: InviteAdminInput): AppUser {
   }
 }
 
+/**
+ * 招待しようとしているメールアドレスが、すでに組織の users にあるか（大文字小文字・前後の空白は無視）。
+ * 削除済み（removed）なら招待し直しで元に戻せる。有効な管理者なら招待ではなく一覧の再送を使う
+ */
+export function findExistingUser<T extends Pick<AppUser, 'email' | 'role'>>(
+  users: T[],
+  email: string,
+): { kind: 'active' | 'removed'; user: T } | null {
+  const key = email.trim().toLowerCase()
+  const user = users.find((u) => (u.email ?? '').trim().toLowerCase() === key)
+  if (!user) return null
+  return { kind: user.role === 'removed' ? 'removed' : 'active', user }
+}
+
+/** 削除時に users へ書き込む内容。権限と所属施設を外す（ドキュメントは残す） */
+export function removedUserPatch(): Pick<AppUser, 'role' | 'facilityIds' | 'primaryFacilityId'> {
+  return { role: 'removed', facilityIds: [], primaryFacilityId: null }
+}
+
+/** 使い捨てのセカンダリ App からパスワード再設定メールを日本語で送る（管理者自身のログインには触れない） */
+async function sendSetupEmail(email: string) {
+  const app = initializeApp(firebaseConfig, `resend-${crypto.randomUUID()}`)
+  try {
+    const auth = getAuth(app)
+    auth.languageCode = 'ja'
+    await sendPasswordResetEmail(auth, email)
+  } finally {
+    await deleteApp(app)
+  }
+}
+
+/**
+ * 招待メール（パスワード設定メール）を送り直す。メールのリンクには期限があるため、
+ * 期限内に設定できなかった人やパスワードを忘れた人に使う
+ */
+export async function resendInviteEmail(email: string): Promise<void> {
+  await sendSetupEmail(email)
+}
+
+/** 管理者を削除する（権限と所属施設を外す）。ログイン用アカウントは残るが、データには一切触れられなくなる */
+export async function removeAdminUser(uid: string): Promise<void> {
+  if (!db) throw new Error('Firestore が初期化されていません。')
+  await updateDoc(doc(db, 'users', uid), removedUserPatch())
+}
+
+/** 削除済みの管理者を招待し直す。ログイン用アカウントは残っているので、users を管理者に戻してメールを送る */
+export async function reactivateAdminUser(uid: string, input: InviteAdminInput): Promise<void> {
+  if (!db) throw new Error('Firestore が初期化されていません。')
+  await setDoc(doc(db, 'users', uid), buildInvitedUserDoc(input))
+  await sendSetupEmail(input.email)
+}
+
 export async function inviteAdminUser(input: InviteAdminInput): Promise<void> {
   if (!db) throw new Error('Firestore が初期化されていません。')
 
@@ -62,7 +114,7 @@ export async function inviteAdminUser(input: InviteAdminInput): Promise<void> {
     } catch (e) {
       if (e instanceof Error && 'code' in e && (e as { code: string }).code === 'auth/email-already-in-use') {
         throw new Error(
-          'このメールアドレスは既に登録されています。既存ユーザーは下の一覧から所属施設を編集してください。',
+          'このメールアドレスはログイン用アカウントが既にありますが、管理者の一覧にはありません。以前の招待が途中で失敗した可能性があります。Firebase コンソールでの対応が必要なので、開発担当に連絡してください。',
         )
       }
       throw e

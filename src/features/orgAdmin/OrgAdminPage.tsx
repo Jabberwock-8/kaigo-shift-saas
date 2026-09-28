@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
 import { useFacility } from '../../context/FacilityContext'
 import {
   createFacility,
@@ -10,7 +11,13 @@ import {
 import type { AppUser, Facility } from '../../types/models'
 import FacilityMultiSelect from './FacilityMultiSelect'
 import FacilityTransferSection from './FacilityTransferSection'
-import { inviteAdminUser } from './inviteAdmin'
+import {
+  findExistingUser,
+  inviteAdminUser,
+  reactivateAdminUser,
+  removeAdminUser,
+  resendInviteEmail,
+} from './inviteAdmin'
 
 type FacilityWithId = Facility & { id: string }
 type UserWithId = AppUser & { id: string }
@@ -45,6 +52,7 @@ function FacilityIcon() {
  */
 export default function OrgAdminPage() {
   const { appUser, loading: facilityLoading } = useFacility()
+  const { user: authUser } = useAuth()
 
   const [facilities, setFacilities] = useState<FacilityWithId[]>([])
   const [users, setUsers] = useState<UserWithId[]>([])
@@ -69,6 +77,8 @@ export default function OrgAdminPage() {
 
   const [rowEdits, setRowEdits] = useState<Record<string, { facilityIds: string[]; primaryFacilityId: string }>>({})
   const [savingUserId, setSavingUserId] = useState<string | null>(null)
+  const [busyUserId, setBusyUserId] = useState<string | null>(null)
+  const [userMessage, setUserMessage] = useState<string | null>(null)
 
   const organizationId = appUser?.organizationId ?? null
 
@@ -172,13 +182,24 @@ export default function OrgAdminPage() {
     setError(null)
     setInviteMessage(null)
     try {
-      await inviteAdminUser({
+      const input = {
         email: inviteEmail.trim(),
         displayName: inviteDisplayName.trim() || undefined,
         organizationId,
         facilityIds: inviteFacilityIds,
         primaryFacilityId: invitePrimaryFacilityId || inviteFacilityIds[0],
-      })
+      }
+      const existing = findExistingUser(users, input.email)
+      if (existing?.kind === 'active') {
+        throw new Error(
+          'この管理者は既に一覧にいます。メールが届かない・期限が切れた場合は、一覧の「招待メールを再送」を押してください。',
+        )
+      }
+      if (existing?.kind === 'removed') {
+        await reactivateAdminUser(existing.user.id, input)
+      } else {
+        await inviteAdminUser(input)
+      }
       setInviteMessage(
         `✅ ${inviteEmail} を招待しました。本人にパスワード再設定メールが届くので、リンクからパスワードを設定してもらってください。`,
       )
@@ -226,7 +247,42 @@ export default function OrgAdminPage() {
     }
   }
 
+  async function handleResend(u: UserWithId) {
+    setBusyUserId(u.id)
+    setError(null)
+    setUserMessage(null)
+    try {
+      await resendInviteEmail(u.email)
+      setUserMessage(`✅ ${u.email} にパスワード設定メールを送り直しました。メールのリンクから設定してもらってください。`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusyUserId(null)
+    }
+  }
+
+  async function handleRemove(u: UserWithId) {
+    const name = u.displayName ? `${u.displayName}（${u.email}）` : u.email
+    if (!confirm(`${name} を管理者から削除しますか？
+この人はログインしても施設のデータを見られなくなります。あとで同じメールアドレスで招待し直すと元に戻せます。`)) {
+      return
+    }
+    setBusyUserId(u.id)
+    setError(null)
+    setUserMessage(null)
+    try {
+      await removeAdminUser(u.id)
+      setUserMessage(`${u.email} を管理者から削除しました。`)
+      await load(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusyUserId(null)
+    }
+  }
+
   const facilityById = new Map(facilities.map((f) => [f.id, f]))
+  const activeUsers = users.filter((u) => u.role !== 'removed')
 
   if (loading) return <p className="muted">読み込み中…</p>
 
@@ -321,8 +377,10 @@ export default function OrgAdminPage() {
           職員本人のログインはまだ対応していません。ここで招待できるのは各施設を管理する管理者アカウントのみです。
         </p>
 
+        {userMessage && <p className="orgadmin-invite-success">{userMessage}</p>}
         <div className="orgadmin-user-list">
-          {users.map((u) => {
+          {activeUsers.map((u) => {
+            const isMe = u.id === authUser?.uid
             const edit = rowEdits[u.id] ?? { facilityIds: [], primaryFacilityId: '' }
             return (
               <div key={u.id} className="orgadmin-user-row">
@@ -331,9 +389,20 @@ export default function OrgAdminPage() {
                     <div className="orgadmin-user-email">{u.email}</div>
                     {u.displayName && <div className="muted">{u.displayName}</div>}
                   </div>
-                  <button type="button" onClick={() => void saveUserRow(u.id)} disabled={savingUserId === u.id}>
-                    {savingUserId === u.id ? '保存中…' : '保存'}
-                  </button>
+                  <div className="orgadmin-user-actions">
+                    <button type="button" onClick={() => void saveUserRow(u.id)} disabled={savingUserId === u.id}>
+                      {savingUserId === u.id ? '保存中…' : '保存'}
+                    </button>
+                    <button type="button" className="ghost" onClick={() => void handleResend(u)} disabled={busyUserId === u.id}>
+                      招待メールを再送
+                    </button>
+                    {/* 自分自身を消すと、この画面に二度と入れなくなるため出さない */}
+                    {!isMe && (
+                      <button type="button" className="ghost" onClick={() => void handleRemove(u)} disabled={busyUserId === u.id}>
+                        削除
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <FacilityMultiSelect

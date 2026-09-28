@@ -1508,6 +1508,12 @@ button.primary:disabled {
   margin-bottom: 10px;
 }
 
+.orgadmin-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .orgadmin-user-email {
   font-weight: 700;
   font-size: 0.9rem;
