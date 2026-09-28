@@ -15,7 +15,8 @@ interface DirHandle {
     createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>
   }>
 }
-type WindowWithPicker = Window & { showDirectoryPicker?: (opts: PermissionMode) => Promise<DirHandle> }
+type PickerOptions = PermissionMode & { id?: string; startIn?: 'downloads' | 'documents' | 'desktop' }
+type WindowWithPicker = Window & { showDirectoryPicker?: (opts: PickerOptions) => Promise<DirHandle> }
 
 const DB_NAME = 'shift-maker-backup'
 const STORE = 'handles'
@@ -66,7 +67,9 @@ export async function pickBackupFolder(): Promise<string | null> {
   const picker = (window as WindowWithPicker).showDirectoryPicker
   if (!picker) return null
   try {
-    const handle = await picker({ mode: 'readwrite' })
+    // ブラウザの制限で「ダウンロード」「ドキュメント」「デスクトップ」そのものは選べない（システムファイルを含むため）。
+    // ダウンロードフォルダで開き、その中に新しいフォルダを作って選んでもらう
+    const handle = await picker({ mode: 'readwrite', id: 'shift-backup', startIn: 'downloads' })
     await withStore('readwrite', (s) => s.put(handle, KEY))
     return handle.name
   } catch (e) {

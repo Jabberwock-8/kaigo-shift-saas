@@ -452,6 +452,8 @@ export interface Candidate {
   File System Access API（`showDirectoryPicker`、Chrome / Edge のみ）でそのフォルダへ直接書き込む。
   フォルダの指定は端末（ブラウザ）ごとに IndexedDB（`shift-maker-backup`）へ保存する。Firestore には置かない
   （フォルダはパソコンごとに違うため）。実装は `src/lib/autoBackup.ts`。
+- ブラウザの制限で「ダウンロード」「ドキュメント」「デスクトップ」そのものは選べない（「システム ファイルが含まれている」
+  と表示される）。選ぶ画面をダウンロードフォルダで開き（`startIn: 'downloads'`）、中に作ったフォルダを選ぶよう画面で案内する。
 - フォルダへの書き込み許可はブラウザを開き直すと再確認になり、許可の確認はボタン操作の直後にしか出せないため、
   採択ボタンの処理の最初（Firestore への書き込みより前）で確認する。許可されない・フォルダが消えた等で書けないときは
   ダウンロードフォルダへ保存する。

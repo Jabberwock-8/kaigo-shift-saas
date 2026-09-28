@@ -200,6 +200,13 @@ export default function FacilityTransferSection({
           <span className="muted">（このブラウザではフォルダを選べません。Chrome か Edge で開くと選べます）</span>
         )}
       </div>
+      {canPickBackupFolder() && (
+        <p className="muted">
+          ダウンロードフォルダのままでよければ、フォルダを選ぶ必要はありません。別の場所に保存したいときは、
+          選ぶ画面で「新しいフォルダー」を作って（例: シフトバックアップ）それを選んでください。
+          「ダウンロード」「ドキュメント」「デスクトップ」そのものは、ブラウザの制限で選べません。
+        </p>
+      )}
       {backupFolder && (
         <p className="muted">
           採択するときに、フォルダへの保存を許可するか聞かれることがあります。「許可」を押してください（許可しないとダウンロードフォルダに保存します）。
