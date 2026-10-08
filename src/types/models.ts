@@ -228,6 +228,11 @@ export interface ShiftRulesSettings {
     targetWorkdays: number | null
     maxWorkdays: number | null
     maxNightShifts: number | null
+    /**
+     * 月の公休日数。設定すると、施設の既定の勤務日数（下限・上限とも）を「その月の日数 − 公休日数」にする
+     * （30日の月は20日、31日の月は21日…）。月ごとに日数を直す手間を省くため。null/未設定なら上の固定値を使う
+     */
+    offDaysPerMonth?: number | null
   }
   /** 希望休（有給希望含む）の月間上限日数。null = 上限なし */
   maxWishesPerMonth: number | null

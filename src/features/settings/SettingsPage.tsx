@@ -285,11 +285,32 @@ export default function SettingsPage() {
             />
           </label>
           <label>
+            月の公休日数
+            <input
+              type="number"
+              value={settings.monthlyLimitsDefault.offDaysPerMonth ?? ''}
+              disabled={!isAdmin}
+              placeholder="未設定"
+              onChange={(e) =>
+                update({
+                  monthlyLimitsDefault: {
+                    ...settings.monthlyLimitsDefault,
+                    offDaysPerMonth: toNumberOrNull(e.target.value),
+                  },
+                })
+              }
+            />
+          </label>
+          <p className="muted" style={{ gridColumn: '1 / -1', margin: 0 }}>
+            月の公休日数を入れると、勤務日数（下限・上限）が「その月の日数 − 公休日数」になり、下の2つより優先されます
+            （公休10日なら、30日の月は20日・31日の月は21日）。職員ごとの設定や「月の上限を調整」はこれより優先されます。
+          </p>
+          <label>
             必要勤務日数（下限・月）
             <input
               type="number"
               value={settings.monthlyLimitsDefault.targetWorkdays ?? ''}
-              disabled={!isAdmin}
+              disabled={!isAdmin || settings.monthlyLimitsDefault.offDaysPerMonth != null}
               placeholder="未設定"
               onChange={(e) =>
                 update({
@@ -306,7 +327,7 @@ export default function SettingsPage() {
             <input
               type="number"
               value={settings.monthlyLimitsDefault.maxWorkdays ?? ''}
-              disabled={!isAdmin}
+              disabled={!isAdmin || settings.monthlyLimitsDefault.offDaysPerMonth != null}
               placeholder="未設定"
               onChange={(e) =>
                 update({

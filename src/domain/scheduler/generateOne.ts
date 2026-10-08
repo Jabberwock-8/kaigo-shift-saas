@@ -175,6 +175,7 @@ function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
       employmentTypeById.get(s.employmentTypeId ?? ''),
       settings,
       monthlyMaxDaysOverride?.[s.id],
+      daysInMonth,
     )
     if (limits.targetWorkdays == null) continue
     let current = workCountOf(grid, s.id, daysInMonth, patternById)

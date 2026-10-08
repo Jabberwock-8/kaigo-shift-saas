@@ -302,7 +302,11 @@ export default function ShiftGridPage() {
   // 常勤換算の分母（所定労働時間 = その月の常勤の必要勤務日数 × 8時間）。
   // 「月の上限を調整」で施設一律に上書きされる想定のため、常勤の誰か1人の値を代表として使う。
   const standardWorkdays = staffList
-    .map((s) => resolveLimits(s, employmentTypeById.get(s.employmentTypeId ?? ''), settings, schedule?.monthlyMaxDaysOverride?.[s.id]).targetWorkdays)
+    .map(
+      (s) =>
+        resolveLimits(s, employmentTypeById.get(s.employmentTypeId ?? ''), settings, schedule?.monthlyMaxDaysOverride?.[s.id], days)
+          .targetWorkdays,
+    )
     .find((v): v is number => v != null)
   const standardHours = standardWorkdays != null ? standardWorkdays * 8 : null
 

@@ -542,7 +542,7 @@ export const DEFAULT_SHIFT_RULES_SETTINGS: ShiftRulesSettings = {
   treatCompatibilityXAsHard: null,
   treatRestHoursAsHard: null,
   maxConsecutiveWorkdaysDefault: null,
-  monthlyLimitsDefault: { targetWorkdays: null, maxWorkdays: null, maxNightShifts: null },
+  monthlyLimitsDefault: { targetWorkdays: null, maxWorkdays: null, maxNightShifts: null, offDaysPerMonth: null },
   maxWishesPerMonth: null,
 }
 

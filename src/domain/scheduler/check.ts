@@ -180,6 +180,7 @@ export function checkMonth(input: CheckInput): CheckResult {
       employmentTypeById.get(s.employmentTypeId ?? ''),
       settings,
       monthlyMaxDaysOverride?.[s.id],
+      daysInMonth,
     )
 
     let workCount = 0

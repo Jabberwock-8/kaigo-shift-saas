@@ -29,6 +29,25 @@ export function employmentTypeUsesTargetWorkdays(employmentType: EmploymentType 
 }
 
 /**
+ * 施設の既定の勤務日数（下限・上限）。「月の公休日数」があれば、その月の日数から引いた日数を下限・上限の両方に使い、
+ * 固定の日数より優先する。月の日数が分からない呼び出しでは固定の日数を使う
+ */
+export function facilityWorkdaysDefault(
+  settings: ShiftRulesSettings,
+  daysInMonth?: number,
+): { targetWorkdays: number | null; maxWorkdays: number | null } {
+  const off = settings.monthlyLimitsDefault.offDaysPerMonth
+  if (off != null && daysInMonth != null) {
+    const days = Math.max(0, daysInMonth - off)
+    return { targetWorkdays: days, maxWorkdays: days }
+  }
+  return {
+    targetWorkdays: settings.monthlyLimitsDefault.targetWorkdays,
+    maxWorkdays: settings.monthlyLimitsDefault.maxWorkdays,
+  }
+}
+
+/**
  * 職員の勤務日数等の上限を解決する。
  * 優先順（docs/firestore-design.md §4-1）: 月別上書き → 職員 → 施設既定 → 制約なし(null)。
  * check.ts と生成エンジン(Phase 4d)の両方から共用する。
@@ -38,21 +57,24 @@ export function resolveLimits(
   employmentType: EmploymentType | undefined,
   settings: ShiftRulesSettings,
   monthlyOverride?: MonthlyLimitsOverride,
+  /** その月の日数。施設の「月の公休日数」から勤務日数を出すのに使う */
+  daysInMonth?: number,
 ): ResolvedLimits {
   const wc = staff.workConditions ?? {}
   const hasTargetWorkdays = employmentTypeUsesTargetWorkdays(employmentType)
+  const facilityDefault = facilityWorkdaysDefault(settings, daysInMonth)
 
   const targetWorkdays = hasTargetWorkdays
     ? (monthlyOverride?.targetWorkdays ??
       wc.targetWorkdaysPerMonth ??
-      settings.monthlyLimitsDefault.targetWorkdays ??
+      facilityDefault.targetWorkdays ??
       null)
     : null
 
   const maxWorkdays =
     monthlyOverride?.maxWorkdays ??
     wc.maxWorkdaysPerMonth ??
-    settings.monthlyLimitsDefault.maxWorkdays ??
+    facilityDefault.maxWorkdays ??
     null
 
   const maxConsecutive = wc.maxConsecutiveWorkdays ?? settings.maxConsecutiveWorkdaysDefault ?? null

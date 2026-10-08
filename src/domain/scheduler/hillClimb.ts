@@ -43,6 +43,7 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
       employmentTypeById.get(s.employmentTypeId ?? ''),
       settings,
       monthlyMaxDaysOverride?.[staffId],
+      daysInMonth,
     ).targetWorkdays
   }
   /**

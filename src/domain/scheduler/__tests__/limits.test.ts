@@ -48,3 +48,30 @@ describe('resolveLimits', () => {
     })
   })
 })
+
+describe('resolveLimits: 月の公休日数', () => {
+  const withOff = settings({
+    monthlyLimitsDefault: { targetWorkdays: 18, maxWorkdays: 19, maxNightShifts: null, offDaysPerMonth: 10 },
+  })
+
+  it('その月の日数から公休日数を引いた日数を、下限・上限の両方に使う（固定の日数より優先）', () => {
+    expect(resolveLimits(staff('s1'), FULL, withOff, undefined, 30)).toMatchObject({ targetWorkdays: 20, maxWorkdays: 20 })
+    expect(resolveLimits(staff('s1'), FULL, withOff, undefined, 31)).toMatchObject({ targetWorkdays: 21, maxWorkdays: 21 })
+    expect(resolveLimits(staff('s1'), FULL, withOff, undefined, 28)).toMatchObject({ targetWorkdays: 18, maxWorkdays: 18 })
+  })
+
+  it('職員ごとの設定と月別の上書きはこれより優先する', () => {
+    const own = staff('s1', { workConditions: { targetWorkdaysPerMonth: 15, maxWorkdaysPerMonth: 16 } })
+    expect(resolveLimits(own, FULL, withOff, undefined, 31)).toMatchObject({ targetWorkdays: 15, maxWorkdays: 16 })
+    expect(resolveLimits(staff('s1'), FULL, withOff, { targetWorkdays: 12, maxWorkdays: 12 }, 31)).toMatchObject({
+      targetWorkdays: 12,
+      maxWorkdays: 12,
+    })
+  })
+
+  it('月の日数が分からない呼び出しや、公休日数が未設定なら固定の日数を使う', () => {
+    expect(resolveLimits(staff('s1'), FULL, withOff)).toMatchObject({ targetWorkdays: 18, maxWorkdays: 19 })
+    expect(resolveLimits(staff('s1'), FULL, settings({ monthlyLimitsDefault: { targetWorkdays: 18, maxWorkdays: 19, maxNightShifts: null } }), undefined, 31))
+      .toMatchObject({ targetWorkdays: 18, maxWorkdays: 19 })
+  })
+})

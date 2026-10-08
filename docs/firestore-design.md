@@ -269,7 +269,7 @@ facilities/{facilityId}/
 - 値の解決順（未設定なら次へフォールバック）:
   1. `schedules/{ym}.monthlyMaxDaysOverride[staffId]`（その月だけの上書き）
   2. `staff.workConditions.targetWorkdaysPerMonth` / `maxWorkdaysPerMonth`
-  3. `settings/shiftRules.monthlyLimitsDefault.targetWorkdays` / `maxWorkdays`
+  3. `settings/shiftRules.monthlyLimitsDefault.offDaysPerMonth`（月の公休日数。あれば「その月の日数 − 公休日数」を下限・上限の両方に使う。2026-10-08 追加）、無ければ `monthlyLimitsDefault.targetWorkdays` / `maxWorkdays`
   4. `target` は「下限なし」、`max` は「上限なし」
 - `employmentTypes.hasTargetWorkdays === false` の区分は `target` を評価しない（下限チェックをスキップ）。
 - 通常、常勤は `target === max` になることが多いが、月の公休数の違いや調整で

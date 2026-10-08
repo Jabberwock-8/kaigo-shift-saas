@@ -129,6 +129,7 @@ export function canWork(
     ctx.employmentTypeById.get(staff.employmentTypeId ?? ''),
     ctx.settings,
     ctx.monthlyMaxDaysOverride?.[staff.id],
+    ctx.daysInMonth,
   )
 
   // 6. 連続勤務上限
