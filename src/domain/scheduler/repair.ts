@@ -4,7 +4,7 @@
  */
 import { canWork } from './canWork'
 import { demandFor } from './demand'
-import { getCell, makeCanWorkContext, setCell, workCountOf } from './gridUtils'
+import { getCell, isDayWorkPattern, makeCanWorkContext, setCell, workCountOf } from './gridUtils'
 import { ruleAppliesToDate } from './ruleMatch'
 import type { AssignmentGrid, GenerateInput, StaffWithId } from './types'
 
@@ -78,7 +78,7 @@ export function repair(grid: AssignmentGrid, input: GenerateInput) {
           const pid = getCell(grid, s.id, d)
           if (!pid) return false
           const p = patternById.get(pid)
-          if (!p?.isWork || p.isNight) return false
+          if (!isDayWorkPattern(p)) return false
           if (isLocked(s.id, d)) return false
           const cnt = staff.filter((q) => getCell(grid, q.id, d) === pid).length
           return cnt > (dem[pid] ?? 0)
@@ -104,7 +104,7 @@ export function repair(grid: AssignmentGrid, input: GenerateInput) {
             const pid2 = getCell(grid, s.id, d2)
             if (!pid2) continue
             const p2 = patternById.get(pid2)
-            if (!p2?.isWork || p2.isNight) continue
+            if (!isDayWorkPattern(p2)) continue
             if (isLocked(s.id, d2)) continue
             const dem2 = demandFor(rules, yearMonth, d2)
             const cnt2 = staff.filter((q) => getCell(grid, q.id, d2) === pid2).length
@@ -219,7 +219,7 @@ export function repairGroups(grid: AssignmentGrid, input: GenerateInput) {
                 const pid2 = getCell(grid, s.id, d2)
                 if (!pid2 || isLocked(s.id, d2)) continue
                 const p2 = patternById.get(pid2)
-                if (!p2?.isWork || p2.isNight) continue
+                if (!isDayWorkPattern(p2)) continue
                 const dem2 = demandFor(rules, yearMonth, d2)
                 if (countAt(d2, pid2) <= (dem2[pid2] ?? 0)) continue
                 if (!canSpare(d2, pid2)) continue
@@ -253,7 +253,7 @@ export function repairGroups(grid: AssignmentGrid, input: GenerateInput) {
               const pid = getCell(grid, s.id, d)
               if (!pid || ids.includes(pid) || isLocked(s.id, d)) return false
               const p = patternById.get(pid)
-              if (!p?.isWork || p.isNight) return false
+              if (!isDayWorkPattern(p)) return false
               return countAt(d, pid) > (dem[pid] ?? 0) && canSpare(d, pid)
             })
             // 「〜を優先」を崩さない人から試す（職員の並び順のままだと、M5を優先したい人が先頭にいるだけで

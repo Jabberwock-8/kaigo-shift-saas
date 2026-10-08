@@ -14,6 +14,7 @@ import {
   setCell,
   typeCountOf,
   workCountOf,
+  isDayWorkPattern,
 } from './gridUtils'
 import { hillClimb } from './hillClimb'
 import { resolveLimits } from './limits'
@@ -184,9 +185,9 @@ function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
       allowed && allowed.length > 0
         ? allowed.filter((id) => {
             const p = patternById.get(id)
-            return p?.isWork && !p.isNight
+            return isDayWorkPattern(p)
           })
-        : shiftPatterns.filter((p) => p.isWork && !p.isNight).map((p) => p.id)
+        : shiftPatterns.filter((p) => isDayWorkPattern(p)).map((p) => p.id)
 
     const weekTypeCount: Record<string, number> = {}
     for (let d = 1; d <= daysInMonth; d++) {
@@ -301,7 +302,7 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
   }
 
   // 3. 日中割当
-  const dayPatternIds = shiftPatterns.filter((p) => p.isWork && !p.isNight).map((p) => p.id)
+  const dayPatternIds = shiftPatterns.filter((p) => isDayWorkPattern(p)).map((p) => p.id)
   for (let d = 1; d <= daysInMonth; d++) {
     const dem = demandFor(rules, yearMonth, d)
     for (const patternId of dayPatternIds) {

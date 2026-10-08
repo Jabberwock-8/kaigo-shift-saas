@@ -2,6 +2,15 @@ import { buildDayPatternCaps, type DayPatternCaps } from './caps'
 import { buildTraitPairBlocks, type TraitPairBlock } from './traitPairs'
 import type { AssignmentGrid, CanWorkContext, CheckInput, GenerateInput, PatternWithId } from './types'
 
+/**
+ * 自動生成が単独で置いたり動かしたりしてよい日中の勤務か。夜勤と夜勤明けは除く。
+ * 夜勤明けは夜勤とセットで置くもので、勤務日として数える施設（明出を勤務扱いにする運用）でも
+ * 「余っている勤務」として休みに振り替えたり、別の日へ動かしたり、日数の補充に使ったりしてはいけない
+ */
+export function isDayWorkPattern(p: Pick<PatternWithId, 'isWork' | 'isNight' | 'category'> | undefined): boolean {
+  return !!p?.isWork && !p.isNight && p.category !== 'afterNight'
+}
+
 export function getCell(grid: AssignmentGrid, staffId: string, day: number): string | undefined {
   return grid[staffId]?.[String(day)]
 }

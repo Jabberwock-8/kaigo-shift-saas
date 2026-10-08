@@ -6,7 +6,15 @@ import { canWork } from './canWork'
 import { withinDayPatternCap } from './caps'
 import { checkMonth } from './check'
 import { demandFor } from './demand'
-import { cachedDayPatternCaps, getCell, makeCanWorkContext, makeCheckInput, setCell, workCountOf } from './gridUtils'
+import {
+  cachedDayPatternCaps,
+  getCell,
+  isDayWorkPattern,
+  makeCanWorkContext,
+  makeCheckInput,
+  setCell,
+  workCountOf,
+} from './gridUtils'
 import { resolveLimits } from './limits'
 import { scoreGrid } from './score'
 import type { AssignmentGrid, GenerateInput } from './types'
@@ -83,7 +91,7 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
       const s2 = getCell(grid, p.id, d2)
       if (s1 !== offPattern.id || !s2) continue
       const p2 = patternById.get(s2)
-      if (!p2?.isWork || p2.isNight) continue
+      if (!isDayWorkPattern(p2)) continue
       if (isLocked(p.id, d) || isLocked(p.id, d2)) continue
       if (isWish(p.id, d)) continue
       const prev = d > 1 ? getCell(grid, p.id, d - 1) : undefined
