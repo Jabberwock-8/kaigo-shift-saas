@@ -53,6 +53,7 @@ import { generate } from '../../domain/scheduler/generate'
 import { resolveLimits } from '../../domain/scheduler/limits'
 import type { Candidate } from '../../domain/scheduler/types'
 import PrintableShiftGrid from './PrintableShiftGrid'
+import { downloadShiftExcel } from './exportShiftExcel'
 import CellPicker from './CellPicker'
 import EventPicker from './EventPicker'
 import NightTargetPanel from './NightTargetPanel'
@@ -328,6 +329,34 @@ export default function ShiftGridPage() {
     return Math.min(1, Math.round((hours / standardHours) * 10) / 10)
   }
 
+  /** 日別集計のセルの文字（画面の集計行と同じ。必要数があれば「実績/必要数」） */
+  function tallyText(patternId: string, day: number): string {
+    const need = demandFor(rules, yearMonth, day)[patternId]
+    const actual = actualCountFor(patternId, day)
+    return need == null ? String(actual) : `${actual}/${need}`
+  }
+
+  async function handleExportExcel() {
+    try {
+      await downloadShiftExcel({
+        facilityName,
+        yearMonth,
+        days: dayList,
+        staffList,
+        shiftPatterns,
+        assignments: effectiveAssignments,
+        secondaryAssignments: schedule?.secondaryAssignments,
+        events: schedule?.events,
+        summaryPatterns,
+        workPatterns,
+        tallyText,
+        fteFor,
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   function actualCountFor(patternId: string, day: number): number {
     let count = 0
     for (const staff of staffList) {
@@ -509,6 +538,14 @@ export default function ShiftGridPage() {
           <button type="button" onClick={() => window.print()}>
             🖨 {isWeek ? 'この週を印刷' : '印刷'}
           </button>
+          <button
+            type="button"
+            onClick={() => void handleExportExcel()}
+            disabled={staffList.length === 0 || !!previewCandidate}
+            title={previewCandidate ? 'プレビュー中は書き出せません。採択するか、プレビューを閉じてください' : undefined}
+          >
+            📊 Excelで出力
+          </button>
           <button type="button" onClick={() => setFitToScreen((v) => !v)}>
             {fitToScreen ? '🔍 実寸に戻す' : '🔍 画面に収める'}
           </button>
@@ -667,7 +704,11 @@ export default function ShiftGridPage() {
         <div
           className="grid-scroll no-print"
           ref={gridScrollRef}
-          style={fitToScreen ? { overflow: 'hidden', height: naturalSize.h ? naturalSize.h * fitScale.y : undefined } : undefined}
+          style={
+            fitToScreen
+              ? { overflow: 'hidden', maxHeight: 'none', height: naturalSize.h ? naturalSize.h * fitScale.y : undefined }
+              : undefined
+          }
         >
           <div style={fitToScreen ? { transform: `scale(${fitScale.x}, ${fitScale.y})`, transformOrigin: 'top left', width: naturalSize.w || undefined } : undefined}>
           <table className={`shift-grid${isWeek ? ' week' : ''}`} ref={gridTableRef}>

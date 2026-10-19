@@ -408,8 +408,22 @@ code {
   max-width: 1200px;
 }
 
+/* 表を画面の高さに収まる枠の中でスクロールさせる。職員が多くても、日付・曜日の行が上に残り、
+   横のスクロールバーが常に画面の下に見える（枠の外＝ページ全体のスクロールだと、どちらも隠れてしまう） */
 .grid-scroll {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: calc(100vh - 32px);
+}
+
+.grid-scroll table.shift-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* 左上の「職員」は縦横どちらにスクロールしても残す */
+.grid-scroll table.shift-grid thead th.namecol {
+  z-index: 3;
 }
 
 table.shift-grid {
