@@ -7,6 +7,7 @@ import { canWork } from './canWork'
 import { checkMonth } from './check'
 import { demandFor } from './demand'
 import {
+  akeRequiresOffNextDay,
   consecutiveOffStreakBefore,
   getCell,
   makeCanWorkContext,
@@ -292,7 +293,9 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
         setCell(grid, pick.id, d, patternId)
         if (settings.nightMode === 'ake' && afterNightPattern) {
           if (d + 1 <= daysInMonth && !getCell(grid, pick.id, d + 1)) setCell(grid, pick.id, d + 1, afterNightPattern.id)
-          if (d + 2 <= daysInMonth && !getCell(grid, pick.id, d + 2)) setCell(grid, pick.id, d + 2, offPattern.id)
+          if (akeRequiresOffNextDay(settings) && d + 2 <= daysInMonth && !getCell(grid, pick.id, d + 2)) {
+            setCell(grid, pick.id, d + 2, offPattern.id)
+          }
         } else if (settings.nightMode === 'direct') {
           if (d + 1 <= daysInMonth && !getCell(grid, pick.id, d + 1)) setCell(grid, pick.id, d + 1, offPattern.id)
         }

@@ -1,5 +1,6 @@
 import { parseTimeToHours, weekdayOf } from '../../lib/dateUtils'
 import { withinDayPatternCap } from './caps'
+import { akeRequiresOffNextDay } from './gridUtils'
 import { conflictsWithTraitPair } from './traitPairs'
 import { resolveLimits } from './limits'
 import { ruleAppliesToDate } from './ruleMatch'
@@ -104,11 +105,12 @@ export function canWork(
     }
     if (pattern.isNight && patternIdAt(ctx, staff.id, day + 1)) return false
   } else if (ctx.settings.nightMode === 'ake') {
+    const offAfterAke = akeRequiresOffNextDay(ctx.settings)
     if (isNightAt(ctx, staff.id, day - 1)) return false
-    if (categoryAt(ctx, staff.id, day - 1) === 'afterNight') return false
+    if (offAfterAke && categoryAt(ctx, staff.id, day - 1) === 'afterNight') return false
     if (pattern.isNight) {
       if (patternIdAt(ctx, staff.id, day + 1)) return false
-      if (patternIdAt(ctx, staff.id, day + 2)) return false
+      if (offAfterAke && patternIdAt(ctx, staff.id, day + 2)) return false
     }
   }
 

@@ -6,6 +6,7 @@
 import type { Rule, RuleCond } from '../../types/models'
 import { parseTimeToHours, weekdayOf } from '../../lib/dateUtils'
 import { ruleText, type RuleTextContext } from './ruleText'
+import { akeRequiresOffNextDay } from './gridUtils'
 import { resolveLimits } from './limits'
 import { ruleAppliesToDate } from './ruleMatch'
 import type { CheckInput, CheckResult, PatternWithId, RuleWithId, StaffWithId } from './types'
@@ -146,6 +147,8 @@ export function checkMonth(input: CheckInput): CheckResult {
     monthlyMaxDaysOverride,
   } = input
   const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
+  // 違反の文言は施設の夜勤明けの記号で出す（準夜勤の施設は「明休」、ロング夜勤の施設は「明出」など）
+  const akeCode = shiftPatterns.find((p) => p.category === 'afterNight')?.code ?? '明'
   const staffById = new Map(staff.map((s) => [s.id, s]))
   const employmentTypeById = new Map(employmentTypes.map((e) => [e.id, e]))
 
@@ -240,20 +243,20 @@ export function checkMonth(input: CheckInput): CheckResult {
         if (pattern?.category === 'afterNight') {
           const prevPattern = d > 1 ? patternOf(s.id, d - 1) : undefined
           if (!prevPattern?.isNight) {
-            hard.push(`${s.name}: ${d}日 夜勤なしの「明」`)
-            addCell(s.id, d, '夜勤なしの明')
+            hard.push(`${s.name}: ${d}日 夜勤なしの「${akeCode}」`)
+            addCell(s.id, d, `夜勤なしの${akeCode}`)
           }
         }
         if (pattern?.isNight) {
           const nextPattern = d + 1 <= daysInMonth ? patternOf(s.id, d + 1) : undefined
           if (d + 1 <= daysInMonth && nextPattern?.category !== 'afterNight') {
-            hard.push(`${s.name}: ${d + 1}日 夜勤翌日は「明」が必要`)
-            addCell(s.id, d + 1, '夜勤翌日は明が必要')
-          } else if (d + 2 <= daysInMonth) {
+            hard.push(`${s.name}: ${d + 1}日 夜勤翌日は「${akeCode}」が必要`)
+            addCell(s.id, d + 1, `夜勤翌日は${akeCode}が必要`)
+          } else if (akeRequiresOffNextDay(settings) && d + 2 <= daysInMonth) {
             const next2Pattern = patternOf(s.id, d + 2)
             if (next2Pattern?.category !== 'off') {
-              hard.push(`${s.name}: ${d + 2}日 明の翌日は「休」が必要`)
-              addCell(s.id, d + 2, '明の翌日は休が必要')
+              hard.push(`${s.name}: ${d + 2}日 ${akeCode}の翌日は「休」が必要`)
+              addCell(s.id, d + 2, `${akeCode}の翌日は休が必要`)
             }
           }
         }

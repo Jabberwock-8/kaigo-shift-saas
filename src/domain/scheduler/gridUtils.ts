@@ -1,5 +1,6 @@
 import { buildDayPatternCaps, type DayPatternCaps } from './caps'
 import { buildTraitPairBlocks, type TraitPairBlock } from './traitPairs'
+import type { ShiftRulesSettings } from '../../types/models'
 import type { AssignmentGrid, CanWorkContext, CheckInput, GenerateInput, PatternWithId } from './types'
 
 /**
@@ -9,6 +10,11 @@ import type { AssignmentGrid, CanWorkContext, CheckInput, GenerateInput, Pattern
  */
 export function isDayWorkPattern(p: Pick<PatternWithId, 'isWork' | 'isNight' | 'category'> | undefined): boolean {
   return !!p?.isWork && !p.isNight && p.category !== 'afterNight'
+}
+
+/** 「明」を使う運用で、明の翌日を必ず公休にするか（未設定は従来どおり必須） */
+export function akeRequiresOffNextDay(settings: Pick<ShiftRulesSettings, 'akeRequiresOffNextDay'>): boolean {
+  return settings.akeRequiresOffNextDay !== false
 }
 
 export function getCell(grid: AssignmentGrid, staffId: string, day: number): string | undefined {

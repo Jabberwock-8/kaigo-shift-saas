@@ -212,6 +212,11 @@ export type NightMode = 'ake' | 'direct'
 export interface ShiftRulesSettings {
   /** null = 夜勤ブロックの制約なし。'ake' = 夜→明→休／'direct' = 夜→公休 */
   nightMode: NightMode | null
+  /**
+   * 'ake' のとき、明の翌日を必ず公休にするか。null/未設定/true = 必ず公休（ロング夜勤 16:00〜翌9:00 など、明が勤務の運用）。
+   * false = 翌日は自由（準夜勤 21:00〜翌7:00 などで、明を「明休」として休みに数える運用）
+   */
+  akeRequiresOffNextDay?: boolean | null
   /** direct のとき、夜勤の2日後に避ける勤務パターンID */
   nightAvoidPatternIdsAfter2: string[]
   /** patternId -> 連続日数の上限 */

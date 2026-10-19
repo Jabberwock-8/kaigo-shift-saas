@@ -37,3 +37,45 @@ describe('generateOne: 明を勤務日として数える「明を使う」運用
     expect(nightBlock).toEqual([])
   })
 })
+
+describe('generateOne: 準夜勤の「明休」（明の翌日を公休にしない運用）', () => {
+  // 準夜勤（21:00〜翌7:00）の翌日は休み扱いの「明休」。その翌日は勤務を入れてよい
+  const N_SEMI: PatternWithId = { id: 'N', code: 'N1', label: '準夜勤', startTime: '21:00', endTime: '07:00', category: 'night', isWork: true, isNight: true }
+  const AKE_REST: PatternWithId = { id: 'ake', code: '明休', label: '明休', category: 'afterNight', isWork: false, isNight: false }
+  const rules = [
+    rule({ kind: 'hard', days: { type: 'all' }, target: { type: 'shift', value: 'N' }, cond: { type: 'exact', count: 1 } }),
+    rule({ kind: 'hard', days: { type: 'all' }, target: { type: 'shift', value: 'A' }, cond: { type: 'atLeast', count: 2 } }),
+  ]
+  const staffList = ['s1', 's2', 's3', 's4', 's5'].map((id) =>
+    staff(id, { workConditions: { workablePatternIds: ['A', 'B', 'N'], nightShiftTarget: 6 } }),
+  )
+  const run = (akeRequiresOffNextDay: boolean | null) =>
+    generateOne(
+      input({
+        staff: staffList,
+        rules,
+        shiftPatterns: [OFF, A, B, N_SEMI, AKE_REST],
+        settings: settings({ nightMode: 'ake', akeRequiresOffNextDay, monthlyLimitsDefault: { targetWorkdays: 20, maxWorkdays: 20, maxNightShifts: null } }),
+      }),
+      GENERATION_DEFAULTS_V1.profiles[0],
+    )
+  /** 明休の翌日に勤務が入った回数 */
+  const workAfterAke = (assignments: Record<string, Record<string, string>>) =>
+    Object.values(assignments).reduce((n, byDay) => {
+      return n + Object.entries(byDay).filter(([d, p]) => p === 'ake' && ['A', 'B', 'N'].includes(byDay[String(Number(d) + 1)])).length
+    }, 0)
+
+  it('翌日を自由にすると、明休の翌日にも勤務が入り、違反にならない', () => {
+    const results = [1, 2, 3].map(() => run(false))
+    for (const r of results) expect(r.hardViolations.filter((v) => v.includes('明休'))).toEqual([])
+    expect(results.some((r) => workAfterAke(r.assignments) > 0)).toBe(true)
+  })
+
+  it('未設定なら従来どおり、明休の翌日は必ず公休', () => {
+    for (let i = 0; i < 3; i++) {
+      const r = run(null)
+      expect(workAfterAke(r.assignments)).toBe(0)
+      expect(r.hardViolations.filter((v) => v.includes('明休'))).toEqual([])
+    }
+  })
+})

@@ -102,7 +102,7 @@ export default function SettingsPage() {
             onChange={(e) => update({ nightMode: (e.target.value || null) as NightMode | null })}
           >
             <option value="">未設定（制約なし）</option>
-            <option value="ake">「明」を使う（夜→明→休）</option>
+            <option value="ake">「明休」「明出」を使う（夜→明休）</option>
             <option value="direct">「明」を使わず公休に直行（夜→休）</option>
           </select>
         </label>
@@ -126,10 +126,23 @@ export default function SettingsPage() {
           </div>
         )}
         {settings.nightMode === 'ake' && (
-          <p className="muted">
-            「明」カテゴリの勤務パターンが夜勤の翌日、「公休」カテゴリが明の翌日に必要です
-            （勤務パターン画面でカテゴリを設定してください）。
-          </p>
+          <>
+            <label className="field-row">
+              <input
+                type="checkbox"
+                checked={settings.akeRequiresOffNextDay !== false}
+                disabled={!isAdmin}
+                onChange={(e) => update({ akeRequiresOffNextDay: e.target.checked })}
+              />
+              明休・明出の翌日を必ず公休にする（夜→明出→休）
+            </label>
+            <p className="muted">
+              夜勤の翌日に、種別「夜勤明け」の勤務パターンが必要です（勤務パターン画面で種別を設定してください）。
+              準夜勤（21:00〜翌7:00 など）で翌日を「明休」として休みに数える場合は、チェックを外すと明休の翌日に自由に勤務を入れられます
+              （明休の勤務パターンは「勤務」のチェックを外してください）。
+              ロング夜勤（16:00〜翌9:00 など）で翌日が「明出」の勤務になり、その翌日を必ず休みにする場合は、チェックを入れます。
+            </p>
+          </>
         )}
       </fieldset>
 
