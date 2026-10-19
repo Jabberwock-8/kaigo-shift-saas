@@ -79,3 +79,38 @@ describe('generateOne: 準夜勤の「明休」（明の翌日を公休にしな
     }
   })
 })
+
+describe('準夜勤の「明休」: 夜勤の連続', () => {
+  const N_SEMI: PatternWithId = { id: 'N', code: 'N1', label: '準夜勤', startTime: '21:00', endTime: '07:00', category: 'night', isWork: true, isNight: true }
+  const AKE_REST: PatternWithId = { id: 'ake', code: '明休', label: '明休', category: 'afterNight', isWork: false, isNight: false }
+  const staffList = ['s1', 's2', 's3', 's4', 's5'].map((id) =>
+    staff(id, { workConditions: { workablePatternIds: ['A', 'B', 'N'], nightShiftTarget: 4 } }),
+  )
+  const rules = [rule({ kind: 'hard', days: { type: 'all' }, target: { type: 'shift', value: 'N' }, cond: { type: 'exact', count: 1 } })]
+  const run = (akeAllowConsecutiveNights: boolean) =>
+    generateOne(
+      input({
+        staff: staffList,
+        rules,
+        shiftPatterns: [OFF, A, B, N_SEMI, AKE_REST],
+        settings: settings({ nightMode: 'ake', akeRequiresOffNextDay: false, akeAllowConsecutiveNights, shiftConsecutiveCaps: { N: 2 } }),
+        // s1 の 10・11日に連続夜勤を入力してロック
+        baseAssignments: { s1: { '10': 'N', '11': 'N' } },
+        lockedCells: { s1: { '10': true, '11': true } },
+      }),
+      GENERATION_DEFAULTS_V1.profiles[0],
+    )
+
+  it('連続を認めると、ロックした夜→夜はそのまま違反にならず、最後の翌日に明休が入る', () => {
+    for (let i = 0; i < 3; i++) {
+      const r = run(true)
+      expect(r.assignments.s1['12']).toBe('ake')
+      expect(r.hardViolations.filter((v) => v.startsWith('s1:') && v.includes('明休'))).toEqual([])
+    }
+  })
+
+  it('連続を認めないと、夜→夜は「夜勤翌日は明休が必要」の違反になる', () => {
+    const r = run(false)
+    expect(r.hardViolations).toContain('s1: 11日 夜勤翌日は「明休」が必要')
+  })
+})

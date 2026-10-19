@@ -17,6 +17,11 @@ export function akeRequiresOffNextDay(settings: Pick<ShiftRulesSettings, 'akeReq
   return settings.akeRequiresOffNextDay !== false
 }
 
+/** 「明」を使う運用で、夜勤の連続（夜→夜→明）を認めるか（未設定は認めない） */
+export function akeAllowsConsecutiveNights(settings: Pick<ShiftRulesSettings, 'akeAllowConsecutiveNights'>): boolean {
+  return settings.akeAllowConsecutiveNights === true
+}
+
 export function getCell(grid: AssignmentGrid, staffId: string, day: number): string | undefined {
   return grid[staffId]?.[String(day)]
 }

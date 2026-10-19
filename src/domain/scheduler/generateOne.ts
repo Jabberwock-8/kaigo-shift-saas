@@ -272,6 +272,21 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
   for (const w of wishes) {
     if (!getCell(grid, w.staffId, w.day)) setCell(grid, w.staffId, w.day, offPattern.id)
   }
+  // 「明」を使う運用で、手入力・ロックした夜勤（連続を含む）の最後の翌日に明を置く。
+  // 生成で置いた夜勤には夜勤配置のときに明を付けるが、ロック済みの夜勤には付ける処理が無く、
+  // 翌日に別の勤務が入って「夜勤翌日は明が必要」の違反になっていた
+  if (settings.nightMode === 'ake' && afterNightPattern) {
+    for (const s of staff) {
+      for (let d = 1; d <= daysInMonth; d++) {
+        if (!patternById.get(getCell(grid, s.id, d) ?? '')?.isNight) continue
+        if (d + 1 > daysInMonth || patternById.get(getCell(grid, s.id, d + 1) ?? '')?.isNight) continue
+        if (!getCell(grid, s.id, d + 1)) setCell(grid, s.id, d + 1, afterNightPattern.id)
+        if (akeRequiresOffNextDay(settings) && d + 2 <= daysInMonth && !getCell(grid, s.id, d + 2)) {
+          setCell(grid, s.id, d + 2, offPattern.id)
+        }
+      }
+    }
+  }
 
   // 2. 夜勤割当
   const nightPatternIds = shiftPatterns.filter((p) => p.isWork && p.isNight).map((p) => p.id)

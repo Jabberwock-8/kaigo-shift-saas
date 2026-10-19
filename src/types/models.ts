@@ -217,6 +217,11 @@ export interface ShiftRulesSettings {
    * false = 翌日は自由（準夜勤 21:00〜翌7:00 などで、明を「明休」として休みに数える運用）
    */
   akeRequiresOffNextDay?: boolean | null
+  /**
+   * 'ake' のとき、夜勤の連続（夜→夜→明休）を認めるか。true なら明は連続の最後の翌日に必要。
+   * 連続の上限は shiftConsecutiveCaps で決める。自動生成は連続夜勤を作らない（手入力・ロックした連続を尊重する）
+   */
+  akeAllowConsecutiveNights?: boolean | null
   /** direct のとき、夜勤の2日後に避ける勤務パターンID */
   nightAvoidPatternIdsAfter2: string[]
   /** patternId -> 連続日数の上限 */

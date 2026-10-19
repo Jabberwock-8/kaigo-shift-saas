@@ -6,7 +6,7 @@
 import type { Rule, RuleCond } from '../../types/models'
 import { parseTimeToHours, weekdayOf } from '../../lib/dateUtils'
 import { ruleText, type RuleTextContext } from './ruleText'
-import { akeRequiresOffNextDay } from './gridUtils'
+import { akeAllowsConsecutiveNights, akeRequiresOffNextDay } from './gridUtils'
 import { resolveLimits } from './limits'
 import { ruleAppliesToDate } from './ruleMatch'
 import type { CheckInput, CheckResult, PatternWithId, RuleWithId, StaffWithId } from './types'
@@ -249,7 +249,9 @@ export function checkMonth(input: CheckInput): CheckResult {
         }
         if (pattern?.isNight) {
           const nextPattern = d + 1 <= daysInMonth ? patternOf(s.id, d + 1) : undefined
-          if (d + 1 <= daysInMonth && nextPattern?.category !== 'afterNight') {
+          if (nextPattern?.isNight && akeAllowsConsecutiveNights(settings)) {
+            // 夜勤の連続中。明は連続の最後の夜勤の翌日で確かめる
+          } else if (d + 1 <= daysInMonth && nextPattern?.category !== 'afterNight') {
             hard.push(`${s.name}: ${d + 1}日 夜勤翌日は「${akeCode}」が必要`)
             addCell(s.id, d + 1, `夜勤翌日は${akeCode}が必要`)
           } else if (akeRequiresOffNextDay(settings) && d + 2 <= daysInMonth) {

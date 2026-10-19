@@ -1,6 +1,6 @@
 import { parseTimeToHours, weekdayOf } from '../../lib/dateUtils'
 import { withinDayPatternCap } from './caps'
-import { akeRequiresOffNextDay } from './gridUtils'
+import { akeAllowsConsecutiveNights, akeRequiresOffNextDay } from './gridUtils'
 import { conflictsWithTraitPair } from './traitPairs'
 import { resolveLimits } from './limits'
 import { ruleAppliesToDate } from './ruleMatch'
@@ -106,11 +106,14 @@ export function canWork(
     if (pattern.isNight && patternIdAt(ctx, staff.id, day + 1)) return false
   } else if (ctx.settings.nightMode === 'ake') {
     const offAfterAke = akeRequiresOffNextDay(ctx.settings)
-    if (isNightAt(ctx, staff.id, day - 1)) return false
+    // 夜勤の連続を認める運用では、夜勤の翌日にもう一度夜勤を置ける（明は連続の最後の翌日に置く）
+    const consecutive = akeAllowsConsecutiveNights(ctx.settings)
+    if (isNightAt(ctx, staff.id, day - 1) && !(consecutive && pattern.isNight)) return false
     if (offAfterAke && categoryAt(ctx, staff.id, day - 1) === 'afterNight') return false
     if (pattern.isNight) {
-      if (patternIdAt(ctx, staff.id, day + 1)) return false
-      if (offAfterAke && patternIdAt(ctx, staff.id, day + 2)) return false
+      const continuesIntoNight = consecutive && isNightAt(ctx, staff.id, day + 1)
+      if (patternIdAt(ctx, staff.id, day + 1) && !continuesIntoNight) return false
+      if (offAfterAke && patternIdAt(ctx, staff.id, day + 2) && !continuesIntoNight) return false
     }
   }
 

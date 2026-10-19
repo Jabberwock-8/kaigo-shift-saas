@@ -136,11 +136,22 @@ export default function SettingsPage() {
               />
               明休・明出の翌日を必ず公休にする（夜→明出→休）
             </label>
+            <label className="field-row">
+              <input
+                type="checkbox"
+                checked={settings.akeAllowConsecutiveNights === true}
+                disabled={!isAdmin}
+                onChange={(e) => update({ akeAllowConsecutiveNights: e.target.checked })}
+              />
+              夜勤の連続を認める（夜→夜→明休。明休は連続の最後の翌日）
+            </label>
             <p className="muted">
               夜勤の翌日に、種別「夜勤明け」の勤務パターンが必要です（勤務パターン画面で種別を設定してください）。
               準夜勤（21:00〜翌7:00 など）で翌日を「明休」として休みに数える場合は、チェックを外すと明休の翌日に自由に勤務を入れられます
               （明休の勤務パターンは「勤務」のチェックを外してください）。
               ロング夜勤（16:00〜翌9:00 など）で翌日が「明出」の勤務になり、その翌日を必ず休みにする場合は、チェックを入れます。
+              夜勤の連続を認める場合、何日まで続けてよいかは下の「勤務パターン別の連続日数上限」で夜勤を選んで決めます。
+              自動生成は連続夜勤を自分では作りません。続けたい夜勤はシフト表で入力してロックしてから生成してください（連続の最後の翌日に明休が自動で入ります）。
             </p>
           </>
         )}
