@@ -260,6 +260,13 @@ export function checkMonth(input: CheckInput): CheckResult {
               hard.push(`${s.name}: ${d + 2}日 ${akeCode}の翌日は「休」が必要`)
               addCell(s.id, d + 2, `${akeCode}の翌日は休が必要`)
             }
+          } else if (d + 2 <= daysInMonth) {
+            const next2Id = assignedOf(s.id, d + 2)
+            if (next2Id && settings.nightAvoidPatternIdsAfter2.includes(next2Id)) {
+              const avoidLabel = patternById.get(next2Id)?.label ?? next2Id
+              hard.push(`${s.name}: ${d + 2}日 夜勤の2日後に${avoidLabel}は避ける`)
+              addCell(s.id, d + 2, `夜勤の2日後に${avoidLabel}は避ける`)
+            }
           }
         }
       } else if (settings.nightMode === 'direct') {

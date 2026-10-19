@@ -222,6 +222,10 @@ function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
       for (const { d } of candidates) {
         const wk = weekOf(d)
         const sortedTypes = [...workPatternIds].sort((a, b) => {
+          // 「生成では後回し」の勤務は、ほかの勤務をすべて試してから使う
+          const lowA = patternById.get(a)?.lowFillPriority ? 1 : 0
+          const lowB = patternById.get(b)?.lowFillPriority ? 1 : 0
+          if (lowA !== lowB) return lowA - lowB
           const scoreA =
             timeDistance(patternById.get(a), prefStart, prefEnd) +
             (weekTypeCount[`${wk}:${a}`] ?? 0) * 1.5 +

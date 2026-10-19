@@ -107,7 +107,7 @@ export default function SettingsPage() {
           </select>
         </label>
 
-        {settings.nightMode === 'direct' && (
+        {(settings.nightMode === 'direct' || (settings.nightMode === 'ake' && settings.akeRequiresOffNextDay === false)) && (
           <div className="field-row">
             夜勤の2日後に避ける勤務
             <div className="checkbox-inline">

@@ -109,6 +109,7 @@ export default function ShiftPatternsPage() {
             <th>勤務</th>
             <th>夜勤</th>
             <th>種別</th>
+            <th title="自動生成で日数を埋めるとき、ほかの勤務で埋まらない場合だけ使います">生成では後回し</th>
             <th>色</th>
             {isAdmin && <th></th>}
           </tr>
@@ -179,6 +180,14 @@ export default function ShiftPatternsPage() {
                   checked={row.isNight}
                   disabled={!isAdmin}
                   onChange={(e) => updateRow(i, { isNight: e.target.checked })}
+                />
+              </td>
+              <td>
+                <input
+                  type="checkbox"
+                  checked={!!row.lowFillPriority}
+                  disabled={!isAdmin || !row.isWork || row.isNight}
+                  onChange={(e) => updateRow(i, { lowFillPriority: e.target.checked })}
                 />
               </td>
               <td>

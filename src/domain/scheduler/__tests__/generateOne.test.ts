@@ -45,3 +45,22 @@ describe('generateOne: 「配置しない」の必須ルール', () => {
     expect(result.hardViolations.filter((v) => v.includes('合計1名以上'))).toEqual([])
   })
 })
+
+describe('generateOne: 生成では後回しの勤務', () => {
+  // A と B のどちらも勤務できるが、B は後回し。日数の補充は A で埋まるなら A を使う
+  const LOW_B = { ...B, lowFillPriority: true }
+  const staffList = ['s1', 's2'].map((id) => staff(id, { workConditions: { workablePatternIds: ['A', 'B'] } }))
+
+  it('ほかの勤務で埋まるなら、後回しの勤務は使わない', () => {
+    const result = generateOne(
+      input({
+        staff: staffList,
+        shiftPatterns: [OFF, A, LOW_B],
+        settings: settings({ monthlyLimitsDefault: { targetWorkdays: 20, maxWorkdays: 20, maxNightShifts: null }, preferredFillTimeRange: { start: '08:30', end: '17:30' } }),
+      }),
+      profile,
+    )
+    const bCount = Object.values(result.assignments).reduce((n, byDay) => n + Object.values(byDay).filter((p) => p === 'B').length, 0)
+    expect(bCount).toBe(0)
+  })
+})

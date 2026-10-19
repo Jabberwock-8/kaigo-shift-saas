@@ -115,6 +115,11 @@ export interface ShiftPattern {
   color?: string
   /** 記号の文字色（パステル背景とペアで使う） */
   textColor?: string
+  /**
+   * 自動生成の必要出勤日数の補充で後回しにする（ほかの勤務で埋まらないときだけ使う）。
+   * 全員が選べるようにしてあるが、なるべく入れたくない勤務（アミティホーム寺田の B1）に使う
+   */
+  lowFillPriority?: boolean
 }
 
 export type RuleDaysType = 'all' | 'weekdays' | 'weekend' | 'dow' | 'dates'

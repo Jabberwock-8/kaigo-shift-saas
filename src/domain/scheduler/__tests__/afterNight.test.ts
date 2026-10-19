@@ -114,3 +114,35 @@ describe('準夜勤の「明休」: 夜勤の連続', () => {
     expect(r.hardViolations).toContain('s1: 11日 夜勤翌日は「明休」が必要')
   })
 })
+
+describe('準夜勤の「明休」: 夜勤の2日後に避ける勤務', () => {
+  const N_SEMI: PatternWithId = { id: 'N', code: 'N1', label: '準夜勤', startTime: '21:00', endTime: '07:00', category: 'night', isWork: true, isNight: true }
+  const AKE_REST: PatternWithId = { id: 'ake', code: '明休', label: '明休', category: 'afterNight', isWork: false, isNight: false }
+
+  it('明休の翌日に、避ける勤務（A）は入らない', () => {
+    const staffList = ['s1', 's2', 's3', 's4', 's5'].map((id) =>
+      staff(id, { workConditions: { workablePatternIds: ['A', 'B', 'N'], nightShiftTarget: 5 } }),
+    )
+    const rules = [
+      rule({ kind: 'hard', days: { type: 'all' }, target: { type: 'shift', value: 'N' }, cond: { type: 'exact', count: 1 } }),
+      rule({ kind: 'hard', days: { type: 'all' }, target: { type: 'shift', value: 'A' }, cond: { type: 'atLeast', count: 1 } }),
+    ]
+    for (let i = 0; i < 3; i++) {
+      const r = generateOne(
+        input({
+          staff: staffList,
+          rules,
+          shiftPatterns: [OFF, A, B, N_SEMI, AKE_REST],
+          settings: settings({ nightMode: 'ake', akeRequiresOffNextDay: false, nightAvoidPatternIdsAfter2: ['A'] }),
+        }),
+        GENERATION_DEFAULTS_V1.profiles[0],
+      )
+      for (const byDay of Object.values(r.assignments)) {
+        for (const [d, p] of Object.entries(byDay)) {
+          if (p === 'ake' && byDay[String(Number(d) - 1)] === 'N') expect(byDay[String(Number(d) + 1)]).not.toBe('A')
+        }
+      }
+      expect(r.hardViolations.filter((v) => v.includes('避ける'))).toEqual([])
+    }
+  })
+})

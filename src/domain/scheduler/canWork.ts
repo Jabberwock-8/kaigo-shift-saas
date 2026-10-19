@@ -110,6 +110,14 @@ export function canWork(
     const consecutive = akeAllowsConsecutiveNights(ctx.settings)
     if (isNightAt(ctx, staff.id, day - 1) && !(consecutive && pattern.isNight)) return false
     if (offAfterAke && categoryAt(ctx, staff.id, day - 1) === 'afterNight') return false
+    // 明（明休）の翌日＝夜勤の2日後に避ける勤務（公休に直行する運用と同じ設定を使う）
+    if (
+      categoryAt(ctx, staff.id, day - 1) === 'afterNight' &&
+      isNightAt(ctx, staff.id, day - 2) &&
+      ctx.settings.nightAvoidPatternIdsAfter2.includes(patternId)
+    ) {
+      return false
+    }
     if (pattern.isNight) {
       const continuesIntoNight = consecutive && isNightAt(ctx, staff.id, day + 1)
       if (patternIdAt(ctx, staff.id, day + 1) && !continuesIntoNight) return false
