@@ -159,6 +159,40 @@ function offStreakSizeAt(
   return size
 }
 
+/**
+ * 必要勤務日数が無い職員（曜日で勤務日が決まっているパートなど）でも、必須の「必ず勤務させる」日は埋める。
+ * 以前は必要勤務日数のある職員しか補充しておらず、その人だけができる勤務（C1・E6 など）に必要人数の条件が無いと、
+ * 「月・水・木は必ず勤務」の職員に1日も勤務が入らなかった（第二男性棟の初期設定で判明）
+ */
+function fillMustWorkDays(
+  grid: AssignmentGrid,
+  input: GenerateInput,
+  s: StaffWithId,
+  patternById: Map<string, PatternWithId>,
+  offPatternId: string,
+) {
+  const allowed = s.workConditions?.workablePatternIds
+  const workPatternIds = (allowed && allowed.length > 0 ? allowed : input.shiftPatterns.map((p) => p.id)).filter((id) =>
+    isDayWorkPattern(patternById.get(id)),
+  )
+  for (let d = 1; d <= input.daysInMonth; d++) {
+    const hardWork = input.rules.some(
+      (r) =>
+        r.enabled &&
+        r.kind === 'hard' &&
+        r.target.type === 'staff' &&
+        r.target.value === s.id &&
+        r.cond.type === 'work' &&
+        ruleAppliesToDate(r.days, input.yearMonth, d),
+    )
+    if (!hardWork || getCell(grid, s.id, d) !== offPatternId || input.lockedCells[s.id]?.[String(d)]) continue
+    const sorted = [...workPatternIds].sort((a, b) => staffRuleAdjust(s.id, d, a, input) - staffRuleAdjust(s.id, d, b, input))
+    setCell(grid, s.id, d, null)
+    const pick = sorted.find((pid) => canWork(s, d, pid, makeCanWorkContext(grid, input)))
+    setCell(grid, s.id, d, pick ?? offPatternId)
+  }
+}
+
 function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
   const { staff, employmentTypes, settings, daysInMonth, shiftPatterns, monthlyMaxDaysOverride, lockedCells } = input
   const employmentTypeById = new Map(employmentTypes.map((e) => [e.id, e]))
@@ -178,7 +212,10 @@ function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
       monthlyMaxDaysOverride?.[s.id],
       daysInMonth,
     )
-    if (limits.targetWorkdays == null) continue
+    if (limits.targetWorkdays == null) {
+      fillMustWorkDays(grid, input, s, patternById, offPattern.id)
+      continue
+    }
     let current = workCountOf(grid, s.id, daysInMonth, patternById)
     if (current >= limits.targetWorkdays) continue
 

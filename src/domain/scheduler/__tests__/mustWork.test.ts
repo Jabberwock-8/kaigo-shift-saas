@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { generateOne } from '../generateOne'
 import { GENERATION_DEFAULTS_V1 } from '../defaults'
-import { input, rule, staff } from './fixtures'
+import type { PatternWithId } from '../types'
+import { A, FULL, OFF, input, rule, staff } from './fixtures'
 
 const profile = GENERATION_DEFAULTS_V1.profiles[0]
 // 2026年9月の金曜日
@@ -63,5 +64,24 @@ describe('「必ず勤務させる」', () => {
     }
 
     expect(fridaysWorked(true)).toBeLessThan(fridaysWorked(false))
+  })
+})
+
+describe('generateOne: 必要勤務日数の無い職員の「必ず勤務させる」', () => {
+  // 曜日で勤務日が決まっているパート。C1 は本人しかできず、C1 の必要人数の条件も無い
+  const C1: PatternWithId = { id: 'C1', code: 'C1', label: 'C1', startTime: '09:00', endTime: '16:00', category: 'day', isWork: true, isNight: false }
+  const PART_OFF = { id: 'part', label: '非常勤', hasTargetWorkdays: false }
+
+  it('必須の「月・水・木は必ず勤務」の日に勤務が入る（以前は1日も入らなかった）', () => {
+    const part = staff('p1', { employmentTypeId: 'part', workConditions: { workablePatternIds: ['C1'], fixedOffWeekdays: [0, 2, 5, 6] } })
+    const rules = [rule({ kind: 'hard', days: { type: 'dow', values: [1, 3, 4] }, target: { type: 'staff', value: 'p1' }, cond: { type: 'work' } })]
+    const result = generateOne(
+      input({ staff: [part], rules, shiftPatterns: [OFF, A, C1], employmentTypes: [FULL, PART_OFF] }),
+      GENERATION_DEFAULTS_V1.profiles[0],
+    )
+    const worked = Object.entries(result.assignments.p1).filter(([, p]) => p === 'C1').map(([d]) => Number(d))
+    // 2026年9月の月・水・木は13日ある
+    expect(worked).toHaveLength(13)
+    expect(result.hardViolations.filter((v) => v.includes('必ず勤務'))).toEqual([])
   })
 })
