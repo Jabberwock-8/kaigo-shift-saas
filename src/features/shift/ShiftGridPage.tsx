@@ -270,6 +270,28 @@ export default function ShiftGridPage() {
     return map
   }, [wishes])
 
+  // 表の枠の下の端を、いつも画面の下の端にそろえる。枠の高さを固定値にすると、表の上にあるボタンや
+  // 夜勤回数の行の分だけ枠が画面の外にはみ出し、枠の下にある横スクロールバーが見えなくなっていた。
+  // 表の上の量やページのスクロール位置で変わるため、描画のたび・スクロール・画面サイズの変更で計算し直す
+  useLayoutEffect(() => {
+    const el = gridScrollRef.current
+    if (!el || fitToScreen) return
+    function fit() {
+      if (!el) return
+      const top = Math.max(0, el.getBoundingClientRect().top)
+      el.style.maxHeight = `${Math.max(320, window.innerHeight - top - 12)}px`
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    // 施設の画面はページ全体ではなく内側の要素がスクロールすることがあるため、取りこぼさないよう捕捉段階で拾う
+    window.addEventListener('scroll', fit, true)
+    return () => {
+      window.removeEventListener('resize', fit)
+      window.removeEventListener('scroll', fit, true)
+      el.style.maxHeight = ''
+    }
+  })
+
   // 「画面に収める」: はみ出す分だけ表全体を縮小して、横/縦スクロールなしで全体を見せる
   useLayoutEffect(() => {
     if (!fitToScreen) return
