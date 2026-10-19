@@ -279,7 +279,7 @@ export default function ShiftGridPage() {
     function fit() {
       if (!el) return
       const top = Math.max(0, el.getBoundingClientRect().top)
-      el.style.maxHeight = `${Math.max(320, window.innerHeight - top - 12)}px`
+      el.style.maxHeight = `${Math.max(160, window.innerHeight - top - 12)}px`
     }
     fit()
     window.addEventListener('resize', fit)
