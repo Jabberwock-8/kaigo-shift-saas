@@ -87,13 +87,17 @@ function colOf(address: string): string {
 /** 職員の欄を extra 行増やす（31行目の「合計」から下をずらす） */
 function insertStaffRows(ws: ExcelJS.Worksheet, extra: number) {
   // 1. 共有の計算式（shared formula）は行をずらすと壊れるため、すべて個別の計算式にしてから参照を直す
+  //    共有の計算式は元になるセルの式から作られるため、書き換えながら読むと2回ずれる（合計の行が自分自身を含む範囲になり、
+  //    Excel で循環参照になっていた）。先に全部読み取ってから書き換える
+  const formulas: { cell: ExcelJS.Cell; formula: string }[] = []
   ws.eachRow({ includeEmpty: false }, (row) => {
     row.eachCell({ includeEmpty: false }, (cell) => {
-      if (cell.type !== ExcelJS.ValueType.Formula) return
-      const formula = cell.formula
-      cell.value = { formula: shiftFormula(formula, extra) } as ExcelJS.CellFormulaValue
+      if (cell.type === ExcelJS.ValueType.Formula) formulas.push({ cell, formula: cell.formula })
     })
   })
+  for (const { cell, formula } of formulas) {
+    cell.value = { formula: shiftFormula(formula, extra) } as ExcelJS.CellFormulaValue
+  }
 
   // 2. 下の結合は外して、ずらしてから付け直す。職員の最後の行の結合（兼務状況の欄など）は新しい行にも付ける
   const merges = Object.values((ws as unknown as { _merges: Record<string, { range: string }> })._merges).map((m) => m.range)

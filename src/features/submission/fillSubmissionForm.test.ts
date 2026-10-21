@@ -73,5 +73,25 @@ describe('fillSubmissionForm', () => {
     expect(dv['C55']).toBeTruthy()
     expect(dv['AG68']).toBeTruthy()
     expect(ws.pageSetup.printArea).toBe('A1:AN123')
+    // 合計の行は全列とも 11〜55 行目（以前は共有の計算式が2回ずれ、H〜AJ 列が自分自身を含む範囲になっていた）
+    for (const col of ['G', 'H', 'P', 'AJ']) expect(f(`${col}56`)).toBe(`+SUM(${col}11:${col}55)`)
+    // どの計算式も自分自身を参照しない（Excel の循環参照の警告）
+    const pos = (a: string) => {
+      const m = a.replace(/\$/g, '').match(/^([A-Z]+)(\d+)$/)!
+      return [[...m[1]].reduce((c, ch) => c * 26 + ch.charCodeAt(0) - 64, 0), Number(m[2])]
+    }
+    const circular: string[] = []
+    ws.eachRow((row) =>
+      row.eachCell((cell) => {
+        if (cell.type !== ExcelJS.ValueType.Formula) return
+        const [cc, cr] = pos(cell.address)
+        for (const m of cell.formula.matchAll(/(?<![A-Za-z0-9_!])(\$?[A-Z]{1,3}\$?\d+)(?::(\$?[A-Z]{1,3}\$?\d+))?/g)) {
+          const [sc, sr] = pos(m[1])
+          const [ec, er] = m[2] ? pos(m[2]) : [sc, sr]
+          if (cc >= sc && cc <= ec && cr >= sr && cr <= er) circular.push(`${cell.address}: ${cell.formula}`)
+        }
+      }),
+    )
+    expect(circular).toEqual([])
   })
 })
