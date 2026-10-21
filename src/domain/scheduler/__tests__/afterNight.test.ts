@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { checkMonth } from '../check'
 import { generateOne } from '../generateOne'
+import { makeCheckInput } from '../gridUtils'
 import { GENERATION_DEFAULTS_V1 } from '../defaults'
 import type { PatternWithId } from '../types'
 import { A, B, OFF, input, rule, settings, staff } from './fixtures'
@@ -193,5 +195,17 @@ describe('夜勤の前日の決まった勤務（M3→夜勤→明出→公休�
   it('設定しなければ、夜勤の前日は決まらない（M3 以外も入る）', () => {
     const rates = [1, 2, 3].map(() => preNightRate(run(null).assignments))
     expect(rates.some((x) => x < 1)).toBe(true)
+  })
+})
+
+describe('夜勤とセットの勤務は「対応外の勤務」としない', () => {
+  it('可能な勤務が夜勤練習（R1）だけでも、手で入れた M3→R1→明出 は対応外にならない', () => {
+    const R1: PatternWithId = { id: 'R1', code: 'R1', label: '夜勤練習', startTime: '16:00', endTime: '10:00', category: 'night', isWork: true, isNight: true }
+    const M: PatternWithId = { id: 'M', code: 'M3', label: 'M3', startTime: '11:00', endTime: '20:00', category: 'day', isWork: true, isNight: false }
+    const AKE_WORK: PatternWithId = { id: 'ake', code: '明出', label: '明出', category: 'afterNight', isWork: true, isNight: false }
+    const s1 = staff('s1', { workConditions: { workablePatternIds: ['B', 'R1'] } })
+    const base = input({ staff: [s1], shiftPatterns: [OFF, B, M, R1, AKE_WORK], settings: settings({ nightMode: 'ake', nightPrecedingPatternId: 'M' }) })
+    const r = checkMonth(makeCheckInput({ s1: { '9': 'M', '10': 'R1', '11': 'ake', '12': 'off', '13': 'M' } }, base))
+    expect(r.hard.filter((v) => v.includes('対応外'))).toEqual(['s1: 13日 対応外の勤務（M3）'])
   })
 })

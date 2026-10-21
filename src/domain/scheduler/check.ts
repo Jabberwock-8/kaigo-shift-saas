@@ -206,7 +206,13 @@ export function checkMonth(input: CheckInput): CheckResult {
         }
 
         const allowed = wc.workablePatternIds
-        if (allowed && allowed.length > 0 && !allowed.includes(pattern.id)) {
+        // 夜勤とセットで入る勤務（夜勤明け、夜勤の前日の決まった勤務）は、本人の「可能な勤務」に無くても対応外としない。
+        // 夜勤練習（R1）だけを可能な勤務にした新人に、前日の M3・翌日の明出まで対応外と出ていたため
+        const nextIsNight = !!patternOf(s.id, d + 1)?.isNight
+        const comesWithNight =
+          (pattern.category === 'afterNight' && !!patternOf(s.id, d - 1)?.isNight) ||
+          (!!settings.nightPrecedingPatternId && pattern.id === settings.nightPrecedingPatternId && nextIsNight)
+        if (allowed && allowed.length > 0 && !allowed.includes(pattern.id) && !comesWithNight) {
           hard.push(`${s.name}: ${d}日 対応外の勤務（${pattern.label}）`)
           addCell(s.id, d, '対応外の勤務')
         }
