@@ -313,6 +313,16 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
   for (const w of wishes) {
     if (!getCell(grid, w.staffId, w.day)) setCell(grid, w.staffId, w.day, offPattern.id)
   }
+  // 手入力・ロックした夜勤の前日に、夜勤の前日の決まった勤務（M3 など）を置く（夜勤の連続中は除く）
+  if (settings.nightPrecedingPatternId) {
+    for (const s of staff) {
+      for (let d = 2; d <= daysInMonth; d++) {
+        if (!patternById.get(getCell(grid, s.id, d) ?? '')?.isNight) continue
+        if (getCell(grid, s.id, d - 1)) continue
+        setCell(grid, s.id, d - 1, settings.nightPrecedingPatternId)
+      }
+    }
+  }
   // 「明」を使う運用で、手入力・ロックした夜勤（連続を含む）の最後の翌日に明を置く。
   // 生成で置いた夜勤には夜勤配置のときに明を付けるが、ロック済みの夜勤には付ける処理が無く、
   // 翌日に別の勤務が入って「夜勤翌日は明が必要」の違反になっていた
@@ -347,6 +357,10 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
         if (!candidates.length) break
         const pick = candidates[Math.floor(Math.random() * Math.min(config.engine.nightPickTopN, candidates.length))]
         setCell(grid, pick.id, d, patternId)
+        // 夜勤の前日の決まった勤務（M3 など）。置けることは canWork で確かめてある
+        if (settings.nightPrecedingPatternId && d > 1 && !getCell(grid, pick.id, d - 1)) {
+          setCell(grid, pick.id, d - 1, settings.nightPrecedingPatternId)
+        }
         if (settings.nightMode === 'ake' && afterNightPattern) {
           if (d + 1 <= daysInMonth && !getCell(grid, pick.id, d + 1)) setCell(grid, pick.id, d + 1, afterNightPattern.id)
           if (akeRequiresOffNextDay(settings) && d + 2 <= daysInMonth && !getCell(grid, pick.id, d + 2)) {

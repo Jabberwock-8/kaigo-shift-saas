@@ -125,6 +125,19 @@ export function canWork(
     }
   }
 
+  // 5.2 夜勤の前日の決まった勤務（M3→夜勤 など）
+  const pre = ctx.settings.nightPrecedingPatternId
+  if (pre) {
+    // 翌日が夜勤の日には、決まった勤務以外の勤務を置かない
+    if (pattern.isWork && patternId !== pre && isNightAt(ctx, staff.id, day + 1)) return false
+    // 夜勤を置くには、前日が決まった勤務（または置ける空き）である必要がある。夜勤の連続中と月の1日は除く
+    if (pattern.isNight && day > 1 && !isNightAt(ctx, staff.id, day - 1)) {
+      const prevId = patternIdAt(ctx, staff.id, day - 1)
+      if (prevId && prevId !== pre) return false
+      if (!prevId && !canWork(staff, day - 1, pre, ctx)) return false
+    }
+  }
+
   // 5.5 休息時間（null/true=必須扱い。false のときだけ推奨(soft)に緩める）
   if (ctx.settings.minRestHours != null && ctx.settings.treatRestHoursAsHard !== false) {
     const minRest = ctx.settings.minRestHours

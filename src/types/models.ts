@@ -227,6 +227,11 @@ export interface ShiftRulesSettings {
    * 連続の上限は shiftConsecutiveCaps で決める。自動生成は連続夜勤を作らない（手入力・ロックした連続を尊重する）
    */
   akeAllowConsecutiveNights?: boolean | null
+  /**
+   * 夜勤の前日に入れる勤務パターンID（第二男性棟の「M3→夜勤→明出→公休」のような決まった流れ）。
+   * 設定すると、夜勤の前日は必ずこの勤務になる（夜勤の連続中と、月の1日の夜勤は除く）。null/未設定なら決まりなし
+   */
+  nightPrecedingPatternId?: string | null
   /** direct のとき、夜勤の2日後に避ける勤務パターンID */
   nightAvoidPatternIdsAfter2: string[]
   /** patternId -> 連続日数の上限 */

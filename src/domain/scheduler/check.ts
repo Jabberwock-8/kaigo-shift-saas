@@ -238,6 +238,16 @@ export function checkMonth(input: CheckInput): CheckResult {
         })
       }
 
+      // ---- 夜勤の前日の決まった勤務（M3→夜勤 など。夜勤の連続中と月の1日は除く） ----
+      if (settings.nightPrecedingPatternId && pattern?.isNight && d > 1) {
+        const prevPattern = patternOf(s.id, d - 1)
+        if (!prevPattern?.isNight && prevPattern?.id !== settings.nightPrecedingPatternId) {
+          const preCode = patternById.get(settings.nightPrecedingPatternId)?.code ?? '決まった勤務'
+          hard.push(`${s.name}: ${d - 1}日 夜勤の前日は「${preCode}」が必要`)
+          addCell(s.id, d - 1, `夜勤の前日は${preCode}が必要`)
+        }
+      }
+
       // ---- 夜勤ブロックの整合性（settings.nightMode 設定時のみ） ----
       if (settings.nightMode === 'ake') {
         if (pattern?.category === 'afterNight') {

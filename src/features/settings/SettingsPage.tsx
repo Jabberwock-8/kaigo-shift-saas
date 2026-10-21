@@ -107,6 +107,23 @@ export default function SettingsPage() {
           </select>
         </label>
 
+        <label className="field-row">
+          夜勤の前日の勤務
+          <select
+            value={settings.nightPrecedingPatternId ?? ''}
+            disabled={!isAdmin}
+            onChange={(e) => update({ nightPrecedingPatternId: e.target.value || null })}
+          >
+            <option value="">決まりなし</option>
+            {workPatterns
+              .filter((p) => !p.isNight)
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.code}（夜勤の前日は必ずこの勤務）
+                </option>
+              ))}
+          </select>
+        </label>
         {(settings.nightMode === 'direct' || (settings.nightMode === 'ake' && settings.akeRequiresOffNextDay === false)) && (
           <div className="field-row">
             夜勤の2日後に避ける勤務

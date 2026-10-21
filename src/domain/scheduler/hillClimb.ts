@@ -10,6 +10,7 @@ import {
   cachedDayPatternCaps,
   getCell,
   isDayWorkPattern,
+  isPreNightCell,
   makeCanWorkContext,
   makeCheckInput,
   setCell,
@@ -95,6 +96,8 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
       if (!isDayWorkPattern(p2)) continue
       if (isLocked(p.id, d) || isLocked(p.id, d2)) continue
       if (isWish(p.id, d)) continue
+      // 夜勤の前日の決まった勤務は動かさず、夜勤の前日に別の勤務も置かない
+      if (isPreNightCell(grid, settings, patternById, p.id, d2) || isNightPattern(getCell(grid, p.id, d + 1))) continue
       const prev = d > 1 ? getCell(grid, p.id, d - 1) : undefined
       if (isAfterNight(prev) || isNightPattern(prev)) continue
       // この移動だけ canWork を通らないため、人数上限は自前で見る（移動Bは同日内の交換で
@@ -122,6 +125,7 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
       const b = staff[Math.floor(Math.random() * staff.length)]
       if (!a || !b || a.id === b.id) continue
       if (isLocked(a.id, d) || isLocked(b.id, d)) continue
+      if (settings.nightPrecedingPatternId && (isNightPattern(getCell(grid, a.id, d + 1)) || isNightPattern(getCell(grid, b.id, d + 1)))) continue
       const sa = getCell(grid, a.id, d)
       const sb = getCell(grid, b.id, d)
       if (sa === sb) continue

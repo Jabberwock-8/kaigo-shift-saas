@@ -22,6 +22,22 @@ export function akeAllowsConsecutiveNights(settings: Pick<ShiftRulesSettings, 'a
   return settings.akeAllowConsecutiveNights === true
 }
 
+/**
+ * 夜勤の前日の決まった勤務（M3 など）として置かれているマスか。修復・局所改善はこのマスを動かさない
+ * （動かすと「夜勤前日は M3 が必要」が崩れる）
+ */
+export function isPreNightCell(
+  grid: AssignmentGrid,
+  settings: Pick<ShiftRulesSettings, 'nightPrecedingPatternId'>,
+  patternById: Map<string, Pick<PatternWithId, 'isNight'>>,
+  staffId: string,
+  day: number,
+): boolean {
+  const pre = settings.nightPrecedingPatternId
+  if (!pre || grid[staffId]?.[String(day)] !== pre) return false
+  return !!patternById.get(grid[staffId]?.[String(day + 1)] ?? '')?.isNight
+}
+
 export function getCell(grid: AssignmentGrid, staffId: string, day: number): string | undefined {
   return grid[staffId]?.[String(day)]
 }

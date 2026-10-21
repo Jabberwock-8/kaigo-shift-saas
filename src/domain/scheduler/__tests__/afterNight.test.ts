@@ -146,3 +146,52 @@ describe('準夜勤の「明休」: 夜勤の2日後に避ける勤務', () => {
     }
   })
 })
+
+describe('夜勤の前日の決まった勤務（M3→夜勤→明出→公休）', () => {
+  const N_LONG: PatternWithId = { id: 'N', code: 'N6', label: '夜勤', startTime: '16:00', endTime: '10:00', category: 'night', isWork: true, isNight: true }
+  const M: PatternWithId = { id: 'M', code: 'M3', label: 'M3', startTime: '11:00', endTime: '20:00', category: 'day', isWork: true, isNight: false }
+  const AKE_WORK: PatternWithId = { id: 'ake', code: '明出', label: '明出', category: 'afterNight', isWork: true, isNight: false }
+  const staffList = ['s1', 's2', 's3', 's4', 's5', 's6'].map((id) =>
+    staff(id, { workConditions: { workablePatternIds: ['A', 'M', 'N', 'ake'], nightShiftTarget: 5 } }),
+  )
+  const rules = [
+    rule({ kind: 'hard', days: { type: 'all' }, target: { type: 'shift', value: 'N' }, cond: { type: 'exact', count: 1 } }),
+    rule({ kind: 'hard', days: { type: 'all' }, target: { type: 'shift', value: 'M' }, cond: { type: 'atLeast', count: 1 } }),
+    rule({ kind: 'hard', days: { type: 'all' }, target: { type: 'shift', value: 'A' }, cond: { type: 'atLeast', count: 1 } }),
+  ]
+  const run = (nightPrecedingPatternId: string | null) =>
+    generateOne(
+      input({
+        staff: staffList,
+        rules,
+        shiftPatterns: [OFF, A, M, N_LONG, AKE_WORK],
+        settings: settings({ nightMode: 'ake', nightPrecedingPatternId, maxConsecutiveWorkdaysDefault: 5, monthlyLimitsDefault: { targetWorkdays: 20, maxWorkdays: 20, maxNightShifts: null } }),
+      }),
+      GENERATION_DEFAULTS_V1.profiles[0],
+    )
+  const preNightRate = (assignments: Record<string, Record<string, string>>) => {
+    let nights = 0
+    let pre = 0
+    for (const byDay of Object.values(assignments)) {
+      for (const [d, p] of Object.entries(byDay)) {
+        if (p !== 'N' || d === '1') continue
+        nights++
+        if (byDay[String(Number(d) - 1)] === 'M') pre++
+      }
+    }
+    return pre / nights
+  }
+
+  it('設定すると、夜勤の前日はすべて M3 になり、違反も出ない', () => {
+    for (let i = 0; i < 3; i++) {
+      const r = run('M')
+      expect(preNightRate(r.assignments)).toBe(1)
+      expect(r.hardViolations.filter((v) => v.includes('夜勤の前日'))).toEqual([])
+    }
+  })
+
+  it('設定しなければ、夜勤の前日は決まらない（M3 以外も入る）', () => {
+    const rates = [1, 2, 3].map(() => preNightRate(run(null).assignments))
+    expect(rates.some((x) => x < 1)).toBe(true)
+  })
+})
