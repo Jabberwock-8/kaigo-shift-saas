@@ -28,6 +28,14 @@ export const SERVICE_TYPES: { label: string; sheet: string }[] = [
   { label: '特定相談支援・障害児相談支援', sheet: '勤務形態一覧（特定相談支援・障害児相談支援）' },
 ]
 
+/**
+ * 画面に出すときの表記。法人・岐阜市の表記に合わせて「障害」を「障がい」にする。
+ * 持っている値は様式の選択肢の名称（「障害」）のまま変えない（シート名・職種の選択肢がこの表記で作られているため）
+ */
+export function displayServiceType(label: string | undefined): string {
+  return (label ?? '').replace(/障害/g, '障がい')
+}
+
 export function sheetForServiceType(label: string | undefined): string | null {
   return SERVICE_TYPES.find((t) => t.label === label)?.sheet ?? null
 }

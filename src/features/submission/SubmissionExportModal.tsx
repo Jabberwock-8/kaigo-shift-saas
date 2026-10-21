@@ -13,7 +13,7 @@ import {
 import { daysInMonth as daysInMonthOf, formatYearMonthLabel } from '../../lib/dateUtils'
 import type { Facility, SubmissionSettings } from '../../types/models'
 import { buildSubmissionRows, type SubmissionFacilityData } from './buildSubmissionRows'
-import { sheetForServiceType, SUBMISSION_TEMPLATE_LABEL, SUBMISSION_TEMPLATE_URL } from './serviceTypes'
+import { displayServiceType, sheetForServiceType, SUBMISSION_TEMPLATE_LABEL, SUBMISSION_TEMPLATE_URL } from './serviceTypes'
 
 type FacilityWithId = Facility & { id: string }
 
@@ -128,7 +128,7 @@ export default function SubmissionExportModal({ facilities, yearMonth, isAdmin, 
         ) : (
           <>
             <p>
-              事業所名: <strong>{officeName}</strong>　サービス種別: <strong>{main.serviceType}</strong>
+              事業所名: <strong>{officeName}</strong>　サービス種別: <strong>{displayServiceType(main.serviceType)}</strong>
               <br />
               <span className="muted" style={{ fontSize: '0.85rem' }}>
                 まとめる施設: {facilities.map((f) => f.shortName || f.name).join('・')}

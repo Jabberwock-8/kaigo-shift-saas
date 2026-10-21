@@ -11,7 +11,7 @@ import {
 import type { AppUser, Facility } from '../../types/models'
 import FacilityMultiSelect from './FacilityMultiSelect'
 import FacilityTransferSection from './FacilityTransferSection'
-import { SERVICE_TYPES } from '../submission/serviceTypes'
+import { displayServiceType, SERVICE_TYPES } from '../submission/serviceTypes'
 import {
   findExistingUser,
   inviteAdminUser,
@@ -323,7 +323,7 @@ export default function OrgAdminPage() {
                         <option value="">（未設定）</option>
                         {SERVICE_TYPES.map((t) => (
                           <option key={t.label} value={t.label}>
-                            {t.label}
+                            {displayServiceType(t.label)}
                           </option>
                         ))}
                       </select>
@@ -358,7 +358,7 @@ export default function OrgAdminPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="orgadmin-facility-name">{f.name}</div>
                     {f.shortName && <span className="tag-chip">{f.shortName}</span>}
-                    {f.serviceType && <span className="service-type-chip">{f.serviceType}</span>}
+                    {f.serviceType && <span className="service-type-chip">{displayServiceType(f.serviceType)}</span>}
                     {f.officeName && <span className="muted" style={{ fontSize: '0.75rem', marginLeft: 6 }}>事業所: {f.officeName}</span>}
                   </div>
                   <button

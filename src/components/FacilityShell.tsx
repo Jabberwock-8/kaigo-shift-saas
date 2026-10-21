@@ -14,6 +14,7 @@ import PaidLeavePage from '../features/paidLeave/PaidLeavePage'
 import CompatibilityPage from '../features/compatibility/CompatibilityPage'
 import RulesPage from '../features/rules/RulesPage'
 import SettingsPage from '../features/settings/SettingsPage'
+import { displayServiceType } from '../features/submission/serviceTypes'
 import FacilityTabs from './FacilityTabs'
 
 // Excel入出力・旧データ取込は、たまにしか使わない取込用の画面で、Excel処理ライブラリ（xlsx）が大きい。
@@ -72,7 +73,7 @@ export default function FacilityShell() {
             <div>
               <h1>
                 {facility?.name ?? ''}
-                {facility?.serviceType && <span className="service-type-chip">{facility.serviceType}</span>}
+                {facility?.serviceType && <span className="service-type-chip">{displayServiceType(facility.serviceType)}</span>}
               </h1>
               {appUser?.role !== 'admin' && (
                 <p className="muted">閲覧のみ（管理者ではありません）</p>
