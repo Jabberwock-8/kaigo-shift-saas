@@ -28,6 +28,10 @@ export interface Facility {
   organizationId: string
   name: string
   shortName?: string
+  /** 市の提出様式（勤務形態一覧表）のサービス種別。様式のシートを選ぶのに使う（例: 障害者支援施設） */
+  serviceType?: string
+  /** 市の提出様式の事業所名。同じ事業所名の施設（第二恵光の男性棟・女性棟など）は1枚にまとめて出力する */
+  officeName?: string
 }
 
 export interface StaffWorkConditions {
@@ -74,6 +78,24 @@ export interface Staff {
   traits?: string[]
   workConditions?: StaffWorkConditions
   paidLeave?: PaidLeaveInfo
+  /**
+   * シフト作成の対象外（施設長・看護師・事務など）。自動生成に含めず、勤務は手で入れる。
+   * シフト表・TimePro貼付用・市の提出様式には出る
+   */
+  excludeFromGeneration?: boolean
+  /** 市の提出様式（勤務形態一覧表）に出す内容。未設定の項目は雇用区分・職種・資格から自動で決める */
+  report?: StaffReportInfo
+}
+
+export interface StaffReportInfo {
+  /** 勤務形態 A:常勤専従 B:常勤兼務 C:非常勤専従 D:非常勤兼務 */
+  workStyle?: 'A' | 'B' | 'C' | 'D' | null
+  /** 様式の職種（例: 生活支援員、看護職員、サービス管理責任者） */
+  jobTitle?: string | null
+  /** 様式の資格（人員基準・加算上必要なもの） */
+  qualification?: string | null
+  /** 兼務状況（兼務先・兼務する職務）など */
+  note?: string | null
 }
 
 export interface JobType {
@@ -115,6 +137,11 @@ export interface ShiftPattern {
   color?: string
   /** 記号の文字色（パステル背景とペアで使う） */
   textColor?: string
+  /**
+   * 市の提出様式に書く1日の勤務時間。未設定なら開始〜終了から休憩を引いた時間（時刻が無ければ8。常勤換算と同じ）。
+   * 夜勤（16:00〜翌10:00 を8時間）と明出（8時間）のように、届出上の時間が時刻の差と違うときに使う
+   */
+  reportHours?: number | null
   /**
    * 自動生成の必要出勤日数の補充で後回しにする（ほかの勤務で埋まらないときだけ使う）。
    * 全員が選べるようにしてあるが、なるべく入れたくない勤務（アミティホーム寺田の B1）に使う
@@ -303,4 +330,14 @@ export interface Schedule {
   events?: Record<string, string>
   generationMeta?: ScheduleGenerationMeta
   revision?: number
+}
+
+/** 市の提出様式の出力設定（facilities/{fid}/settings/submission。未作成なら既定値） */
+export interface SubmissionSettings {
+  /** 常勤の従業者が勤務すべき時間数（週） */
+  hoursPerWeek: number | null
+  /** 常勤の従業者が勤務すべき時間数（月） */
+  hoursPerMonth: number | null
+  /** 記載する期間 */
+  period: '暦月' | '４週'
 }

@@ -47,7 +47,7 @@ export interface FacilityTransferFile {
   exportedAt: string
   /** 書き出し元の Firebase プロジェクトID（同じ環境へ読み込もうとしたときの警告に使う） */
   sourceProjectId: string | null
-  facility: { id: string; name: string; shortName?: string }
+  facility: { id: string; name: string; shortName?: string; serviceType?: string; officeName?: string }
   collections: Record<TransferCollection, TransferDocs>
 }
 
@@ -141,6 +141,8 @@ export function parseTransferFile(text: string): FacilityTransferFile {
       id: facility.id,
       name: facility.name,
       ...(typeof facility.shortName === 'string' && facility.shortName ? { shortName: facility.shortName } : {}),
+      ...(typeof facility.serviceType === 'string' && facility.serviceType ? { serviceType: facility.serviceType } : {}),
+      ...(typeof facility.officeName === 'string' && facility.officeName ? { officeName: facility.officeName } : {}),
     },
     collections,
   }

@@ -4,6 +4,7 @@ import { useMasters } from '../../context/MastersContext'
 import { deleteShiftPattern, upsertShiftPattern } from '../../lib/firestore'
 import type { ShiftCategory, ShiftPattern } from '../../types/models'
 import { defaultPairFor, PASTEL_PALETTE } from '../../lib/palette'
+import { reportHoursOf } from '../submission/buildSubmissionRows'
 
 type Row = ShiftPattern & { id: string | null }
 
@@ -106,6 +107,7 @@ export default function ShiftPatternsPage() {
             <th>開始</th>
             <th>終了</th>
             <th>休憩(h)</th>
+            <th title="市の提出様式に書く1日の時間。空欄なら開始〜終了から休憩を引いた時間">届出時間(h)</th>
             <th>勤務</th>
             <th>夜勤</th>
             <th>種別</th>
@@ -162,6 +164,22 @@ export default function ShiftPatternsPage() {
                     updateRow(i, {
                       breakHours: e.target.value.trim() === '' ? undefined : Number(e.target.value),
                     })
+                  }
+                  style={{ width: 56 }}
+                />
+              </td>
+              <td>
+                <input
+                  type="number"
+                  min={0}
+                  max={24}
+                  step={0.25}
+                  value={row.reportHours ?? ''}
+                  disabled={!isAdmin || row.category === 'off' || row.category === 'paidLeave'}
+                  placeholder={reportHoursOf({ ...row, reportHours: null })?.toString() ?? ''}
+                  title="市の提出様式に書く1日の時間。空欄なら開始〜終了から休憩を引いた時間（夜勤を8時間として届け出るときなどに入れます）"
+                  onChange={(e) =>
+                    updateRow(i, { reportHours: e.target.value.trim() === '' ? null : Number(e.target.value) })
                   }
                   style={{ width: 56 }}
                 />

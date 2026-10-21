@@ -54,6 +54,7 @@ import { resolveLimits } from '../../domain/scheduler/limits'
 import type { Candidate } from '../../domain/scheduler/types'
 import PrintableShiftGrid from './PrintableShiftGrid'
 import { downloadShiftExcel } from './exportShiftExcel'
+import SubmissionExportModal from '../submission/SubmissionExportModal'
 import CellPicker from './CellPicker'
 import EventPicker from './EventPicker'
 import NightTargetPanel from './NightTargetPanel'
@@ -79,7 +80,8 @@ export default function ShiftGridPage() {
   const { appUser, selectedFacilityId, facilities } = useFacility()
   const { shiftPatterns, employmentTypes, loading: mastersLoading } = useMasters()
   const isAdmin = appUser?.role === 'admin'
-  const facilityName = facilities.find((f) => f.id === selectedFacilityId)?.name ?? ''
+  const selectedFacility = facilities.find((f) => f.id === selectedFacilityId)
+  const facilityName = selectedFacility?.name ?? ''
 
   const [yearMonth, setYearMonth] = useState(currentYearMonth())
   const [staffList, setStaffList] = useState<StaffWithId[]>([])
@@ -111,6 +113,7 @@ export default function ShiftGridPage() {
   const [showLimitsModal, setShowLimitsModal] = useState(false)
   const [showViolationList, setShowViolationList] = useState(false)
   const [showTimeproModal, setShowTimeproModal] = useState(false)
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false)
   const [timeproPatternMap, setTimeproPatternMap] = useState<Record<string, TimeproPatternMapEntry>>({})
 
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month')
@@ -219,7 +222,11 @@ export default function ShiftGridPage() {
       // 旧版と同じく、生成を開始する前に1フレーム逃してボタン押下の反応を先に描画させる
       await new Promise((resolve) => setTimeout(resolve, 30))
       const input = await loadGenerateInput(selectedFacilityId, yearMonth)
-      const result = generate(input)
+      // シフト作成の対象外の職員（施設長・看護師など）は生成に含めないので、手で入れた勤務を案に残す
+      const kept = Object.fromEntries(
+        staffList.filter((s) => s.excludeFromGeneration).map((s) => [s.id, schedule?.assignments?.[s.id] ?? {}]),
+      )
+      const result = generate(input).map((c) => ({ ...c, assignments: { ...kept, ...c.assignments } }))
       const saved = await saveCandidates(selectedFacilityId, yearMonth, result)
       setCandidates(saved)
       setStoredCandidates(saved)
@@ -567,6 +574,9 @@ export default function ShiftGridPage() {
             title={previewCandidate ? 'プレビュー中は書き出せません。採択するか、プレビューを閉じてください' : undefined}
           >
             📊 Excelで出力
+          </button>
+          <button type="button" onClick={() => setShowSubmissionModal(true)} disabled={staffList.length === 0}>
+            📄 市の提出様式
           </button>
           <button type="button" onClick={() => setFitToScreen((v) => !v)}>
             {fitToScreen ? '🔍 実寸に戻す' : '🔍 画面に収める'}
@@ -1005,6 +1015,20 @@ export default function ShiftGridPage() {
             await load()
           }}
           onClose={() => setShowLimitsModal(false)}
+        />
+      )}
+
+      {showSubmissionModal && selectedFacility && (
+        <SubmissionExportModal
+          facilities={[
+            selectedFacility,
+            ...facilities.filter(
+              (f) => f.id !== selectedFacility.id && !!selectedFacility.officeName && f.officeName === selectedFacility.officeName,
+            ),
+          ]}
+          yearMonth={yearMonth}
+          isAdmin={isAdmin}
+          onClose={() => setShowSubmissionModal(false)}
         />
       )}
 

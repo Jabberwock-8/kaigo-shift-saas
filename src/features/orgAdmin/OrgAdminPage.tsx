@@ -11,6 +11,7 @@ import {
 import type { AppUser, Facility } from '../../types/models'
 import FacilityMultiSelect from './FacilityMultiSelect'
 import FacilityTransferSection from './FacilityTransferSection'
+import { SERVICE_TYPES } from '../submission/serviceTypes'
 import {
   findExistingUser,
   inviteAdminUser,
@@ -66,6 +67,8 @@ export default function OrgAdminPage() {
   const [editingFacilityId, setEditingFacilityId] = useState<string | null>(null)
   const [editFacilityName, setEditFacilityName] = useState('')
   const [editFacilityShortName, setEditFacilityShortName] = useState('')
+  const [editServiceType, setEditServiceType] = useState('')
+  const [editOfficeName, setEditOfficeName] = useState('')
   const [savingFacilityId, setSavingFacilityId] = useState<string | null>(null)
 
   const [inviteEmail, setInviteEmail] = useState('')
@@ -148,6 +151,8 @@ export default function OrgAdminPage() {
     setEditingFacilityId(f.id)
     setEditFacilityName(f.name)
     setEditFacilityShortName(f.shortName ?? '')
+    setEditServiceType(f.serviceType ?? '')
+    setEditOfficeName(f.officeName ?? '')
   }
 
   async function saveFacilityEdit(facilityId: string) {
@@ -158,6 +163,8 @@ export default function OrgAdminPage() {
       await updateFacility(facilityId, {
         name: editFacilityName.trim(),
         shortName: editFacilityShortName.trim() || undefined,
+        serviceType: editServiceType || undefined,
+        officeName: editOfficeName.trim() || undefined,
       })
       setEditingFacilityId(null)
       await load()
@@ -310,6 +317,25 @@ export default function OrgAdminPage() {
                       onChange={(e) => setEditFacilityShortName(e.target.value)}
                       placeholder="短縮名（任意）"
                     />
+                    <label className="muted" style={{ fontSize: '0.8rem' }}>
+                      サービス種別（市の提出様式）
+                      <select value={editServiceType} onChange={(e) => setEditServiceType(e.target.value)}>
+                        <option value="">（未設定）</option>
+                        {SERVICE_TYPES.map((t) => (
+                          <option key={t.label} value={t.label}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="muted" style={{ fontSize: '0.8rem' }}>
+                      事業所名（市の提出様式。同じ事業所名の施設は1枚にまとめます）
+                      <input
+                        value={editOfficeName}
+                        onChange={(e) => setEditOfficeName(e.target.value)}
+                        placeholder={editFacilityName || '事業所名'}
+                      />
+                    </label>
                     <div className="row" style={{ gap: 8 }}>
                       <button
                         type="button"
@@ -332,6 +358,8 @@ export default function OrgAdminPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="orgadmin-facility-name">{f.name}</div>
                     {f.shortName && <span className="tag-chip">{f.shortName}</span>}
+                    {f.serviceType && <span className="service-type-chip">{f.serviceType}</span>}
+                    {f.officeName && <span className="muted" style={{ fontSize: '0.75rem', marginLeft: 6 }}>事業所: {f.officeName}</span>}
                   </div>
                   <button
                     type="button"

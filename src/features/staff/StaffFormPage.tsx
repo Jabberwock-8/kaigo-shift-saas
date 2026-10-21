@@ -5,6 +5,7 @@ import { useMasters } from '../../context/MastersContext'
 import { fetchStaff, upsertStaff } from '../../lib/firestore'
 import { staffJobTypeIds } from '../../lib/staffUtils'
 import { employmentTypeUsesTargetWorkdays } from '../../domain/scheduler/limits'
+import { defaultWorkStyle } from '../submission/buildSubmissionRows'
 import type { Staff, StaffWorkConditions } from '../../types/models'
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
@@ -231,6 +232,61 @@ export default function StaffFormPage() {
         <p className="muted" style={{ marginTop: -8 }}>
           条件（ルール）の対象として使うタグです。
         </p>
+
+        <label className="checkbox-inline">
+          <input
+            type="checkbox"
+            checked={!!form.excludeFromGeneration}
+            onChange={(e) => updateForm({ excludeFromGeneration: e.target.checked })}
+          />
+          シフト作成の対象外（施設長・看護師・事務など。自動生成に含めず、勤務はシフト表で手で入れます）
+        </label>
+
+        <h3>市の提出様式（勤務形態一覧表）</h3>
+        <p className="muted" style={{ marginTop: -8 }}>
+          空欄の項目は自動で決めます（勤務形態は雇用区分から A または C、職種は上で選んだ職種、資格は「資格」欄）。
+        </p>
+        <div className="field-grid">
+          <label>
+            勤務形態
+            <select
+              value={form.report?.workStyle ?? ''}
+              onChange={(e) =>
+                updateForm({ report: { ...(form.report ?? {}), workStyle: (e.target.value || null) as 'A' | 'B' | 'C' | 'D' | null } })
+              }
+            >
+              <option value="">自動（{defaultWorkStyle(selectedEmploymentType)}）</option>
+              <option value="A">A 常勤で専従</option>
+              <option value="B">B 常勤で兼務</option>
+              <option value="C">C 非常勤で専従</option>
+              <option value="D">D 非常勤で兼務</option>
+            </select>
+          </label>
+          <label>
+            様式の職種
+            <input
+              value={form.report?.jobTitle ?? ''}
+              placeholder="例: 生活支援員・看護職員・サービス管理責任者"
+              onChange={(e) => updateForm({ report: { ...(form.report ?? {}), jobTitle: e.target.value || null } })}
+            />
+          </label>
+          <label>
+            様式の資格
+            <input
+              value={form.report?.qualification ?? ''}
+              placeholder="例: 介護福祉士"
+              onChange={(e) => updateForm({ report: { ...(form.report ?? {}), qualification: e.target.value || null } })}
+            />
+          </label>
+          <label>
+            兼務状況など
+            <input
+              value={form.report?.note ?? ''}
+              placeholder="例: 管理者と兼務"
+              onChange={(e) => updateForm({ report: { ...(form.report ?? {}), note: e.target.value || null } })}
+            />
+          </label>
+        </div>
 
         <h3>勤務条件（任意・空欄可）</h3>
 

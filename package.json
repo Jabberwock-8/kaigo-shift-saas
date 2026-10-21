@@ -15,6 +15,7 @@
     "deploy:prod": "npm run build && firebase.cmd deploy --project prod"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "firebase": "^12.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -22,7 +23,7 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
+    "@types/node": "^24.19.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",

@@ -70,7 +70,10 @@ export default function FacilityShell() {
           <FacilityTabs />
           <div className="page-header no-print">
             <div>
-              <h1>{facility?.name ?? ''}</h1>
+              <h1>
+                {facility?.name ?? ''}
+                {facility?.serviceType && <span className="service-type-chip">{facility.serviceType}</span>}
+              </h1>
               {appUser?.role !== 'admin' && (
                 <p className="muted">閲覧のみ（管理者ではありません）</p>
               )}

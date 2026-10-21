@@ -27,6 +27,7 @@ import {
 import type { Candidate, GenerateInput } from '../domain/scheduler/types'
 import type {
   AppUser,
+  SubmissionSettings,
   Compatibility,
   CompatibilityLevel,
   EmploymentType,
@@ -94,9 +95,11 @@ export async function createFacility(
 
 export async function updateFacility(
   facilityId: string,
-  patch: Partial<Pick<Facility, 'name' | 'shortName'>>,
+  patch: Partial<Pick<Facility, 'name' | 'shortName' | 'serviceType' | 'officeName'>>,
 ) {
-  await updateDoc(doc(requireDb(), 'facilities', facilityId), patch)
+  // Firestore は undefined の項目を含む書き込みを拒否するため、未入力の項目は消す（deleteField）
+  const data = Object.fromEntries(Object.entries(patch).map(([k, v]) => [k, v === undefined || v === '' ? deleteField() : v]))
+  await updateDoc(doc(requireDb(), 'facilities', facilityId), data)
 }
 
 export async function fetchOrganizationUsers(
@@ -576,6 +579,25 @@ export async function saveShiftRulesSettings(facilityId: string, data: ShiftRule
 // settings/timeproExport（未作成 = patternMap 空。既定値は buildTimeproRows.ts 側で生成）
 // ------------------------------------------------------------------
 
+// ------------------------------------------------------------------
+// settings/submission（市の提出様式の出力設定。未作成なら既定値）
+// ------------------------------------------------------------------
+
+export const DEFAULT_SUBMISSION_SETTINGS: SubmissionSettings = { hoursPerWeek: 40, hoursPerMonth: null, period: '暦月' }
+
+function submissionRef(facilityId: string) {
+  return doc(requireDb(), 'facilities', facilityId, 'settings', 'submission')
+}
+
+export async function fetchSubmissionSettings(facilityId: string): Promise<SubmissionSettings> {
+  const snap = await getDoc(submissionRef(facilityId))
+  return { ...DEFAULT_SUBMISSION_SETTINGS, ...(snap.exists() ? (snap.data() as Partial<SubmissionSettings>) : {}) }
+}
+
+export async function saveSubmissionSettings(facilityId: string, data: SubmissionSettings) {
+  await setDoc(submissionRef(facilityId), data, { merge: true })
+}
+
 function timeproExportRef(facilityId: string) {
   return doc(requireDb(), 'facilities', facilityId, 'settings', 'timeproExport')
 }
@@ -629,7 +651,8 @@ export async function loadGenerateInput(facilityId: string, yearMonth: string): 
   return {
     yearMonth,
     daysInMonth: days,
-    staff: staffAll.filter((s) => s.active !== false),
+    // シフト作成の対象外の職員（施設長・看護師など）は生成に含めない。勤務は手で入れたものを採択時に残す
+    staff: staffAll.filter((s) => s.active !== false && !s.excludeFromGeneration),
     employmentTypes,
     shiftPatterns,
     rules: rulesAll.filter((r) => r.enabled),

@@ -177,6 +177,8 @@ export function checkMonth(input: CheckInput): CheckResult {
 
   // ---- 職員ごとのチェック ----
   for (const s of staff) {
+    // シフト作成の対象外（施設長・看護師など）は勤務を手で入れるため、個人の日数・連続・夜勤などの決まりは見ない
+    if (s.excludeFromGeneration) continue
     const wc = s.workConditions ?? {}
     const limits = resolveLimits(
       s,

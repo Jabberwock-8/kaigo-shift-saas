@@ -60,6 +60,8 @@ export async function exportFacilityData(facilityId: string): Promise<FacilityTr
       id: facilityId,
       name: facility.name,
       ...(facility.shortName ? { shortName: facility.shortName } : {}),
+      ...(facility.serviceType ? { serviceType: facility.serviceType } : {}),
+      ...(facility.officeName ? { officeName: facility.officeName } : {}),
     },
     collections,
   }
@@ -116,6 +118,8 @@ export async function importFacilityData(
         organizationId: me.user.organizationId,
         name: file.facility.name,
         ...(file.facility.shortName ? { shortName: file.facility.shortName } : {}),
+        ...(file.facility.serviceType ? { serviceType: file.facility.serviceType } : {}),
+        ...(file.facility.officeName ? { officeName: file.facility.officeName } : {}),
       },
       { merge: true },
     )
