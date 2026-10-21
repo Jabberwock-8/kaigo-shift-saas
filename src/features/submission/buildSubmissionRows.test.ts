@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSubmissionRows, reportHoursOf } from './buildSubmissionRows'
+import { buildSubmissionRows, defaultWorkStyle, reportHoursOf } from './buildSubmissionRows'
 
 const P = {
   B2: { id: 'B2', code: 'B2', label: 'B2', startTime: '09:00', endTime: '18:00', breakHours: 1, isWork: true, isNight: false, category: 'day' as const },
@@ -63,5 +63,15 @@ describe('buildSubmissionRows', () => {
     // 30日の月は31日目を空ける
     expect(rows[1].hours).toHaveLength(31)
     expect(rows[1].hours[30]).toBeNull()
+  })
+})
+
+describe('defaultWorkStyle', () => {
+  it('名前が非常勤・パートなら必要勤務日数を使う区分でも C、常勤なら A', () => {
+    expect(defaultWorkStyle({ label: '非常勤', hasTargetWorkdays: true })).toBe('C')
+    expect(defaultWorkStyle({ label: 'パート', hasTargetWorkdays: true })).toBe('C')
+    expect(defaultWorkStyle({ label: '常勤', hasTargetWorkdays: false })).toBe('A')
+    expect(defaultWorkStyle({ label: '夜勤専従', hasTargetWorkdays: true })).toBe('A')
+    expect(defaultWorkStyle(undefined)).toBe('C')
   })
 })

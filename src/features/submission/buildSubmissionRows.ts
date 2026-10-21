@@ -28,13 +28,20 @@ export function reportHoursOf(p: ShiftPattern | undefined): number | '休' | nul
   return shiftDurationHours(p.startTime, p.endTime, p.breakHours)
 }
 
-/** 勤務形態の既定: 常勤（必要勤務日数のある雇用区分）なら A、それ以外は C */
+/**
+ * 勤務形態の既定。雇用区分の名前が「非常勤」「パート」なら C、「常勤」なら A、それ以外は必要勤務日数の有無で決める。
+ * （必要勤務日数を使う非常勤の区分があるため、日数の有無だけでは決めない。第二女性棟のパートが A になっていた）
+ */
 export function defaultWorkStyle(employmentType: EmploymentType | undefined): 'A' | 'C' {
+  const label = employmentType?.label ?? ''
+  if (/非常勤|パート|アルバイト/.test(label)) return 'C'
+  if (label.includes('常勤')) return 'A'
   return employmentTypeUsesTargetWorkdays(employmentType) ? 'A' : 'C'
 }
 
+/** 職種の並び順。「管理者・サービス管理責任者」のような兼務の名前は、含まれる職種のうち先のものに合わせる */
 function jobOrder(title: string): number {
-  const i = JOB_TITLE_ORDER.indexOf(title)
+  const i = JOB_TITLE_ORDER.findIndex((t) => title.includes(t))
   return i === -1 ? JOB_TITLE_ORDER.length : i
 }
 
