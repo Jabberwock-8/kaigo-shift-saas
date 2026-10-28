@@ -123,6 +123,25 @@ export default function ShiftGridPage() {
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month')
   const [weekIndex, setWeekIndex] = useState(0)
   const [fitToScreen, setFitToScreen] = useState(false)
+  // ツールバーのドロップダウンメニュー（出力／その他）。1段化のため二次操作を集約する
+  const [openMenu, setOpenMenu] = useState<'export' | 'misc' | null>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!openMenu) return
+    function onPointerDown(e: MouseEvent) {
+      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) setOpenMenu(null)
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpenMenu(null)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [openMenu])
   const [fitScale, setFitScale] = useState({ x: 1, y: 1 })
   const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 })
   const gridScrollRef = useRef<HTMLDivElement>(null)
@@ -545,7 +564,7 @@ export default function ShiftGridPage() {
     <section className="card">
       <div className="page-header no-print">
         <h2>{formatYearMonthLabel(yearMonth)} のシフト表</h2>
-        <div className="header-actions">
+        <div className="header-actions toolbar" ref={toolbarRef}>
           <button
             type="button"
             onClick={() => moveMonth(shiftYearMonth(yearMonth, -1))}
@@ -587,20 +606,6 @@ export default function ShiftGridPage() {
               週
             </button>
           </div>
-          <button type="button" onClick={() => window.print()}>
-            🖨 {isWeek ? 'この週を印刷' : '印刷'}
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleExportExcel()}
-            disabled={staffList.length === 0 || !!previewCandidate}
-            title={previewCandidate ? 'プレビュー中は書き出せません。採択するか、プレビューを閉じてください' : undefined}
-          >
-            📊 Excelで出力
-          </button>
-          <button type="button" onClick={() => setShowSubmissionModal(true)} disabled={staffList.length === 0}>
-            📄 市の提出様式
-          </button>
           <button type="button" onClick={() => setFitToScreen((v) => !v)}>
             {fitToScreen ? '🔍 実寸に戻す' : '🔍 画面に収める'}
           </button>
@@ -609,22 +614,100 @@ export default function ShiftGridPage() {
               {generating ? '生成中…' : '⚡ パターン生成'}
             </button>
           )}
-          {isAdmin && (
-            <button type="button" onClick={() => setShowLimitsModal(true)}>
-              📅 月の上限を調整
-            </button>
-          )}
-          <button type="button" onClick={() => setShowTimeproModal(true)} disabled={staffList.length === 0}>
-            📋 TimePro貼付用
-          </button>
-          {isAdmin && (
+          <div className="toolbar-menu-wrap">
             <button
               type="button"
-              onClick={() => void handleClearAllLocks()}
-              disabled={Object.values(schedule?.locks ?? {}).every((byDay) => Object.keys(byDay).length === 0)}
+              aria-haspopup="menu"
+              aria-expanded={openMenu === 'export'}
+              onClick={() => setOpenMenu((m) => (m === 'export' ? null : 'export'))}
             >
-              🔓 ロックを全解除
+              📤 出力 ▾
             </button>
+            {openMenu === 'export' && (
+              <div className="toolbar-menu no-print" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpenMenu(null)
+                    window.print()
+                  }}
+                >
+                  🖨 {isWeek ? 'この週を印刷' : '印刷'}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpenMenu(null)
+                    void handleExportExcel()
+                  }}
+                  disabled={staffList.length === 0 || !!previewCandidate}
+                  title={previewCandidate ? 'プレビュー中は書き出せません。採択するか、プレビューを閉じてください' : undefined}
+                >
+                  📊 Excelで出力
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpenMenu(null)
+                    setShowSubmissionModal(true)
+                  }}
+                  disabled={staffList.length === 0}
+                >
+                  📄 市の提出様式
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpenMenu(null)
+                    setShowTimeproModal(true)
+                  }}
+                  disabled={staffList.length === 0}
+                >
+                  📋 TimePro貼付用
+                </button>
+              </div>
+            )}
+          </div>
+          {isAdmin && (
+            <div className="toolbar-menu-wrap">
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={openMenu === 'misc'}
+                onClick={() => setOpenMenu((m) => (m === 'misc' ? null : 'misc'))}
+              >
+                ⚙ その他 ▾
+              </button>
+              {openMenu === 'misc' && (
+                <div className="toolbar-menu no-print" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOpenMenu(null)
+                      setShowLimitsModal(true)
+                    }}
+                  >
+                    📅 月の上限を調整
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOpenMenu(null)
+                      void handleClearAllLocks()
+                    }}
+                    disabled={Object.values(schedule?.locks ?? {}).every((byDay) => Object.keys(byDay).length === 0)}
+                  >
+                    🔓 ロックを全解除
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
