@@ -313,6 +313,25 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
   for (const w of wishes) {
     if (!getCell(grid, w.staffId, w.day)) setCell(grid, w.staffId, w.day, offPattern.id)
   }
+  // 前月末の夜勤の続きを置く（月をまたぐ夜勤明け）。前月の最終日が夜勤なら1日は明（公休に直行なら休み）、
+  // 「翌日を必ず公休」なら2日は休み。前月の最終日が明で、その前日が夜勤なら1日は休み
+  if (input.prevTail) {
+    const prevPattern = (staffId: string, day: number) => patternById.get(input.prevTail?.[staffId]?.[String(day)] ?? '')
+    for (const s of staff) {
+      const p0 = prevPattern(s.id, 0)
+      const pm1 = prevPattern(s.id, -1)
+      if (settings.nightMode === 'ake' && afterNightPattern) {
+        if (p0?.isNight) {
+          if (!getCell(grid, s.id, 1)) setCell(grid, s.id, 1, afterNightPattern.id)
+          if (akeRequiresOffNextDay(settings) && daysInMonth >= 2 && !getCell(grid, s.id, 2)) setCell(grid, s.id, 2, offPattern.id)
+        } else if (pm1?.isNight && p0?.category === 'afterNight' && akeRequiresOffNextDay(settings)) {
+          if (!getCell(grid, s.id, 1)) setCell(grid, s.id, 1, offPattern.id)
+        }
+      } else if (settings.nightMode === 'direct' && p0?.isNight) {
+        if (!getCell(grid, s.id, 1)) setCell(grid, s.id, 1, offPattern.id)
+      }
+    }
+  }
   // 手入力・ロックした夜勤の前日に、夜勤の前日の決まった勤務（M3 など）を置く（夜勤の連続中は除く）
   if (settings.nightPrecedingPatternId) {
     for (const s of staff) {

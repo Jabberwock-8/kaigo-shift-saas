@@ -82,7 +82,13 @@ export default function WishesPage() {
     if (!user || !isAdmin) return
     const date = dateStr(day)
     const key = `${staffId}_${date}`
-    const wished = wishes.has(key)
+    const existing = wishes.get(key)
+    // 有給希望・勤務希望などの別の申請がある日は、ここでは立て外ししない（上書き・削除しないため）
+    if (existing && existing.type !== '希望休') {
+      setError(`この日は「${existing.type}」の申請があるため、希望休を立てられません。`)
+      return
+    }
+    const wished = !!existing
 
     if (!wished && settings.maxWishesPerMonth != null && wishCountFor(staffId) >= settings.maxWishesPerMonth) {
       const name = staffList.find((s) => s.id === staffId)?.name ?? 'この職員'
@@ -179,14 +185,16 @@ export default function WishesPage() {
                     )}
                   </td>
                   {dayList.map((d) => {
-                    const wished = wishes.has(`${staff.id}_${dateStr(d)}`)
+                    const w = wishes.get(`${staff.id}_${dateStr(d)}`)
+                    const wished = w?.type === '希望休'
                     return (
                       <td
                         key={d}
                         className={`wish-cell ${wished ? 'wished' : ''} ${isAdmin ? 'clickable' : ''}`}
+                        title={w && !wished ? w.type : undefined}
                         onClick={() => void handleToggle(staff.id, d)}
                       >
-                        {wished ? '★' : ''}
+                        {wished ? '★' : w ? w.type.slice(0, 1) : ''}
                       </td>
                     )
                   })}

@@ -1,7 +1,7 @@
 import { buildDayPatternCaps, type DayPatternCaps } from './caps'
 import { buildTraitPairBlocks, type TraitPairBlock } from './traitPairs'
 import type { ShiftRulesSettings } from '../../types/models'
-import type { AssignmentGrid, CanWorkContext, CheckInput, GenerateInput, PatternWithId } from './types'
+import type { AssignmentGrid, CanWorkContext, CheckInput, GenerateInput, PatternWithId, PrevMonthTail } from './types'
 
 /**
  * 自動生成が単独で置いたり動かしたりしてよい日中の勤務か。夜勤と夜勤明けは除く。
@@ -36,6 +36,27 @@ export function isPreNightCell(
   const pre = settings.nightPrecedingPatternId
   if (!pre || grid[staffId]?.[String(day)] !== pre) return false
   return !!patternById.get(grid[staffId]?.[String(day + 1)] ?? '')?.isNight
+}
+
+/** 前月末として見る日数（連続勤務の上限に足りる長さ） */
+export const PREV_TAIL_DAYS = 7
+
+/** 前月の勤務表から、前月末の数日分を取り出す（前月の最終日を "0" とする） */
+export function prevMonthTail(
+  prevAssignments: AssignmentGrid | undefined,
+  prevDaysInMonth: number,
+  days = PREV_TAIL_DAYS,
+): PrevMonthTail {
+  const tail: PrevMonthTail = {}
+  for (const [staffId, byDay] of Object.entries(prevAssignments ?? {})) {
+    const row: Record<string, string> = {}
+    for (let i = 0; i < days; i++) {
+      const v = byDay[String(prevDaysInMonth - i)]
+      if (v) row[String(-i)] = v
+    }
+    if (Object.keys(row).length) tail[staffId] = row
+  }
+  return tail
 }
 
 export function getCell(grid: AssignmentGrid, staffId: string, day: number): string | undefined {
@@ -188,6 +209,7 @@ export function makeCanWorkContext(grid: AssignmentGrid, input: GenerateInput): 
     dayPatternCaps: cachedDayPatternCaps(input),
     traitPairBlocks: cachedTraitPairBlocks(input),
     wishDays: cachedWishDays(input),
+    prevTail: input.prevTail,
   }
 }
 
@@ -203,5 +225,6 @@ export function makeCheckInput(grid: AssignmentGrid, input: GenerateInput): Chec
     compatibilities: input.compatibilities,
     settings: input.settings,
     monthlyMaxDaysOverride: input.monthlyMaxDaysOverride,
+    prevTail: input.prevTail,
   }
 }

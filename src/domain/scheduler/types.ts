@@ -34,7 +34,15 @@ export interface CheckInput {
   settings: ShiftRulesSettings
   /** staffId -> その月だけの勤務日数上限の上書き */
   monthlyMaxDaysOverride?: Record<string, MonthlyLimitsOverride>
+  /**
+   * 前月末の勤務（staffId -> { "0": 前月の最終日, "-1": その前日, … }）。月をまたぐ夜勤明け・連続勤務・休息時間の判定に使う。
+   * 未設定（前月の勤務表が無い）なら前月は分からないものとして扱う
+   */
+  prevTail?: PrevMonthTail
 }
+
+/** 前月末の勤務。日は当月の1日を1として、前月の最終日を0、その前日を-1…とする */
+export type PrevMonthTail = Record<string, Record<string, string>>
 
 export interface CellViolation {
   staffId: string
@@ -69,6 +77,11 @@ export interface CanWorkContext {
   rules: RuleWithId[]
   compatibilities: CompatibilityWithId[]
   monthlyMaxDaysOverride?: Record<string, MonthlyLimitsOverride>
+  /**
+   * 前月末の勤務（staffId -> { "0": 前月の最終日, "-1": その前日, … }）。月をまたぐ夜勤明け・連続勤務・休息時間の判定に使う。
+   * 未設定（前月の勤務表が無い）なら前月は分からないものとして扱う
+   */
+  prevTail?: PrevMonthTail
   /** 「配置しない」「N名以下」の人数上限。未設定なら上限チェックをしない */
   dayPatternCaps?: DayPatternCaps
   /** 必須の「タグのペアを同一シフトに入れない」。未設定ならチェックしない */
@@ -94,6 +107,11 @@ export interface GenerateInput {
   /** ロック引き継ぎ元（現在の assignments） */
   baseAssignments: AssignmentGrid
   monthlyMaxDaysOverride?: Record<string, MonthlyLimitsOverride>
+  /**
+   * 前月末の勤務（staffId -> { "0": 前月の最終日, "-1": その前日, … }）。月をまたぐ夜勤明け・連続勤務・休息時間の判定に使う。
+   * 未設定（前月の勤務表が無い）なら前月は分からないものとして扱う
+   */
+  prevTail?: PrevMonthTail
   config: GenerationConfig
 }
 
@@ -114,4 +132,6 @@ export interface Candidate {
   hardViolations: string[]
   softViolations: string[]
   fulfillmentRate: number
+  /** 案を作った時点の勤務表の版（revision。勤務表が無ければ0）。採択時に、その後の手直しを上書きしないか確かめる */
+  baseRevision?: number
 }

@@ -38,18 +38,22 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
 
   const refreshFacilities = useCallback(async () => {
     if (!user) return
-    const u = await fetchUser(user.uid)
-    if (!u) return
-    setAppUser(u)
-    const fac = await fetchFacilities(u.facilityIds ?? [])
-    setFacilities(fac)
-    // 選択中の施設が引き続き所属先に含まれていればそのまま、無くなっていたら選択し直す
-    setSelectedFacilityId((cur) => {
-      if (cur && fac.some((f) => f.id === cur)) return cur
-      if (fac.length === 1) return fac[0].id
-      if (u.primaryFacilityId && fac.some((f) => f.id === u.primaryFacilityId)) return u.primaryFacilityId
-      return null
-    })
+    try {
+      const u = await fetchUser(user.uid)
+      if (!u) return
+      setAppUser(u)
+      const fac = await fetchFacilities(u.facilityIds ?? [])
+      setFacilities(fac)
+      // 選択中の施設が引き続き所属先に含まれていればそのまま、無くなっていたら選択し直す
+      setSelectedFacilityId((cur) => {
+        if (cur && fac.some((f) => f.id === cur)) return cur
+        if (fac.length === 1) return fac[0].id
+        if (u.primaryFacilityId && fac.some((f) => f.id === u.primaryFacilityId)) return u.primaryFacilityId
+        return null
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
   }, [user])
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { parseTimeToHours, weekdayOf } from '../../lib/dateUtils'
 import { withinDayPatternCap } from './caps'
-import { akeAllowsConsecutiveNights, akeRequiresOffNextDay } from './gridUtils'
+import { akeAllowsConsecutiveNights, akeRequiresOffNextDay, PREV_TAIL_DAYS } from './gridUtils'
 import { conflictsWithTraitPair } from './traitPairs'
 import { resolveLimits } from './limits'
 import { ruleAppliesToDate } from './ruleMatch'
@@ -18,7 +18,9 @@ function restIntervalHours(prev: PatternWithId | undefined, next: PatternWithId 
 }
 
 function patternIdAt(ctx: CanWorkContext, staffId: string, day: number): string | undefined {
-  if (day < 1 || day > ctx.daysInMonth) return undefined
+  if (day > ctx.daysInMonth) return undefined
+  // 1日より前は前月末の勤務（月をまたぐ夜勤明け・連続勤務・休息時間の判定に使う）
+  if (day < 1) return ctx.prevTail?.[staffId]?.[String(day)]
   return ctx.grid[staffId]?.[String(day)]
 }
 
@@ -161,7 +163,7 @@ export function canWork(
   // 6. 連続勤務上限
   if (limits.maxConsecutive != null) {
     let back = 0
-    for (let d = day - 1; d >= 1 && isWorkAt(ctx, staff.id, d); d--) back++
+    for (let d = day - 1; d >= 1 - PREV_TAIL_DAYS && isWorkAt(ctx, staff.id, d); d--) back++
     let fwd = 0
     for (let d = day + 1; d <= ctx.daysInMonth && isWorkAt(ctx, staff.id, d); d++) fwd++
     if (back + 1 + fwd > limits.maxConsecutive) return false
@@ -171,7 +173,7 @@ export function canWork(
   const cap = ctx.settings.shiftConsecutiveCaps[patternId]
   if (cap != null) {
     let back = 0
-    for (let d = day - 1; d >= 1 && patternIdAt(ctx, staff.id, d) === patternId; d--) back++
+    for (let d = day - 1; d >= 1 - PREV_TAIL_DAYS && patternIdAt(ctx, staff.id, d) === patternId; d--) back++
     let fwd = 0
     for (let d = day + 1; d <= ctx.daysInMonth && patternIdAt(ctx, staff.id, d) === patternId; d++) fwd++
     if (back + 1 + fwd > cap) return false

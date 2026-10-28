@@ -5,6 +5,7 @@ import { useMasters } from '../../context/MastersContext'
 import {
   DEFAULT_SHIFT_RULES_SETTINGS,
   adoptCandidate,
+  ScheduleChangedError,
   clearAllLocks,
   fetchCurrentGenerationConfig,
   fetchLeaveRequestsForMonth,
@@ -51,7 +52,8 @@ import { checkMonth } from '../../domain/scheduler/check'
 import { demandFor, shiftGroupDeficitPatternIds } from '../../domain/scheduler/demand'
 import { generate } from '../../domain/scheduler/generate'
 import { resolveLimits } from '../../domain/scheduler/limits'
-import type { Candidate } from '../../domain/scheduler/types'
+import type { Candidate, PrevMonthTail } from '../../domain/scheduler/types'
+import { prevMonthTail } from '../../domain/scheduler/gridUtils'
 import PrintableShiftGrid from './PrintableShiftGrid'
 import { downloadShiftExcel } from './exportShiftExcel'
 import SubmissionExportModal from '../submission/SubmissionExportModal'
@@ -86,6 +88,8 @@ export default function ShiftGridPage() {
   const [yearMonth, setYearMonth] = useState(currentYearMonth())
   const [staffList, setStaffList] = useState<StaffWithId[]>([])
   const [schedule, setSchedule] = useState<Schedule | null>(null)
+  // 前月末の勤務（月をまたぐ夜勤明け・連続勤務の違反チェック用）
+  const [prevTail, setPrevTail] = useState<PrevMonthTail | undefined>(undefined)
   const [rules, setRules] = useState<(Rule & { id: string })[]>([])
   const [compatibilities, setCompatibilities] = useState<(Compatibility & { id: string })[]>([])
   const [wishes, setWishes] = useState<(LeaveRequest & { id: string })[]>([])
@@ -146,7 +150,8 @@ export default function ShiftGridPage() {
     setCandidates(null)
     setPreviewId(null)
     try {
-      const [sl, sc, rl, cl, wl, st, cd, tp] = await Promise.all([
+      const prevYm = shiftYearMonth(yearMonth, -1)
+      const [sl, sc, rl, cl, wl, st, cd, tp, prevSc] = await Promise.all([
         fetchStaffList(selectedFacilityId),
         fetchSchedule(selectedFacilityId, yearMonth),
         listRules(selectedFacilityId),
@@ -155,9 +160,11 @@ export default function ShiftGridPage() {
         fetchShiftRulesSettings(selectedFacilityId),
         listCandidates(selectedFacilityId, yearMonth),
         fetchTimeproExportSettings(selectedFacilityId),
+        fetchSchedule(selectedFacilityId, prevYm),
       ])
       setStaffList(sl.filter((s) => s.active !== false))
       setSchedule(sc)
+      setPrevTail(prevSc ? prevMonthTail(prevSc.assignments, daysInMonthOf(prevYm)) : undefined)
       setRules(rl)
       setCompatibilities(cl)
       setWishes(wl)
@@ -196,6 +203,7 @@ export default function ShiftGridPage() {
         compatibilities,
         settings,
         monthlyMaxDaysOverride: schedule?.monthlyMaxDaysOverride,
+        prevTail,
       }),
     [
       yearMonth,
@@ -209,6 +217,7 @@ export default function ShiftGridPage() {
       compatibilities,
       settings,
       schedule?.monthlyMaxDaysOverride,
+      prevTail,
     ],
   )
 
@@ -221,12 +230,14 @@ export default function ShiftGridPage() {
     try {
       // 旧版と同じく、生成を開始する前に1フレーム逃してボタン押下の反応を先に描画させる
       await new Promise((resolve) => setTimeout(resolve, 30))
+      // 案を作る時点の勤務表の版を先に控える（採択時に、その後の手直しを上書きしないか確かめるため）
+      const baseRevision = (await fetchSchedule(selectedFacilityId, yearMonth))?.revision ?? 0
       const input = await loadGenerateInput(selectedFacilityId, yearMonth)
       // シフト作成の対象外の職員（施設長・看護師など）は生成に含めないので、手で入れた勤務を案に残す
       const kept = Object.fromEntries(
         staffList.filter((s) => s.excludeFromGeneration).map((s) => [s.id, schedule?.assignments?.[s.id] ?? {}]),
       )
-      const result = generate(input).map((c) => ({ ...c, assignments: { ...kept, ...c.assignments } }))
+      const result = generate(input).map((c) => ({ ...c, assignments: { ...kept, ...c.assignments }, baseRevision }))
       const saved = await saveCandidates(selectedFacilityId, yearMonth, result)
       setCandidates(saved)
       setStoredCandidates(saved)
@@ -250,7 +261,19 @@ export default function ShiftGridPage() {
     setBackupMsg(null)
     try {
       const configSnapshot = await fetchCurrentGenerationConfig(selectedFacilityId)
-      await adoptCandidate(selectedFacilityId, yearMonth, days, candidate, candidate.id, user.uid, configSnapshot)
+      try {
+        await adoptCandidate(selectedFacilityId, yearMonth, days, candidate, candidate.id, user.uid, configSnapshot)
+      } catch (e) {
+        if (!(e instanceof ScheduleChangedError)) throw e
+        if (
+          !confirm(
+            '案を作ったあとに、この月の勤務表が変更されています（手直し・ロックなど）。\n採択すると、その変更は案の内容で上書きされます。それでも採択しますか？\n\n（変更を活かしたいときは「キャンセル」を押し、案を作り直してください）',
+          )
+        ) {
+          return
+        }
+        await adoptCandidate(selectedFacilityId, yearMonth, days, candidate, candidate.id, user.uid, configSnapshot, true)
+      }
       setCandidates(null)
       setPreviewId(null)
       setStoredCandidates([])

@@ -12,13 +12,16 @@ import {
   getDocs,
   increment,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { daysInMonth as daysInMonthOf } from './dateUtils'
+import { daysInMonth as daysInMonthOf, shiftYearMonth } from './dateUtils'
+import { prevMonthTail } from '../domain/scheduler/gridUtils'
 import {
   mergeGenerationConfig,
   type GenerationConfig,
@@ -356,21 +359,26 @@ async function ensureSchedule(
   uid: string,
 ) {
   const ref = scheduleRef(facilityId, yearMonth)
-  const snap = await getDoc(ref)
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      yearMonth,
-      daysInMonth,
-      status: 'draft',
-      assignments: {},
-      locks: {},
-      revision: 1,
-      createdByUid: uid,
-      updatedByUid: uid,
-      updatedAt: serverTimestamp(),
-    })
-  }
+  // 2人が同時に最初の入力をしても、後の人が先の人の入力を空の表で上書きしないよう、無いときだけ作る
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(ref)
+    if (!snap.exists()) tx.set(ref, newScheduleData(yearMonth, daysInMonth, uid))
+  })
   return ref
+}
+
+function newScheduleData(yearMonth: string, daysInMonth: number, uid: string) {
+  return {
+    yearMonth,
+    daysInMonth,
+    status: 'draft',
+    assignments: {},
+    locks: {},
+    revision: 1,
+    createdByUid: uid,
+    updatedByUid: uid,
+    updatedAt: serverTimestamp(),
+  }
 }
 
 export async function setAssignment(
@@ -517,7 +525,10 @@ export async function setWish(
     status: 'approved',
     createdByUid: uid,
   }
-  await setDoc(ref, data)
+  // 既にある申請（有給希望など、別の種類を含む）は上書きしない
+  await runTransaction(requireDb(), async (tx) => {
+    if (!(await tx.get(ref)).exists()) tx.set(ref, data)
+  })
 }
 
 /** 希望休を取り消す */
@@ -529,7 +540,11 @@ export async function clearWish(facilityId: string, staffId: string, date: strin
     'leaveRequests',
     leaveRequestId(staffId, date),
   )
-  await deleteDoc(ref)
+  // 希望休だけを消す（同じ日の有給希望・勤務希望は消さない）
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(ref)
+    if (snap.exists() && (snap.data() as LeaveRequest).type === '希望休') tx.delete(ref)
+  })
 }
 
 // ------------------------------------------------------------------
@@ -647,6 +662,9 @@ export async function loadGenerateInput(facilityId: string, yearMonth: string): 
       fetchSchedule(facilityId, yearMonth),
       fetchCurrentGenerationConfig(facilityId),
     ])
+  // 月をまたぐ夜勤明け・連続勤務のため、前月末の勤務を渡す（前月の勤務表が無ければ渡さない）
+  const prevYm = shiftYearMonth(yearMonth, -1)
+  const prevSchedule = await fetchSchedule(facilityId, prevYm)
 
   return {
     yearMonth,
@@ -659,11 +677,13 @@ export async function loadGenerateInput(facilityId: string, yearMonth: string): 
     compatibilities,
     settings,
     wishes: wishesAll
-      .filter((w) => w.type === '希望休')
+      // 生成で必ず守るのは、却下されておらず、承認済みか「必ず」の希望休だけ
+      .filter((w) => w.type === '希望休' && w.status !== 'rejected' && (w.status === 'approved' || w.priority === 'must'))
       .map((w) => ({ staffId: w.staffId, day: Number(w.date.split('-')[2]) })),
     lockedCells: (schedule?.locks ?? {}) as Record<string, Record<string, true>>,
     baseAssignments: schedule?.assignments ?? {},
     monthlyMaxDaysOverride: schedule?.monthlyMaxDaysOverride,
+    prevTail: prevSchedule ? prevMonthTail(prevSchedule.assignments, daysInMonthOf(prevYm)) : undefined,
     config,
   }
 }
@@ -682,7 +702,9 @@ export async function listCandidates(
 
 export async function clearCandidates(facilityId: string, yearMonth: string) {
   const snap = await getDocs(candidatesCollection(facilityId, yearMonth))
-  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)))
+  const batch = writeBatch(requireDb())
+  snap.docs.forEach((d) => batch.delete(d.ref))
+  await batch.commit()
 }
 
 /** 既存の候補（あれば）を削除してから、生成された3案を保存する */
@@ -692,16 +714,31 @@ export async function saveCandidates(
   candidates: Candidate[],
 ): Promise<(Candidate & { id: string })[]> {
   const col = candidatesCollection(facilityId, yearMonth)
-  await clearCandidates(facilityId, yearMonth)
-  return Promise.all(
-    candidates.map(async (c) => {
-      const ref = await addDoc(col, { ...c, generatedAt: serverTimestamp() })
-      return { ...c, id: ref.id }
-    }),
-  )
+  const old = await getDocs(col)
+  // 古い案の削除と新しい案の保存を一度に行う（途中で失敗しても、古い案と新しい案が混ざらない）
+  const batch = writeBatch(requireDb())
+  old.docs.forEach((d) => batch.delete(d.ref))
+  const saved = candidates.map((c) => {
+    const ref = doc(col)
+    batch.set(ref, { ...c, generatedAt: serverTimestamp() })
+    return { ...c, id: ref.id }
+  })
+  await batch.commit()
+  return saved
 }
 
-/** 案を確定シフトとして採択する。assignments を全置換し、候補は削除する */
+/** 案を作ったあとに勤務表が変更されていたとき、採択で投げる（画面で確認してから force で採択し直す） */
+export class ScheduleChangedError extends Error {
+  constructor() {
+    super('案を作ったあとに、この月の勤務表が変更されています')
+    this.name = 'ScheduleChangedError'
+  }
+}
+
+/**
+ * 案を確定シフトとして採択する。assignments を全置換し、候補は削除する。
+ * 案を作ったあとに勤務表が変更されていたら（版が違えば）ScheduleChangedError。force なら構わず採択する
+ */
 export async function adoptCandidate(
   facilityId: string,
   yearMonth: string,
@@ -710,10 +747,13 @@ export async function adoptCandidate(
   candidateId: string,
   uid: string,
   configSnapshot: GenerationConfig,
+  force = false,
 ) {
-  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
-  await updateDoc(ref, {
-    assignments: candidate.assignments,
+  const ref = scheduleRef(facilityId, yearMonth)
+  // baseRevision は保存しない（勤務表の項目ではないため）
+  const { baseRevision, ...rest } = candidate
+  const update = {
+    assignments: rest.assignments,
     generationMeta: {
       source: 'auto',
       candidateId,
@@ -722,7 +762,14 @@ export async function adoptCandidate(
     },
     updatedByUid: uid,
     updatedAt: serverTimestamp(),
-    revision: increment(1),
+  }
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(ref)
+    const current = snap.exists() ? ((snap.data() as Schedule).revision ?? 0) : 0
+    // 版を持たない古い案（この仕組みより前に作った案）は確かめられないので、そのまま採択する
+    if (!force && baseRevision != null && current !== baseRevision) throw new ScheduleChangedError()
+    if (snap.exists()) tx.update(ref, { ...update, revision: increment(1) })
+    else tx.set(ref, { ...newScheduleData(yearMonth, daysInMonth, uid), ...update })
   })
   await clearCandidates(facilityId, yearMonth)
 }

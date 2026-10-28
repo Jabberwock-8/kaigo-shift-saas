@@ -120,10 +120,11 @@ export type GenerationConfigOverride = {
 export function mergeGenerationConfig(
   override: GenerationConfigOverride | null | undefined,
 ): GenerationConfig {
-  if (!override) return GENERATION_DEFAULTS_V1
+  // 既定値そのものを返すと、呼び出し側の書き換えが既定値に及ぶので、複製して返す
+  if (!override) return structuredClone(GENERATION_DEFAULTS_V1)
   return {
     // profiles は配列まるごと上書き（重みの一部だけ差し替える運用は想定しない）
-    profiles: override.profiles ?? GENERATION_DEFAULTS_V1.profiles,
+    profiles: structuredClone(override.profiles ?? GENERATION_DEFAULTS_V1.profiles),
     score: {
       fair: { ...GENERATION_DEFAULTS_V1.score.fair, ...override.score?.fair },
       comp: { ...GENERATION_DEFAULTS_V1.score.comp, ...override.score?.comp },

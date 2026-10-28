@@ -6,7 +6,7 @@
 import type { Rule, RuleCond } from '../../types/models'
 import { parseTimeToHours, weekdayOf } from '../../lib/dateUtils'
 import { ruleText, type RuleTextContext } from './ruleText'
-import { akeAllowsConsecutiveNights, akeRequiresOffNextDay } from './gridUtils'
+import { akeAllowsConsecutiveNights, akeRequiresOffNextDay, PREV_TAIL_DAYS } from './gridUtils'
 import { resolveLimits } from './limits'
 import { ruleAppliesToDate } from './ruleMatch'
 import type { CheckInput, CheckResult, PatternWithId, RuleWithId, StaffWithId } from './types'
@@ -145,6 +145,7 @@ export function checkMonth(input: CheckInput): CheckResult {
     compatibilities,
     settings,
     monthlyMaxDaysOverride,
+    prevTail,
   } = input
   const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
   // 違反の文言は施設の夜勤明けの記号で出す（準夜勤の施設は「明休」、ロング夜勤の施設は「明出」など）
@@ -167,7 +168,9 @@ export function checkMonth(input: CheckInput): CheckResult {
     staffMessages[staffId].push(msg)
   }
 
-  const assignedOf = (staffId: string, day: number) => assignments[staffId]?.[String(day)]
+  // 1日より前は前月末の勤務（前月の勤務表が無ければ undefined）
+  const assignedOf = (staffId: string, day: number) =>
+    day < 1 ? prevTail?.[staffId]?.[String(day)] : assignments[staffId]?.[String(day)]
   const assignedOfSecondary = (staffId: string, day: number) => secondaryAssignments?.[staffId]?.[String(day)]
   const patternOf = (staffId: string, day: number) => {
     const id = assignedOf(staffId, day)
@@ -190,8 +193,48 @@ export function checkMonth(input: CheckInput): CheckResult {
 
     let workCount = 0
     let nightCount = 0
+    // 前月末から続いている連続勤務を引き継ぐ（月の初めの連続勤務の上限を、月をまたいで数える）
+    const tailKnown = !!prevTail?.[s.id]
     let consecutive = 0
+    for (let d = 0; d >= 1 - PREV_TAIL_DAYS && patternOf(s.id, d)?.isWork; d--) consecutive++
     const consecutiveByPattern: Record<string, number> = {}
+    const lastPrevId = assignedOf(s.id, 0)
+    if (lastPrevId && settings.shiftConsecutiveCaps[lastPrevId] != null) {
+      let n = 0
+      for (let d = 0; d >= 1 - PREV_TAIL_DAYS && assignedOf(s.id, d) === lastPrevId; d--) n++
+      consecutiveByPattern[lastPrevId] = n
+    }
+
+    // 前月末の夜勤の続き（前月の最終日・その前日の夜勤に対する、当月1・2日の明・休み）
+    if (tailKnown) {
+      const p0 = patternOf(s.id, 0)
+      const pm1 = patternOf(s.id, -1)
+      const p1 = patternOf(s.id, 1)
+      const p2 = patternOf(s.id, 2)
+      if (settings.nightMode === 'ake') {
+        if (p0?.isNight && !(p1?.isNight && akeAllowsConsecutiveNights(settings))) {
+          if (p1?.category !== 'afterNight') {
+            hard.push(`${s.name}: 1日 夜勤翌日は「${akeCode}」が必要（前月末の夜勤）`)
+            addCell(s.id, 1, `夜勤翌日は${akeCode}が必要（前月末の夜勤）`)
+          } else if (akeRequiresOffNextDay(settings) && daysInMonth >= 2 && p2?.category !== 'off') {
+            hard.push(`${s.name}: 2日 ${akeCode}の翌日は「休」が必要`)
+            addCell(s.id, 2, `${akeCode}の翌日は休が必要`)
+          }
+        }
+        if (pm1?.isNight && p0?.category === 'afterNight' && akeRequiresOffNextDay(settings) && p1?.category !== 'off') {
+          hard.push(`${s.name}: 1日 ${akeCode}の翌日は「休」が必要（前月末の夜勤）`)
+          addCell(s.id, 1, `${akeCode}の翌日は休が必要（前月末の夜勤）`)
+        }
+      } else if (settings.nightMode === 'direct' && p0?.isNight) {
+        // 前月末から続く夜勤の終わりを探し、その翌日が勤務なら違反
+        let e = 0
+        while (e + 1 <= daysInMonth && patternOf(s.id, e + 1)?.isNight) e++
+        if (e + 1 <= daysInMonth && patternOf(s.id, e + 1)?.isWork) {
+          hard.push(`${s.name}: ${e + 1}日 夜勤翌日は休みが必要（前月末の夜勤）`)
+          addCell(s.id, e + 1, '夜勤翌日は休みが必要（前月末の夜勤）')
+        }
+      }
+    }
 
     for (let d = 1; d <= daysInMonth; d++) {
       const patternId = assignedOf(s.id, d)
@@ -258,8 +301,9 @@ export function checkMonth(input: CheckInput): CheckResult {
 
       // ---- 夜勤ブロックの整合性（settings.nightMode 設定時のみ） ----
       if (settings.nightMode === 'ake') {
-        if (pattern?.category === 'afterNight') {
-          const prevPattern = d > 1 ? patternOf(s.id, d - 1) : undefined
+        // 1日の明は、前月の勤務表があるときだけ前月末の夜勤と照らす（無いと前月の夜勤が分からないため）
+        if (pattern?.category === 'afterNight' && (d > 1 || tailKnown)) {
+          const prevPattern = patternOf(s.id, d - 1)
           if (!prevPattern?.isNight) {
             hard.push(`${s.name}: ${d}日 夜勤なしの「${akeCode}」`)
             addCell(s.id, d, `夜勤なしの${akeCode}`)
@@ -288,7 +332,7 @@ export function checkMonth(input: CheckInput): CheckResult {
           }
         }
       } else if (settings.nightMode === 'direct') {
-        const prevPattern = d > 1 ? patternOf(s.id, d - 1) : undefined
+        const prevPattern = patternOf(s.id, d - 1)
         const prevWasNight = !!prevPattern?.isNight
         if (pattern?.isNight && !prevWasNight) {
           // 夜勤ブロックの開始日。終端 e を探す
