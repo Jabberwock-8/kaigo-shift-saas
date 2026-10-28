@@ -1,5 +1,6 @@
 :root {
-  font-family: 'M PLUS Rounded 1c', system-ui, 'Segoe UI', 'Yu Gothic UI',
+  /* 欧文・数字は Inter、日本語は Noto Sans JP（Inter に無い文字は Noto Sans JP で表示される） */
+  font-family: 'Inter', 'Noto Sans JP', system-ui, 'Segoe UI', 'Yu Gothic UI',
     'Hiragino Kaku Gothic ProN', Meiryo, Roboto, sans-serif;
   line-height: 1.6;
   /*
