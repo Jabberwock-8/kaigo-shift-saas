@@ -14,7 +14,6 @@ import PaidLeavePage from '../features/paidLeave/PaidLeavePage'
 import CompatibilityPage from '../features/compatibility/CompatibilityPage'
 import RulesPage from '../features/rules/RulesPage'
 import SettingsPage from '../features/settings/SettingsPage'
-import { displayServiceType } from '../features/submission/serviceTypes'
 import FacilityTabs from './FacilityTabs'
 
 // Excel入出力・旧データ取込は、たまにしか使わない取込用の画面で、Excel処理ライブラリ（xlsx）が大きい。
@@ -39,8 +38,7 @@ const TABS = [
 
 export default function FacilityShell() {
   const { signOut } = useAuth()
-  const { appUser, facilities, selectedFacilityId } = useFacility()
-  const facility = facilities.find((f) => f.id === selectedFacilityId)
+  const { appUser, selectedFacilityId } = useFacility()
 
   if (!selectedFacilityId) return null
 
@@ -65,31 +63,27 @@ export default function FacilityShell() {
               </NavLink>
             ))}
           </nav>
+          <div className="sidebar-footer">
+            {appUser?.role === 'admin' && (
+              <Link to="/org-admin" className="navbtn">
+                <span className="nico">🏢</span>
+                施設・ユーザー管理
+              </Link>
+            )}
+            <button type="button" className="navbtn sidebar-logout" onClick={() => void signOut()}>
+              <span className="nico">🚪</span>
+              ログアウト
+            </button>
+          </div>
         </aside>
 
         <div className="main-area">
           <FacilityTabs />
-          <div className="page-header no-print">
-            <div>
-              <h1>
-                {facility?.name ?? ''}
-                {facility?.serviceType && <span className="service-type-chip">{displayServiceType(facility.serviceType)}</span>}
-              </h1>
-              {appUser?.role !== 'admin' && (
-                <p className="muted">閲覧のみ（管理者ではありません）</p>
-              )}
-            </div>
-            <div className="header-actions">
-              {appUser?.role === 'admin' && (
-                <Link to="/org-admin" className="header-link-btn">
-                  ⚙️ 施設・ユーザー管理
-                </Link>
-              )}
-              <button type="button" onClick={() => void signOut()}>
-                ログアウト
-              </button>
-            </div>
-          </div>
+          {appUser?.role !== 'admin' && (
+            <p className="muted no-print" style={{ margin: '0 0 10px' }}>
+              閲覧のみ（管理者ではありません）
+            </p>
+          )}
 
           <div className="app-shell wide embedded">
             <Routes>

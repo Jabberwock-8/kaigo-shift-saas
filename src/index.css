@@ -2,6 +2,8 @@
   /* 欧文・数字は Inter、日本語は Noto Sans JP（Inter に無い文字は Noto Sans JP で表示される） */
   font-family: 'Inter', 'Noto Sans JP', system-ui, 'Segoe UI', 'Yu Gothic UI',
     'Hiragino Kaku Gothic ProN', Meiryo, Roboto, sans-serif;
+  /* 数字を等幅にして、シフト表や回数表示の桁を揃える */
+  font-feature-settings: 'tnum';
   line-height: 1.6;
   /*
    * 現状、カード・表などのコンポーネントは明るい配色を前提に作っている。
