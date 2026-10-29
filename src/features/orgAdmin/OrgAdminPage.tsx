@@ -11,6 +11,7 @@ import {
 import type { AppUser, Facility } from '../../types/models'
 import FacilityMultiSelect from './FacilityMultiSelect'
 import FacilityTransferSection from './FacilityTransferSection'
+import EditLockAdminSection from './EditLockAdminSection'
 import { displayServiceType, SERVICE_TYPES } from '../submission/serviceTypes'
 import {
   findExistingUser,
@@ -510,6 +511,8 @@ export default function OrgAdminPage() {
           </div>
         </div>
       </section>
+
+      <EditLockAdminSection />
 
       <FacilityTransferSection facilities={facilities} onImported={() => load(false)} />
     </>

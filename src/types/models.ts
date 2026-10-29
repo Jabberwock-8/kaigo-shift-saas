@@ -330,6 +330,16 @@ export interface Schedule {
   events?: Record<string, string>
   generationMeta?: ScheduleGenerationMeta
   revision?: number
+  /** 勤務表の編集ロック（月ごと・パスワード付き）。無ければ編集できる。remaining-work-design.md §17 */
+  editLock?: ScheduleEditLock
+}
+
+export interface ScheduleEditLock {
+  /** パスワードを PBKDF2 で変換した値（パスワードそのものは保存しない） */
+  hash: string
+  salt: string
+  lockedByUid: string
+  lockedAt?: unknown
 }
 
 /** 市の提出様式の出力設定（facilities/{fid}/settings/submission。未作成なら既定値） */

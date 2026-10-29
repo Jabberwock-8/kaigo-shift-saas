@@ -5,6 +5,8 @@ import { useMasters } from '../../context/MastersContext'
 import {
   DEFAULT_SHIFT_RULES_SETTINGS,
   adoptCandidate,
+  clearScheduleEditLock,
+  setScheduleEditLock,
   ScheduleChangedError,
   clearAllLocks,
   fetchCurrentGenerationConfig,
@@ -62,6 +64,8 @@ import EventPicker from './EventPicker'
 import NightTargetPanel from './NightTargetPanel'
 import CandidatesPanel from '../generate/CandidatesPanel'
 import MonthlyLimitsModal from './MonthlyLimitsModal'
+import EditLockModal from './EditLockModal'
+import { hashEditLockPassword, newEditLockSalt } from '../../lib/editLock'
 import TimeproModal from '../timepro/TimeproModal'
 
 type StaffWithId = Staff & { id: string }
@@ -88,6 +92,9 @@ export default function ShiftGridPage() {
   const [yearMonth, setYearMonth] = useState(currentYearMonth())
   const [staffList, setStaffList] = useState<StaffWithId[]>([])
   const [schedule, setSchedule] = useState<Schedule | null>(null)
+  // 編集ロックを一時解除している月（施設ID/年月）。月・施設を移るか再読み込みすると消え、ロックに戻る
+  const [unlockedKey, setUnlockedKey] = useState<string | null>(null)
+  const [editLockModal, setEditLockModal] = useState<'lock' | 'unlock' | null>(null)
   // 前月末の勤務（月をまたぐ夜勤明け・連続勤務の違反チェック用）
   const [prevTail, setPrevTail] = useState<PrevMonthTail | undefined>(undefined)
   const [rules, setRules] = useState<(Rule & { id: string })[]>([])
@@ -198,9 +205,40 @@ export default function ShiftGridPage() {
   }
 
   useEffect(() => {
+    setUnlockedKey(null)
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFacilityId, yearMonth])
+
+  const monthKey = `${selectedFacilityId}/${yearMonth}`
+  const editLocked = !!schedule?.editLock
+  const tempUnlocked = editLocked && unlockedKey === monthKey
+  const canEditMonth = isAdmin && (!editLocked || tempUnlocked)
+
+  async function handleLock(password: string) {
+    if (!selectedFacilityId || !user) return
+    const salt = newEditLockSalt()
+    await setScheduleEditLock(selectedFacilityId, yearMonth, days, { hash: await hashEditLockPassword(password, salt), salt }, user.uid)
+    setCandidates(null)
+    setPreviewId(null)
+    setPicker(null)
+    setEventPicker(null)
+    setUnlockedKey(null)
+    setEditLockModal(null)
+    await load()
+  }
+
+  async function handleRemoveLock() {
+    if (!selectedFacilityId) return
+    if (!confirm(`${formatYearMonthLabel(yearMonth)}のロックを外します（パスワードなしで誰でも変更できる状態に戻ります）。よろしいですか？`)) return
+    try {
+      await clearScheduleEditLock(selectedFacilityId, yearMonth)
+      setUnlockedKey(null)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
 
   const previewCandidate = candidates?.find((c) => c.id === previewId) ?? null
   const effectiveAssignments = useMemo(
@@ -610,6 +648,26 @@ export default function ShiftGridPage() {
             {fitToScreen ? '🔍 実寸に戻す' : '🔍 画面に収める'}
           </button>
           {isAdmin && (
+            <button
+              type="button"
+              className={editLocked && !tempUnlocked ? 'edit-lock-on' : undefined}
+              onClick={() => {
+                if (!editLocked) setEditLockModal('lock')
+                else if (!tempUnlocked) setEditLockModal('unlock')
+                else setUnlockedKey(null)
+              }}
+              title={
+                !editLocked
+                  ? 'この月の勤務表をパスワードでロックし、うっかり変更されないようにします'
+                  : tempUnlocked
+                    ? '一時解除をやめて、ロックに戻します'
+                    : 'パスワードを入れると、一時的に変更できます'
+              }
+            >
+              {!editLocked ? '🔒 ロック' : tempUnlocked ? '🔒 ロックに戻す' : '🔓 一時解除'}
+            </button>
+          )}
+          {canEditMonth && (
             <button type="button" onClick={() => void handleGenerate()} disabled={generating}>
               {generating ? '生成中…' : '⚡ パターン生成'}
             </button>
@@ -691,6 +749,7 @@ export default function ShiftGridPage() {
                       setOpenMenu(null)
                       setShowLimitsModal(true)
                     }}
+                    disabled={!canEditMonth}
                   >
                     📅 月の上限を調整
                   </button>
@@ -701,7 +760,7 @@ export default function ShiftGridPage() {
                       setOpenMenu(null)
                       void handleClearAllLocks()
                     }}
-                    disabled={Object.values(schedule?.locks ?? {}).every((byDay) => Object.keys(byDay).length === 0)}
+                    disabled={!canEditMonth || Object.values(schedule?.locks ?? {}).every((byDay) => Object.keys(byDay).length === 0)}
                   >
                     🔓 ロックを全解除
                   </button>
@@ -741,10 +800,27 @@ export default function ShiftGridPage() {
         </div>
       )}
 
+      {editLocked && (
+        <p className={`no-print edit-lock-banner${tempUnlocked ? ' unlocked' : ''}`}>
+          {tempUnlocked ? (
+            <>
+              🔓 一時解除中です。ほかの月・画面に移るか、再読み込みするとロックに戻ります。
+              <button type="button" className="link-btn" onClick={() => setUnlockedKey(null)}>
+                ロックに戻す
+              </button>
+              <button type="button" className="link-btn" onClick={() => void handleRemoveLock()}>
+                ロックを外す
+              </button>
+            </>
+          ) : (
+            <>🔒 この月の勤務表はロックされています（見る・印刷・出力はできます）。{isAdmin && '変更するには「一時解除」を押してください。'}</>
+          )}
+        </p>
+      )}
       {genError && <p className="warn no-print">{genError}</p>}
       {backupMsg && <p className="muted no-print">💾 {backupMsg}</p>}
 
-      {isAdmin && !candidates && storedCandidates.length > 0 && (
+      {canEditMonth && !candidates && storedCandidates.length > 0 && (
         <p className="no-print" style={{ marginBottom: 10 }}>
           <button type="button" className="link-btn" onClick={() => setCandidates(storedCandidates)}>
             前回の生成結果を表示（{storedCandidates.length}案）
@@ -752,7 +828,7 @@ export default function ShiftGridPage() {
         </p>
       )}
 
-      {candidates && (
+      {candidates && canEditMonth && (
         <CandidatesPanel
           candidates={candidates}
           previewId={previewId}
@@ -762,7 +838,7 @@ export default function ShiftGridPage() {
         />
       )}
 
-      {previewCandidate && (
+      {previewCandidate && canEditMonth && (
         <p className="no-print preview-banner">
           プレビュー中: {previewCandidate.label}（未確定）
           <button type="button" className="link-btn" onClick={() => void handleAdopt(previewCandidate)}>
@@ -884,10 +960,10 @@ export default function ShiftGridPage() {
                   return (
                     <td
                       key={d}
-                      className={isAdmin && !previewCandidate ? 'clickable' : undefined}
+                      className={canEditMonth && !previewCandidate ? 'clickable' : undefined}
                       title={text || undefined}
                       onClick={(e) => {
-                        if (!isAdmin || previewCandidate) return
+                        if (!canEditMonth || previewCandidate) return
                         setEventPicker({ day: d, rect: e.currentTarget.getBoundingClientRect() })
                       }}
                     >
@@ -934,7 +1010,7 @@ export default function ShiftGridPage() {
                                   : undefined
                               }
                               onClick={(e) => {
-                                if (!isAdmin || previewCandidate) return
+                                if (!canEditMonth || previewCandidate) return
                                 setPicker({
                                   staffId: staff.id,
                                   day: d,
@@ -944,7 +1020,7 @@ export default function ShiftGridPage() {
                               }}
                               onContextMenu={(e) => {
                                 // ロックはパネルを開かず右クリックだけで切り替えられるようにする
-                                if (!isAdmin || previewCandidate) return
+                                if (!canEditMonth || previewCandidate) return
                                 e.preventDefault()
                                 void handleToggleLock(staff.id, d, locked)
                               }}
@@ -989,7 +1065,7 @@ export default function ShiftGridPage() {
                                     : undefined
                                 }
                                 onClick={(e) => {
-                                  if (!isAdmin || previewCandidate) return
+                                  if (!canEditMonth || previewCandidate) return
                                   setPicker({
                                     staffId: staff.id,
                                     day: d,
@@ -1097,6 +1173,22 @@ export default function ShiftGridPage() {
             />
           )
         })()}
+
+      {editLockModal && (
+        <EditLockModal
+          mode={editLockModal}
+          yearMonth={yearMonth}
+          lock={schedule?.editLock}
+          onSubmit={async (password) => {
+            if (editLockModal === 'lock') await handleLock(password)
+            else {
+              setUnlockedKey(monthKey)
+              setEditLockModal(null)
+            }
+          }}
+          onClose={() => setEditLockModal(null)}
+        />
+      )}
 
       {eventPicker && (
         <EventPicker

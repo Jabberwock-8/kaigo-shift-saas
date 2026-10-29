@@ -1721,3 +1721,22 @@ button.primary:disabled {
   font-weight: 600;
   vertical-align: middle;
 }
+
+/* 勤務表の編集ロック（remaining-work-design.md §17） */
+.edit-lock-banner {
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #eef2f7;
+  border: 1px solid #c9d3e0;
+}
+.edit-lock-banner.unlocked {
+  background: #fff6e0;
+  border-color: #e8c66a;
+}
+.edit-lock-banner .link-btn {
+  margin-left: 10px;
+}
+button.edit-lock-on {
+  background: #eef2f7;
+}

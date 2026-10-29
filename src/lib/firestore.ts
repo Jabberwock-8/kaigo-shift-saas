@@ -400,6 +400,32 @@ export async function setAssignment(
 }
 
 /** 生活相談員などの兼務行（secondaryAssignments）を1セル更新する。assignmentsとは独立 */
+/** 勤務表に編集ロックをかける（内容は変えないので revision は上げない） */
+export async function setScheduleEditLock(
+  facilityId: string,
+  yearMonth: string,
+  daysInMonth: number,
+  lock: { hash: string; salt: string },
+  uid: string,
+) {
+  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
+  await updateDoc(ref, { editLock: { ...lock, lockedByUid: uid, lockedAt: serverTimestamp() } })
+}
+
+/** 勤務表の編集ロックを外す（シフト表での解除と、施設・ユーザー管理での強制解除） */
+export async function clearScheduleEditLock(facilityId: string, yearMonth: string) {
+  await updateDoc(scheduleRef(facilityId, yearMonth), { editLock: deleteField() })
+}
+
+/** 編集ロック中の月の一覧（施設・ユーザー管理の強制解除用） */
+export async function listEditLockedMonths(facilityId: string): Promise<string[]> {
+  const snap = await getDocs(collection(requireDb(), 'facilities', facilityId, 'schedules'))
+  return snap.docs
+    .filter((d) => !!(d.data() as Schedule).editLock)
+    .map((d) => d.id)
+    .sort()
+}
+
 export async function setSecondaryAssignment(
   facilityId: string,
   yearMonth: string,
