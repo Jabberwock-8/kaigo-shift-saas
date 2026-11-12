@@ -10,6 +10,7 @@ import {
   ScheduleChangedError,
   ScheduleLockedError,
   clearAllLocks,
+  fillEmptyAssignments,
   fetchCurrentGenerationConfig,
   fetchLeaveRequestsForMonth,
   fetchSchedule,
@@ -65,6 +66,7 @@ import EventPicker from './EventPicker'
 import NightTargetPanel from './NightTargetPanel'
 import CandidatesPanel from '../generate/CandidatesPanel'
 import MonthlyLimitsModal from './MonthlyLimitsModal'
+import BulkFillModal from './BulkFillModal'
 import EditLockModal from './EditLockModal'
 import { hashEditLockPassword, newEditLockSalt } from '../../lib/editLock'
 import { staffShownInMonth } from '../../lib/staffUtils'
@@ -129,6 +131,8 @@ export default function ShiftGridPage() {
   const generatingRef = useRef(false)
 
   const [showLimitsModal, setShowLimitsModal] = useState(false)
+  const [showBulkFill, setShowBulkFill] = useState(false)
+  const [bulkMsg, setBulkMsg] = useState<string | null>(null)
   const [showViolationList, setShowViolationList] = useState(false)
   const [showTimeproModal, setShowTimeproModal] = useState(false)
   const [showSubmissionModal, setShowSubmissionModal] = useState(false)
@@ -213,6 +217,7 @@ export default function ShiftGridPage() {
 
   useEffect(() => {
     setUnlockedKey(null)
+    setBulkMsg(null)
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFacilityId, yearMonth])
@@ -779,6 +784,19 @@ export default function ShiftGridPage() {
                     role="menuitem"
                     onClick={() => {
                       setOpenMenu(null)
+                      setBulkMsg(null)
+                      setShowBulkFill(true)
+                    }}
+                    disabled={!canEditMonth || !!previewCandidate || staffList.length === 0}
+                    title={previewCandidate ? 'プレビュー中は使えません。採択するか、プレビューを閉じてください' : undefined}
+                  >
+                    ✏ まとめて入力
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOpenMenu(null)
                       void handleClearAllLocks()
                     }}
                     disabled={!canEditMonth || Object.values(schedule?.locks ?? {}).every((byDay) => Object.keys(byDay).length === 0)}
@@ -840,6 +858,7 @@ export default function ShiftGridPage() {
       )}
       {genError && <p className="warn no-print">{genError}</p>}
       {backupMsg && <p className="muted no-print">💾 {backupMsg}</p>}
+      {bulkMsg && <p className="muted no-print">✏ {bulkMsg}</p>}
 
       {canEditMonth && !candidates && storedCandidates.length > 0 && (
         <p className="no-print" style={{ marginBottom: 10 }}>
@@ -1243,6 +1262,42 @@ export default function ShiftGridPage() {
             await load()
           }}
           onClose={() => setShowLimitsModal(false)}
+        />
+      )}
+
+      {showBulkFill && (
+        <BulkFillModal
+          yearMonth={yearMonth}
+          daysInMonth={days}
+          staffList={staffList}
+          shiftPatterns={shiftPatterns}
+          assignments={schedule?.assignments}
+          locks={schedule?.locks}
+          wishes={wishes}
+          optionsFor={optionsFor}
+          onRun={async (cells, patternId) => {
+            if (!selectedFacilityId || !user) return 0
+            let written: number
+            try {
+              written = await fillEmptyAssignments(selectedFacilityId, yearMonth, days, cells, patternId, user.uid, tempUnlocked)
+            } catch (e) {
+              if (!(e instanceof ScheduleLockedError)) throw e
+              // ほかの画面でロックされた。何も書いていない。閉じて読み込み直し、案内する
+              setShowBulkFill(false)
+              await handleWriteError(e)
+              return 0
+            }
+            setShowBulkFill(false)
+            await load()
+            const code = shiftPatterns.find((p) => p.id === patternId)?.code ?? ''
+            setBulkMsg(
+              written === cells.length
+                ? `まとめて入力: ${written}マスに「${code}」を入れました`
+                : `まとめて入力: ${written}マスに「${code}」を入れました（確認のあとにほかの人が入力・ロックした${cells.length - written}マスは変えていません）`,
+            )
+            return written
+          }}
+          onClose={() => setShowBulkFill(false)}
         />
       )}
 

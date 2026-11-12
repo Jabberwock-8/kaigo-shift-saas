@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildNewScheduleWithWrites } from './firestore'
+import { buildNewScheduleWithWrites, stillEmptyCells } from './firestore'
 
 // §18 A4: 勤務表が無い月に最初に書くときの内容が、従来の「空の表を作る → 項目を更新」と同じになること
 describe('buildNewScheduleWithWrites', () => {
@@ -31,5 +31,28 @@ describe('buildNewScheduleWithWrites', () => {
     buildNewScheduleWithWrites(base, [{ path: ['assignments', 's1', '3'], value: 'p1' }])
     expect(base.assignments).toEqual({})
     expect(base.revision).toBe(1)
+  })
+})
+
+// §19 C1: 書き込む直前の最新の勤務表で、ほかの人が入れたマス・ロックしたマスを外す
+describe('stillEmptyCells', () => {
+  const cells = [
+    { staffId: 'a', day: 1 },
+    { staffId: 'a', day: 2 },
+    { staffId: 'b', day: 1 },
+  ]
+
+  it('勤務表が無ければ全部残す', () => {
+    expect(stillEmptyCells(cells, null)).toEqual(cells)
+  })
+
+  it('入力済み・ロック済みのマスは外す（上書きしない）', () => {
+    expect(stillEmptyCells(cells, { assignments: { a: { '1': 'X' } }, locks: { b: { '1': true } } })).toEqual([
+      { staffId: 'a', day: 2 },
+    ])
+  })
+
+  it('assignments・locks の無い古い勤務表でも動く', () => {
+    expect(stillEmptyCells(cells, {} as never)).toEqual(cells)
   })
 })

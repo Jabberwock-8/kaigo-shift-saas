@@ -428,17 +428,21 @@ async function writeScheduleFields(
   yearMonth: string,
   daysInMonth: number,
   uid: string,
-  writes: ScheduleFieldWrite[],
+  writesOrSelect: ScheduleFieldWrite[] | ((current: Schedule | null) => ScheduleFieldWrite[]),
   allowLocked: boolean,
-) {
+): Promise<number> {
   const ref = scheduleRef(facilityId, yearMonth)
-  await runTransaction(requireDb(), async (tx) => {
+  return runTransaction(requireDb(), async (tx) => {
     const snap = await tx.get(ref)
-    if (!snap.exists()) {
+    const current = snap.exists() ? (snap.data() as Schedule) : null
+    if (current?.editLock && !allowLocked) throw new ScheduleLockedError()
+    // 書く内容を、読んだ最新の勤務表から決める場合（まとめて入力: その時点でも空いているマスだけ）
+    const writes = typeof writesOrSelect === 'function' ? writesOrSelect(current) : writesOrSelect
+    if (writes.length === 0) return 0
+    if (!current) {
       tx.set(ref, buildNewScheduleWithWrites(newScheduleData(yearMonth, daysInMonth, uid), writes))
-      return
+      return writes.length
     }
-    if ((snap.data() as Schedule).editLock && !allowLocked) throw new ScheduleLockedError()
     const update: Record<string, unknown> = {
       updatedByUid: uid,
       updatedAt: serverTimestamp(),
@@ -446,7 +450,45 @@ async function writeScheduleFields(
     }
     for (const w of writes) update[w.path.join('.')] = w.value === null ? deleteField() : w.value
     tx.update(ref, update)
+    return writes.length
   })
+}
+
+/**
+ * 最新の勤務表で、まだ空いていてセルのロックも無いマスだけを残す（まとめて入力用の純関数。§19）。
+ * 画面で数えたあとにほかの人が入れたマスは、上書きしないよう外す
+ */
+export function stillEmptyCells(
+  cells: { staffId: string; day: number }[],
+  current: Pick<Schedule, 'assignments' | 'locks'> | null,
+): { staffId: string; day: number }[] {
+  return cells.filter(
+    (c) => !current?.assignments?.[c.staffId]?.[String(c.day)] && !current?.locks?.[c.staffId]?.[String(c.day)],
+  )
+}
+
+/**
+ * まとめて入力（C1）: 空いているマスに同じ勤務パターンを1回の書き込みで入れる。実際に入れたマスの数を返す。
+ * 項目指定（assignments.職員ID.日）で書き、revision は1回だけ +1。編集ロックの確認は A4 と同じ
+ */
+export async function fillEmptyAssignments(
+  facilityId: string,
+  yearMonth: string,
+  daysInMonth: number,
+  cells: { staffId: string; day: number }[],
+  patternId: string,
+  uid: string,
+  allowLocked = false,
+): Promise<number> {
+  return writeScheduleFields(
+    facilityId,
+    yearMonth,
+    daysInMonth,
+    uid,
+    (current) =>
+      stillEmptyCells(cells, current).map((c) => ({ path: ['assignments', c.staffId, String(c.day)], value: patternId })),
+    allowLocked,
+  )
 }
 
 export async function setAssignment(
