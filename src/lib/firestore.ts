@@ -381,6 +381,74 @@ function newScheduleData(yearMonth: string, daysInMonth: number, uid: string) {
   }
 }
 
+/** 編集ロック中の月に、一時解除していない画面から書き込もうとしたとき投げる（remaining-work-design.md §18 A4） */
+export class ScheduleLockedError extends Error {
+  constructor() {
+    super('この月の勤務表はロックされています。最新の状態を読み込み直しました。変更するには「一時解除」してください。')
+    this.name = 'ScheduleLockedError'
+  }
+}
+
+/** 勤務表への書き込み1件分。path は項目の位置（例: ['assignments', 職員ID, '3']）、value が null なら項目を消す */
+export interface ScheduleFieldWrite {
+  path: string[]
+  value: unknown
+}
+
+/**
+ * 勤務表が無い月に最初に書くときの内容。従来の「空の表を作る（revision 1）→ 項目を更新して revision +1」と
+ * 同じ結果（revision 2）を1回で作る。消す指定（value=null）は、表が無いので何もしない（純関数・テスト用に export）
+ */
+export function buildNewScheduleWithWrites(
+  base: Record<string, unknown>,
+  writes: ScheduleFieldWrite[],
+): Record<string, unknown> {
+  const data: Record<string, unknown> = { ...base, revision: 2 }
+  for (const w of writes) {
+    if (w.value === null) continue
+    let node = data
+    w.path.slice(0, -1).forEach((key) => {
+      const next = node[key]
+      node[key] = next && typeof next === 'object' ? { ...(next as Record<string, unknown>) } : {}
+      node = node[key] as Record<string, unknown>
+    })
+    node[w.path[w.path.length - 1]] = w.value
+  }
+  return data
+}
+
+/**
+ * 勤務表の項目を、編集ロックを確かめてから書く（読んでから書くトランザクション1回）。
+ * - 書き方は従来どおり項目指定（assignments.職員ID.日 など）。表全体を置き換えないので、同時に入力しているほかの人のマスを消さない
+ * - revision を +1 する（採択時の「手直しを上書きしないか」の確認がこれに頼っている）
+ * - editLock があり allowLocked（一時解除中）でなければ ScheduleLockedError
+ */
+async function writeScheduleFields(
+  facilityId: string,
+  yearMonth: string,
+  daysInMonth: number,
+  uid: string,
+  writes: ScheduleFieldWrite[],
+  allowLocked: boolean,
+) {
+  const ref = scheduleRef(facilityId, yearMonth)
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(ref)
+    if (!snap.exists()) {
+      tx.set(ref, buildNewScheduleWithWrites(newScheduleData(yearMonth, daysInMonth, uid), writes))
+      return
+    }
+    if ((snap.data() as Schedule).editLock && !allowLocked) throw new ScheduleLockedError()
+    const update: Record<string, unknown> = {
+      updatedByUid: uid,
+      updatedAt: serverTimestamp(),
+      revision: increment(1),
+    }
+    for (const w of writes) update[w.path.join('.')] = w.value === null ? deleteField() : w.value
+    tx.update(ref, update)
+  })
+}
+
 export async function setAssignment(
   facilityId: string,
   yearMonth: string,
@@ -389,14 +457,16 @@ export async function setAssignment(
   day: number,
   patternId: string | null,
   uid: string,
+  allowLocked = false,
 ) {
-  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
-  await updateDoc(ref, {
-    [`assignments.${staffId}.${day}`]: patternId ?? deleteField(),
-    updatedByUid: uid,
-    updatedAt: serverTimestamp(),
-    revision: increment(1),
-  })
+  await writeScheduleFields(
+    facilityId,
+    yearMonth,
+    daysInMonth,
+    uid,
+    [{ path: ['assignments', staffId, String(day)], value: patternId || null }],
+    allowLocked,
+  )
 }
 
 /** 生活相談員などの兼務行（secondaryAssignments）を1セル更新する。assignmentsとは独立 */
@@ -417,6 +487,21 @@ export async function clearScheduleEditLock(facilityId: string, yearMonth: strin
   await updateDoc(scheduleRef(facilityId, yearMonth), { editLock: deleteField() })
 }
 
+/**
+ * その施設の全月の勤務表（職員・勤務パターンの削除前に、使われていないか確かめるため。§18 A2・A3）。
+ * 読めなければ例外のまま返す（呼び出し側は削除させない）
+ */
+export async function listAllSchedules(facilityId: string): Promise<(Schedule & { id: string })[]> {
+  const snap = await getDocs(collection(requireDb(), 'facilities', facilityId, 'schedules'))
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Schedule) }))
+}
+
+/** その施設の全期間の希望（勤務パターンの削除前に、勤務希望で使われていないか確かめるため。§18 A3） */
+export async function listAllLeaveRequests(facilityId: string): Promise<(LeaveRequest & { id: string })[]> {
+  const snap = await getDocs(collection(requireDb(), 'facilities', facilityId, 'leaveRequests'))
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as LeaveRequest) }))
+}
+
 /** 編集ロック中の月の一覧（施設・ユーザー管理の強制解除用） */
 export async function listEditLockedMonths(facilityId: string): Promise<string[]> {
   const snap = await getDocs(collection(requireDb(), 'facilities', facilityId, 'schedules'))
@@ -434,14 +519,16 @@ export async function setSecondaryAssignment(
   day: number,
   patternId: string | null,
   uid: string,
+  allowLocked = false,
 ) {
-  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
-  await updateDoc(ref, {
-    [`secondaryAssignments.${staffId}.${day}`]: patternId ?? deleteField(),
-    updatedByUid: uid,
-    updatedAt: serverTimestamp(),
-    revision: increment(1),
-  })
+  await writeScheduleFields(
+    facilityId,
+    yearMonth,
+    daysInMonth,
+    uid,
+    [{ path: ['secondaryAssignments', staffId, String(day)], value: patternId || null }],
+    allowLocked,
+  )
 }
 
 export async function setLock(
@@ -452,25 +539,27 @@ export async function setLock(
   day: number,
   locked: boolean,
   uid: string,
+  allowLocked = false,
 ) {
-  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
-  await updateDoc(ref, {
-    [`locks.${staffId}.${day}`]: locked ? true : deleteField(),
-    updatedByUid: uid,
-    updatedAt: serverTimestamp(),
-    revision: increment(1),
-  })
+  await writeScheduleFields(
+    facilityId,
+    yearMonth,
+    daysInMonth,
+    uid,
+    [{ path: ['locks', staffId, String(day)], value: locked ? true : null }],
+    allowLocked,
+  )
 }
 
 /** その月のセルロックをすべて解除する（古いロックが原因で自動生成に不要な制約が残るのを防ぐための一括操作） */
-export async function clearAllLocks(facilityId: string, yearMonth: string, daysInMonth: number, uid: string) {
-  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
-  await updateDoc(ref, {
-    locks: {},
-    updatedByUid: uid,
-    updatedAt: serverTimestamp(),
-    revision: increment(1),
-  })
+export async function clearAllLocks(
+  facilityId: string,
+  yearMonth: string,
+  daysInMonth: number,
+  uid: string,
+  allowLocked = false,
+) {
+  await writeScheduleFields(facilityId, yearMonth, daysInMonth, uid, [{ path: ['locks'], value: {} }], allowLocked)
 }
 
 /** 行事・予定（日付→テキスト）を1日分だけ更新する。空文字なら削除する */
@@ -481,14 +570,16 @@ export async function setEvent(
   day: number,
   text: string,
   uid: string,
+  allowLocked = false,
 ) {
-  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
-  await updateDoc(ref, {
-    [`events.${day}`]: text.trim() ? text.trim() : deleteField(),
-    updatedByUid: uid,
-    updatedAt: serverTimestamp(),
-    revision: increment(1),
-  })
+  await writeScheduleFields(
+    facilityId,
+    yearMonth,
+    daysInMonth,
+    uid,
+    [{ path: ['events', String(day)], value: text.trim() ? text.trim() : null }],
+    allowLocked,
+  )
 }
 
 /** その月だけの勤務日数上限の上書き（P5）をまとめて保存する */
@@ -498,14 +589,16 @@ export async function saveMonthlyMaxDaysOverride(
   daysInMonth: number,
   override: Record<string, { targetWorkdays?: number | null; maxWorkdays?: number | null }>,
   uid: string,
+  allowLocked = false,
 ) {
-  const ref = await ensureSchedule(facilityId, yearMonth, daysInMonth, uid)
-  await updateDoc(ref, {
-    monthlyMaxDaysOverride: override,
-    updatedByUid: uid,
-    updatedAt: serverTimestamp(),
-    revision: increment(1),
-  })
+  await writeScheduleFields(
+    facilityId,
+    yearMonth,
+    daysInMonth,
+    uid,
+    [{ path: ['monthlyMaxDaysOverride'], value: override }],
+    allowLocked,
+  )
 }
 
 // ------------------------------------------------------------------
@@ -774,6 +867,7 @@ export async function adoptCandidate(
   uid: string,
   configSnapshot: GenerationConfig,
   force = false,
+  allowLocked = false,
 ) {
   const ref = scheduleRef(facilityId, yearMonth)
   // baseRevision は保存しない（勤務表の項目ではないため）
@@ -791,6 +885,7 @@ export async function adoptCandidate(
   }
   await runTransaction(requireDb(), async (tx) => {
     const snap = await tx.get(ref)
+    if (snap.exists() && (snap.data() as Schedule).editLock && !allowLocked) throw new ScheduleLockedError()
     const current = snap.exists() ? ((snap.data() as Schedule).revision ?? 0) : 0
     // 版を持たない古い案（この仕組みより前に作った案）は確かめられないので、そのまま採択する
     if (!force && baseRevision != null && current !== baseRevision) throw new ScheduleChangedError()

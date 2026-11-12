@@ -2,7 +2,7 @@ import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import './App.css'
 import { useAuth } from './context/AuthContext'
 import { FacilityProvider, useFacility } from './context/FacilityContext'
-import { firebaseStatus } from './lib/firebase'
+import { firebaseStatus, isDevEnvironment } from './lib/firebase'
 import LoginPage from './features/auth/LoginPage'
 import FacilityPickerPage from './features/facilities/FacilityPickerPage'
 import FacilityShell from './components/FacilityShell'
@@ -92,35 +92,42 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="/org-admin"
-        element={
-          <RequireAuth>
-            <FacilityProvider>
-              <main className="app-shell wide">
-                <p style={{ marginBottom: 14 }}>
-                  <Link to="/" className="link-btn">
-                    ← シフト表に戻る
-                  </Link>
-                </p>
-                <OrgAdminPage />
-              </main>
-            </FacilityProvider>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/*"
-        element={
-          <RequireAuth>
-            <FacilityProvider>
-              <HomeGate />
-            </FacilityProvider>
-          </RequireAuth>
-        }
-      />
-    </Routes>
+    <>
+      {isDevEnvironment && (
+        <div className="env-banner no-print" role="note">
+          試験用の環境です（本番のデータではありません）
+        </div>
+      )}
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/org-admin"
+          element={
+            <RequireAuth>
+              <FacilityProvider>
+                <main className="app-shell wide">
+                  <p style={{ marginBottom: 14 }}>
+                    <Link to="/" className="link-btn">
+                      ← シフト表に戻る
+                    </Link>
+                  </p>
+                  <OrgAdminPage />
+                </main>
+              </FacilityProvider>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/*"
+          element={
+            <RequireAuth>
+              <FacilityProvider>
+                <HomeGate />
+              </FacilityProvider>
+            </RequireAuth>
+          }
+        />
+      </Routes>
+    </>
   )
 }

@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
-import { deleteShiftPattern, upsertShiftPattern } from '../../lib/firestore'
+import {
+  deleteShiftPattern,
+  fetchShiftRulesSettings,
+  fetchStaffList,
+  listAllLeaveRequests,
+  listAllSchedules,
+  listRules,
+  upsertShiftPattern,
+} from '../../lib/firestore'
+import { findPatternUsages } from './patternUsage'
 import type { ShiftCategory, ShiftPattern } from '../../types/models'
 import { defaultPairFor, PASTEL_PALETTE } from '../../lib/palette'
 import { reportHoursOf } from '../submission/buildSubmissionRows'
@@ -63,6 +72,25 @@ export default function ShiftPatternsPage() {
     if (row.id) {
       if (row.isSystem) {
         alert('システム固定の勤務パターンは削除できません。')
+        return
+      }
+      // 使用中なら削除しない（過去の勤務表のマスが空欄になるため）。調べられなかったときも削除しない（§18 A3）
+      let usages: string[]
+      try {
+        const [staff, rules, settings, schedules, leaveRequests] = await Promise.all([
+          fetchStaffList(selectedFacilityId!),
+          listRules(selectedFacilityId!),
+          fetchShiftRulesSettings(selectedFacilityId!),
+          listAllSchedules(selectedFacilityId!),
+          listAllLeaveRequests(selectedFacilityId!),
+        ])
+        usages = findPatternUsages(row.id, { staff, rules, settings, schedules, leaveRequests })
+      } catch (e) {
+        alert(`使われているかどうかを確かめられなかったため、削除しませんでした。時間をおいてやり直してください。\n（${e instanceof Error ? e.message : String(e)}）`)
+        return
+      }
+      if (usages.length > 0) {
+        alert(`「${row.label}」は次の場所で使われているため、削除できません。\n\n${usages.map((u) => `・${u}`).join('\n')}`)
         return
       }
       if (!confirm(`「${row.label}」を削除しますか？`)) return

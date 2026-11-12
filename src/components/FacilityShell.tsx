@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useFacility } from '../context/FacilityContext'
+import { isDevEnvironment } from '../lib/firebase'
 import { MastersProvider } from '../context/MastersContext'
 import StaffListPage from '../features/staff/StaffListPage'
 import StaffFormPage from '../features/staff/StaffFormPage'
@@ -45,7 +46,7 @@ export default function FacilityShell() {
   return (
     <MastersProvider facilityId={selectedFacilityId}>
       <div className="app-layout">
-        <aside className="sidebar no-print">
+        <aside className={`sidebar no-print${isDevEnvironment ? ' sidebar-dev' : ''}`}>
           <div className="sidebar-logo">
             SHIFT
             <br />

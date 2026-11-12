@@ -66,6 +66,29 @@ describe('buildSubmissionRows', () => {
   })
 })
 
+describe('buildSubmissionRows: 無効にした職員（§18 A2）', () => {
+  const base = {
+    shiftPatterns: Object.values(P),
+    jobTypes: [{ id: 'j1', label: '生活支援員' }],
+    employmentTypes: [{ id: 'full', label: '常勤', hasTargetWorkdays: true }],
+  }
+  const staff = [
+    { id: 'a', name: '在職　者', active: true, order: 1, jobTypeIds: ['j1'], employmentTypeId: 'full' },
+    { id: 'd', name: '退職　者', active: false, order: 2, jobTypeIds: ['j1'], employmentTypeId: 'full' },
+  ]
+
+  it('その月に勤務が入っていれば出す（名前に印は付けない）', () => {
+    const rows = buildSubmissionRows([{ ...base, staff, assignments: { a: { '1': 'B2' }, d: { '2': 'B2' } } }], 30)
+    expect(rows.map((r) => r.name)).toEqual(['在職 者', '退職 者'])
+    expect(rows[1].hours.slice(0, 3)).toEqual([null, 8, null])
+  })
+
+  it('勤務が無い月は従来どおり出さない', () => {
+    const rows = buildSubmissionRows([{ ...base, staff, assignments: { a: { '1': 'B2' } } }], 30)
+    expect(rows.map((r) => r.name)).toEqual(['在職 者'])
+  })
+})
+
 describe('defaultWorkStyle', () => {
   it('名前が非常勤・パートなら必要勤務日数を使う区分でも C、常勤なら A', () => {
     expect(defaultWorkStyle({ label: '非常勤', hasTargetWorkdays: true })).toBe('C')

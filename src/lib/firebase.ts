@@ -1,7 +1,7 @@
 /**
  * Firebase 初期化。
  *
- * 接続情報は .env.local（Git管理外）から読み込む。
+ * 接続情報は .env.development（dev）/ .env.production（prod）から読み込む（どちらもコミット済み。秘密情報ではない）。
  * すべて揃っていない間は初期化せず、firebaseStatus.configured = false になる。
  * Phase 0 の App.tsx は「設定済みかどうか」の表示だけに使う。
  */
@@ -36,6 +36,9 @@ export const firebaseStatus = {
   configured,
   projectId: config.projectId ?? null,
 }
+
+/** 試験用（dev）の Firebase プロジェクトにつながっているか。本番との見分けの表示に使う（§18 A5） */
+export const isDevEnvironment = firebaseStatus.projectId === 'kaigo-shift-saas'
 
 /** 管理者ユーザー招待用のセカンダリAppを作るときに再利用する（features/orgAdmin/inviteAdmin.ts） */
 export const firebaseConfig = config

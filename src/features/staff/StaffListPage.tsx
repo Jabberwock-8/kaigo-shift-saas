@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
-import { deleteStaff, fetchLeaveRequestsForMonth, fetchStaffList, updateStaffOrder } from '../../lib/firestore'
-import { staffJobTypeIds } from '../../lib/staffUtils'
+import { deleteStaff, fetchLeaveRequestsForMonth, fetchStaffList, listAllSchedules, updateStaffOrder } from '../../lib/firestore'
+import { monthsWithStaffEntries, staffJobTypeIds } from '../../lib/staffUtils'
 import type { Staff } from '../../types/models'
-import { currentYearMonth } from '../../lib/dateUtils'
+import { currentYearMonth, formatYearMonthLabel } from '../../lib/dateUtils'
 
 export default function StaffListPage() {
   const { appUser, selectedFacilityId } = useFacility()
@@ -58,6 +58,23 @@ export default function StaffListPage() {
   const employmentTypeLabel = (id?: string) => employmentTypes.find((e) => e.id === id)?.label ?? ''
 
   async function handleDelete(s: Staff & { id: string }) {
+    // 勤務表に入力がある職員は削除しない（過去の月の勤務表・印刷・市の様式から行が消えるため）。
+    // 調べられなかったときも削除しない（§18 A2）
+    let months: string[]
+    try {
+      months = monthsWithStaffEntries(s.id, await listAllSchedules(selectedFacilityId!))
+    } catch (e) {
+      alert(`勤務表に入力があるかどうかを確かめられなかったため、削除しませんでした。時間をおいてやり直してください。\n（${e instanceof Error ? e.message : String(e)}）`)
+      return
+    }
+    if (months.length > 0) {
+      alert(
+        `「${s.name}」は次の月の勤務表に入力があるため、削除できません。\n${months.map(formatYearMonthLabel).join('、')}\n\n` +
+          '退職などで使わなくなった職員は、編集画面で「有効（在籍中）」のチェックを外してください。' +
+          '自動作成や新しい月の表には出なくなり、入力のある過去の月の勤務表には残ります。',
+      )
+      return
+    }
     if (!confirm(`「${s.name}」を削除しますか？`)) return
     await deleteStaff(selectedFacilityId!, s.id)
     await load()

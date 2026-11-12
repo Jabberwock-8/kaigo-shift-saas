@@ -1154,16 +1154,6 @@ table.shift-grid tr.secondary-role-row td.namecol {
   gap: 10px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .modal-card {
-    background: #1f2320;
-  }
-  .modal-head,
-  .modal-footer {
-    border-color: #333;
-  }
-}
-
 .toast {
   position: fixed;
   left: 50%;
@@ -1199,13 +1189,6 @@ table.shift-grid tr.secondary-role-row td.namecol {
   }
   to {
     opacity: 0;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .toast {
-    background: #e4e2db;
-    color: #22271f;
   }
 }
 
@@ -1699,16 +1682,6 @@ button.primary:disabled {
   font-size: 0.85rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  .card {
-    background: #1f2320;
-    border-color: #333;
-  }
-  code {
-    background: #333;
-  }
-}
-
 /* 施設名の横のサービス種別（市の提出様式で使う） */
 .service-type-chip {
   display: inline-block;
@@ -1739,4 +1712,34 @@ button.primary:disabled {
 }
 button.edit-lock-on {
   background: #eef2f7;
+}
+
+/* 試験用（dev）の環境の表示（remaining-work-design.md §18 A5）。本番では出ない。印刷には出さない（no-print） */
+.env-banner {
+  background: #b45309;
+  color: #fff;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 3px 12px;
+  letter-spacing: 0.04em;
+}
+.sidebar.sidebar-dev {
+  background: #fdf1e3;
+  border-right-color: #e8b77a;
+}
+
+/* 描画エラーの案内（§18 A6） */
+.error-boundary h2 {
+  margin-bottom: 8px;
+}
+.error-boundary-detail {
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: #fbfaf7;
+  border: 1px solid #e4e2db;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  margin: 10px 0 14px;
 }

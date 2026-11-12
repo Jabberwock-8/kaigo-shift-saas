@@ -13,6 +13,7 @@ import type {
   Staff,
 } from '../../types/models'
 import type { ParsedRule, ParsedStaff, TemplateDraft } from './parseTemplate'
+import { collectStaffRulePatternRefs } from '../masters/patternUsage'
 
 type PatternWithId = ShiftPattern & { id: string }
 type StaffWithId = Staff & { id: string }
@@ -132,13 +133,7 @@ export function buildDiff(draft: TemplateDraft, existing: ExistingData): DiffRes
     return { code: p.code, existing: ex, next, status: !ex ? 'new' : patternsEqual(ex, next) ? 'unchanged' : 'changed' }
   })
   const draftCodes = new Set(draft.shiftPatterns.map((p) => p.code))
-  const usedPatternIds = new Set<string>()
-  for (const s of existing.staff) for (const id of s.workConditions?.workablePatternIds ?? []) usedPatternIds.add(id)
-  for (const r of existing.rules) {
-    if (r.target.type === 'shift' && typeof r.target.value === 'string') usedPatternIds.add(r.target.value)
-    if (r.target.type === 'shiftGroup') (r.target.value as string[] | undefined)?.forEach((id) => usedPatternIds.add(id))
-    if (r.cond.type === 'preferShift' && r.cond.value) usedPatternIds.add(r.cond.value)
-  }
+  const usedPatternIds = collectStaffRulePatternRefs(existing.staff, existing.rules)
   const removablePatterns = existing.patterns
     .filter((p) => !p.isSystem && !draftCodes.has(p.code))
     .map((pattern) => ({ pattern, usedElsewhere: usedPatternIds.has(pattern.id) }))

@@ -7,6 +7,7 @@ import { employmentTypeUsesTargetWorkdays } from '../../domain/scheduler/limits'
 import type { EmploymentType, JobType, ShiftPattern, Staff } from '../../types/models'
 import type { SubmissionStaffRow } from './fillSubmissionForm'
 import { JOB_TITLE_ORDER } from './serviceTypes'
+import { hasEntriesInMonth } from '../../lib/staffUtils'
 
 type WithId<T> = T & { id: string }
 
@@ -52,7 +53,8 @@ export function buildSubmissionRows(facilities: SubmissionFacilityData[], daysIn
     const jobLabel = new Map(f.jobTypes.map((j) => [j.id, j.label]))
     const empById = new Map(f.employmentTypes.map((e) => [e.id, e]))
     for (const s of f.staff) {
-      if (s.active === false) continue
+      // 無効にした職員も、その月に勤務が入っていれば出す（過去の月を出し直すとき行が消えないように。§18 A2）
+      if (s.active === false && !hasEntriesInMonth(s.id, f.assignments)) continue
       const r = s.report ?? {}
       const firstJob = (s.jobTypeIds ?? []).map((id) => jobLabel.get(id)).find(Boolean) ?? jobLabel.get(s.jobTypeId ?? '')
       const jobTitle = r.jobTitle || firstJob || ''

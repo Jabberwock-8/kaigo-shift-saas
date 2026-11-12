@@ -8,6 +8,7 @@ import {
   clearScheduleEditLock,
   setScheduleEditLock,
   ScheduleChangedError,
+  ScheduleLockedError,
   clearAllLocks,
   fetchCurrentGenerationConfig,
   fetchLeaveRequestsForMonth,
@@ -66,6 +67,7 @@ import CandidatesPanel from '../generate/CandidatesPanel'
 import MonthlyLimitsModal from './MonthlyLimitsModal'
 import EditLockModal from './EditLockModal'
 import { hashEditLockPassword, newEditLockSalt } from '../../lib/editLock'
+import { staffShownInMonth } from '../../lib/staffUtils'
 import TimeproModal from '../timepro/TimeproModal'
 
 type StaffWithId = Staff & { id: string }
@@ -90,8 +92,13 @@ export default function ShiftGridPage() {
   const facilityName = selectedFacility?.name ?? ''
 
   const [yearMonth, setYearMonth] = useState(currentYearMonth())
-  const [staffList, setStaffList] = useState<StaffWithId[]>([])
+  // 施設の全職員（無効も含む）。表に出すのは staffList（有効な職員＋その月に入力がある無効の職員。§18 A2）
+  const [staffAll, setStaffAll] = useState<StaffWithId[]>([])
   const [schedule, setSchedule] = useState<Schedule | null>(null)
+  const staffList = useMemo(
+    () => staffShownInMonth(staffAll, schedule?.assignments, schedule?.secondaryAssignments),
+    [staffAll, schedule?.assignments, schedule?.secondaryAssignments],
+  )
   // 編集ロックを一時解除している月（施設ID/年月）。月・施設を移るか再読み込みすると消え、ロックに戻る
   const [unlockedKey, setUnlockedKey] = useState<string | null>(null)
   const [editLockModal, setEditLockModal] = useState<'lock' | 'unlock' | null>(null)
@@ -188,7 +195,7 @@ export default function ShiftGridPage() {
         fetchTimeproExportSettings(selectedFacilityId),
         fetchSchedule(selectedFacilityId, prevYm),
       ])
-      setStaffList(sl.filter((s) => s.active !== false))
+      setStaffAll(sl)
       setSchedule(sc)
       setPrevTail(prevSc ? prevMonthTail(prevSc.assignments, daysInMonthOf(prevYm)) : undefined)
       setRules(rl)
@@ -214,6 +221,15 @@ export default function ShiftGridPage() {
   const editLocked = !!schedule?.editLock
   const tempUnlocked = editLocked && unlockedKey === monthKey
   const canEditMonth = isAdmin && (!editLocked || tempUnlocked)
+
+  /**
+   * 勤務表への書き込みに失敗したとき。画面を読み込み直して実際の状態を見せてから、案内を出す
+   * （load() は始めに error を消すので、表示は読み込みの後。ロックされていたら ScheduleLockedError の文言。§18 A4）
+   */
+  async function handleWriteError(e: unknown) {
+    await load()
+    setError(e instanceof Error ? e.message : String(e))
+  }
 
   async function handleLock(password: string) {
     if (!selectedFacilityId || !user) return
@@ -288,11 +304,14 @@ export default function ShiftGridPage() {
       // 旧版と同じく、生成を開始する前に1フレーム逃してボタン押下の反応を先に描画させる
       await new Promise((resolve) => setTimeout(resolve, 30))
       // 案を作る時点の勤務表の版を先に控える（採択時に、その後の手直しを上書きしないか確かめるため）
-      const baseRevision = (await fetchSchedule(selectedFacilityId, yearMonth))?.revision ?? 0
+      const baseSchedule = await fetchSchedule(selectedFacilityId, yearMonth)
+      const baseRevision = baseSchedule?.revision ?? 0
       const input = await loadGenerateInput(selectedFacilityId, yearMonth)
-      // シフト作成の対象外の職員（施設長・看護師など）は生成に含めないので、手で入れた勤務を案に残す
+      // 生成の対象外の職員（シフト作成の対象外・無効・削除済み）は生成に含めないので、入っている勤務を案にそのまま残す
+      // （採択は assignments を置き換えるため、残さないと消える。§18 A2）
+      const generatedIds = new Set(input.staff.map((s) => s.id))
       const kept = Object.fromEntries(
-        staffList.filter((s) => s.excludeFromGeneration).map((s) => [s.id, schedule?.assignments?.[s.id] ?? {}]),
+        Object.entries(baseSchedule?.assignments ?? {}).filter(([staffId]) => !generatedIds.has(staffId)),
       )
       const result = generate(input).map((c) => ({ ...c, assignments: { ...kept, ...c.assignments }, baseRevision }))
       const saved = await saveCandidates(selectedFacilityId, yearMonth, result)
@@ -319,7 +338,7 @@ export default function ShiftGridPage() {
     try {
       const configSnapshot = await fetchCurrentGenerationConfig(selectedFacilityId)
       try {
-        await adoptCandidate(selectedFacilityId, yearMonth, days, candidate, candidate.id, user.uid, configSnapshot)
+        await adoptCandidate(selectedFacilityId, yearMonth, days, candidate, candidate.id, user.uid, configSnapshot, false, tempUnlocked)
       } catch (e) {
         if (!(e instanceof ScheduleChangedError)) throw e
         if (
@@ -329,7 +348,7 @@ export default function ShiftGridPage() {
         ) {
           return
         }
-        await adoptCandidate(selectedFacilityId, yearMonth, days, candidate, candidate.id, user.uid, configSnapshot, true)
+        await adoptCandidate(selectedFacilityId, yearMonth, days, candidate, candidate.id, user.uid, configSnapshot, true, tempUnlocked)
       }
       setCandidates(null)
       setPreviewId(null)
@@ -345,7 +364,12 @@ export default function ShiftGridPage() {
         )
       }
     } catch (e) {
-      setGenError(e instanceof Error ? e.message : String(e))
+      if (e instanceof ScheduleLockedError) {
+        // ほかの画面でロックされた。採択はしていない（保存済みの案は残る）。勤務表を読み込み直して案内する
+        await handleWriteError(e)
+      } else {
+        setGenError(e instanceof Error ? e.message : String(e))
+      }
     } finally {
       setAdoptingId(null)
     }
@@ -510,10 +534,10 @@ export default function ShiftGridPage() {
         day,
         patternId || null,
         user.uid,
+        tempUnlocked,
       )
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-      await load()
+      await handleWriteError(e)
     }
   }
 
@@ -529,10 +553,9 @@ export default function ShiftGridPage() {
       return { ...base, secondaryAssignments }
     })
     try {
-      await setSecondaryAssignment(selectedFacilityId!, yearMonth, days, staffId, day, patternId || null, user.uid)
+      await setSecondaryAssignment(selectedFacilityId!, yearMonth, days, staffId, day, patternId || null, user.uid, tempUnlocked)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-      await load()
+      await handleWriteError(e)
     }
   }
 
@@ -553,10 +576,9 @@ export default function ShiftGridPage() {
       return { ...base, locks }
     })
     try {
-      await setLock(selectedFacilityId!, yearMonth, days, staffId, day, !currentlyLocked, user.uid)
+      await setLock(selectedFacilityId!, yearMonth, days, staffId, day, !currentlyLocked, user.uid, tempUnlocked)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-      await load()
+      await handleWriteError(e)
     }
   }
 
@@ -575,10 +597,9 @@ export default function ShiftGridPage() {
       return { ...base, events }
     })
     try {
-      await setEvent(selectedFacilityId!, yearMonth, days, day, text, user.uid)
+      await setEvent(selectedFacilityId!, yearMonth, days, day, text, user.uid, tempUnlocked)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-      await load()
+      await handleWriteError(e)
     }
   }
 
@@ -591,10 +612,10 @@ export default function ShiftGridPage() {
     if (lockedCount === 0) return
     if (!confirm(`${formatYearMonthLabel(yearMonth)}のロックを${lockedCount}件すべて解除します。よろしいですか？`)) return
     try {
-      await clearAllLocks(selectedFacilityId, yearMonth, days, user.uid)
+      await clearAllLocks(selectedFacilityId, yearMonth, days, user.uid, tempUnlocked)
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      await handleWriteError(e)
     }
   }
 
@@ -982,6 +1003,7 @@ export default function ShiftGridPage() {
                   <tr>
                     <td className="namecol" title={staffMsgs.join('\n') || undefined}>
                       {staff.name}
+                      {staff.active === false && <span className="muted">（無効）</span>}
                       {staffMsgs.length > 0 && <span className="warn"> ⚠</span>}
                     </td>
                     {visibleDays.map((d) => {
@@ -1209,7 +1231,15 @@ export default function ShiftGridPage() {
           initialOverride={schedule?.monthlyMaxDaysOverride ?? {}}
           onSave={async (override) => {
             if (!selectedFacilityId || !user) return
-            await saveMonthlyMaxDaysOverride(selectedFacilityId, yearMonth, days, override, user.uid)
+            try {
+              await saveMonthlyMaxDaysOverride(selectedFacilityId, yearMonth, days, override, user.uid, tempUnlocked)
+            } catch (e) {
+              if (!(e instanceof ScheduleLockedError)) throw e
+              // ほかの画面でロックされた。モーダルを閉じ、読み込み直して案内する
+              setShowLimitsModal(false)
+              await handleWriteError(e)
+              return
+            }
             await load()
           }}
           onClose={() => setShowLimitsModal(false)}
