@@ -30,3 +30,6 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+
+# 自動生成の計測結果（npm run bench）
+bench-results/

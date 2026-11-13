@@ -113,6 +113,13 @@ export interface GenerateInput {
    */
   prevTail?: PrevMonthTail
   config: GenerationConfig
+  /**
+   * 乱数（0以上1未満）。未指定なら Math.random。計測（npm run bench）・テストで種を固定するために渡す（B0。random.ts）。
+   * 保存はしない（Firestore の項目ではない）
+   */
+  random?: () => number
+  /** 時刻(ms)。未指定なら Date.now。テストで、時間による打ち切りを決まった回数にするために渡す */
+  now?: () => number
 }
 
 export type ScoreKey = 'fair' | 'comp' | 'wish' | 'soft' | 'interval' | 'spread'

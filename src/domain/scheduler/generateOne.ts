@@ -16,7 +16,9 @@ import {
   typeCountOf,
   workCountOf,
   isDayWorkPattern,
+  shuffle,
 } from './gridUtils'
+import { randomInt, rngOf } from './random'
 import { hillClimb } from './hillClimb'
 import { resolveLimits } from './limits'
 import { ruleAppliesToDate } from './ruleMatch'
@@ -195,6 +197,7 @@ function fillMustWorkDays(
 
 function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
   const { staff, employmentTypes, settings, daysInMonth, shiftPatterns, monthlyMaxDaysOverride, lockedCells } = input
+  const rnd = rngOf(input)
   const employmentTypeById = new Map(employmentTypes.map((e) => [e.id, e]))
   const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
   const offPattern = shiftPatterns.find((p) => p.category === 'off')
@@ -253,7 +256,7 @@ function fillMinimumWorkdays(grid: AssignmentGrid, input: GenerateInput) {
       }
       if (!candidates.length) break
       // 「必ず勤務させる」日を最優先で埋め、その次に休みが長く続いている日を崩す
-      candidates.sort((a, b) => Number(b.mustWork) - Number(a.mustWork) || b.streak - a.streak || Math.random() - 0.5)
+      shuffle(candidates, rnd).sort((a, b) => Number(b.mustWork) - Number(a.mustWork) || b.streak - a.streak)
 
       let filled = false
       for (const { d } of candidates) {
@@ -296,6 +299,7 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
 
   const { staff, daysInMonth, yearMonth, shiftPatterns, rules, wishes, lockedCells, baseAssignments, settings, config } =
     input
+  const rnd = rngOf(input)
   const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
   const offPattern = shiftPatterns.find((p) => p.category === 'off')!
   const afterNightPattern = shiftPatterns.find((p) => p.category === 'afterNight')
@@ -370,11 +374,12 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
       const need = demandFor(rules, yearMonth, d)[patternId] ?? 0
       let cur = staff.filter((s) => getCell(grid, s.id, d) === patternId).length
       while (cur < need) {
-        const candidates = staff
-          .filter((s) => canWork(s, d, patternId, makeCanWorkContext(grid, input)))
-          .sort((a, b) => nightPriority(a, nightCountSoFar) - nightPriority(b, nightCountSoFar) || Math.random() - 0.5)
+        const candidates = shuffle(
+          staff.filter((s) => canWork(s, d, patternId, makeCanWorkContext(grid, input))),
+          rnd,
+        ).sort((a, b) => nightPriority(a, nightCountSoFar) - nightPriority(b, nightCountSoFar))
         if (!candidates.length) break
-        const pick = candidates[Math.floor(Math.random() * Math.min(config.engine.nightPickTopN, candidates.length))]
+        const pick = candidates[randomInt(rnd, Math.min(config.engine.nightPickTopN, candidates.length))]
         setCell(grid, pick.id, d, patternId)
         // 夜勤の前日の決まった勤務（M3 など）。置けることは canWork で確かめてある
         if (settings.nightPrecedingPatternId && d > 1 && !getCell(grid, pick.id, d - 1)) {
@@ -402,22 +407,24 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
       const need = dem[patternId] ?? 0
       let cur = staff.filter((s) => getCell(grid, s.id, d) === patternId).length
       while (cur < need) {
-        const candidates = staff
-          .filter((s) => canWork(s, d, patternId, makeCanWorkContext(grid, input)))
-          .map((s) => {
-            const prefer = staffRuleAdjust(s.id, d, patternId, input)
-            return {
-              s,
-              prefer,
-              priority:
-                workCountOf(grid, s.id, daysInMonth, patternById) +
-                typeCountOf(grid, s.id, patternId, daysInMonth) * config.engine.typeCountWeight +
-                restPenaltyFor(grid, s.id, d, patternId, patternById, settings.minRestHours, config.engine.restPenalty) -
-                consecutiveOffStreakBefore(grid, s.id, d, patternById) * config.engine.offStreakBonusWeight +
+        const candidates = shuffle(
+          staff
+            .filter((s) => canWork(s, d, patternId, makeCanWorkContext(grid, input)))
+            .map((s) => {
+              const prefer = staffRuleAdjust(s.id, d, patternId, input)
+              return {
+                s,
                 prefer,
-            }
-          })
-          .sort((a, b) => a.priority - b.priority || Math.random() - 0.5)
+                priority:
+                  workCountOf(grid, s.id, daysInMonth, patternById) +
+                  typeCountOf(grid, s.id, patternId, daysInMonth) * config.engine.typeCountWeight +
+                  restPenaltyFor(grid, s.id, d, patternId, patternById, settings.minRestHours, config.engine.restPenalty) -
+                  consecutiveOffStreakBefore(grid, s.id, d, patternById) * config.engine.offStreakBonusWeight +
+                  prefer,
+              }
+            }),
+          rnd,
+        ).sort((a, b) => a.priority - b.priority)
         if (!candidates.length) break
         // 上位から均等に抽選するため、優先度を上げ下げするだけでは抽選で打ち消されてしまう
         // （抽選で3番手を引く状況では、優先している職員が30日中0日しか選ばれず、
@@ -430,7 +437,7 @@ export function generateOne(input: GenerateInput, profile: GenerationProfile): C
         const boosted = top.filter((c) => c.prefer < 0)
         const neutral = top.filter((c) => c.prefer === 0)
         const pool = boosted.length > 0 ? boosted : neutral.length > 0 ? neutral : top
-        const pick = pool[Math.floor(Math.random() * pool.length)].s
+        const pick = pool[randomInt(rnd, pool.length)].s
         setCell(grid, pick.id, d, patternId)
         cur++
       }

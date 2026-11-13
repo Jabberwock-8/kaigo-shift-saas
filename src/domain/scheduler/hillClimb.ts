@@ -20,6 +20,7 @@ import { resolveLimits } from './limits'
 import { scoreGrid } from './score'
 import type { AssignmentGrid, GenerateInput } from './types'
 import type { GenerationProfile } from './defaults'
+import { nowOf, randomInt, rngOf } from './random'
 
 export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: GenerationProfile, ms: number) {
   const { staff, daysInMonth, yearMonth, shiftPatterns, rules, lockedCells, wishes, employmentTypes, settings, monthlyMaxDaysOverride } =
@@ -29,6 +30,8 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
   const offPattern = shiftPatterns.find((p) => p.category === 'off')
   if (!offPattern || staff.length === 0) return
   const dayPatternCaps = cachedDayPatternCaps(input)
+  const rnd = rngOf(input)
+  const now = nowOf(input)
 
   const isLocked = (staffId: string, day: number) => !!lockedCells[staffId]?.[String(day)]
   const isWish = (staffId: string, day: number) => wishes.some((w) => w.staffId === staffId && w.day === day)
@@ -69,7 +72,7 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
   }
 
   let current = evaluate()
-  const end = Date.now() + ms
+  const end = now() + ms
 
   const evalMove = (revert: () => void) => {
     const next = evaluate()
@@ -80,14 +83,14 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
     revert()
   }
 
-  while (Date.now() < end) {
-    const d = 1 + Math.floor(Math.random() * daysInMonth)
-    const roll = Math.random()
+  while (now() < end) {
+    const d = 1 + randomInt(rnd, daysInMonth)
+    const roll = rnd()
 
     if (roll < 0.35) {
       // 休みの日を別の日の勤務と入れ替える
-      const p = staff[Math.floor(Math.random() * staff.length)]
-      const d2 = 1 + Math.floor(Math.random() * daysInMonth)
+      const p = staff[randomInt(rnd, staff.length)]
+      const d2 = 1 + randomInt(rnd, daysInMonth)
       if (d === d2) continue
       const s1 = getCell(grid, p.id, d)
       const s2 = getCell(grid, p.id, d2)
@@ -121,8 +124,8 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
 
     if (roll < 0.65) {
       // 同日の2人のシフトを交換
-      const a = staff[Math.floor(Math.random() * staff.length)]
-      const b = staff[Math.floor(Math.random() * staff.length)]
+      const a = staff[randomInt(rnd, staff.length)]
+      const b = staff[randomInt(rnd, staff.length)]
       if (!a || !b || a.id === b.id) continue
       if (isLocked(a.id, d) || isLocked(b.id, d)) continue
       if (settings.nightPrecedingPatternId && (isNightPattern(getCell(grid, a.id, d + 1)) || isNightPattern(getCell(grid, b.id, d + 1)))) continue
@@ -163,7 +166,7 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
         (patternId) => staff.filter((s) => getCell(grid, s.id, d) === patternId).length < dem[patternId],
       )
       if (!shorts.length) continue
-      const patternId = shorts[Math.floor(Math.random() * shorts.length)]
+      const patternId = shorts[randomInt(rnd, shorts.length)]
       if (patternById.get(patternId)?.isNight) continue
 
       let offs = staff.filter((s) => getCell(grid, s.id, d) === offPattern.id && !isLocked(s.id, d))
@@ -171,7 +174,7 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
       const nonWish = offs.filter((s) => !isWish(s.id, d))
       if (nonWish.length) offs = nonWish
 
-      const p = offs[Math.floor(Math.random() * offs.length)]
+      const p = offs[randomInt(rnd, offs.length)]
       setCell(grid, p.id, d, null)
       if (!canWork(p, d, patternId, makeCanWorkContext(grid, input))) {
         setCell(grid, p.id, d, offPattern.id)

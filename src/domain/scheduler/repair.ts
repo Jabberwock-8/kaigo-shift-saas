@@ -4,7 +4,8 @@
  */
 import { canWork } from './canWork'
 import { demandFor } from './demand'
-import { getCell, isDayWorkPattern, isPreNightCell, makeCanWorkContext, setCell, workCountOf } from './gridUtils'
+import { getCell, isDayWorkPattern, isPreNightCell, makeCanWorkContext, setCell, shuffle, workCountOf } from './gridUtils'
+import { nowOf, rngOf } from './random'
 import { ruleAppliesToDate } from './ruleMatch'
 import type { AssignmentGrid, GenerateInput, StaffWithId } from './types'
 
@@ -31,10 +32,12 @@ export function repair(grid: AssignmentGrid, input: GenerateInput) {
   const isWish = (staffId: string, day: number) => wishes.some((w) => w.staffId === staffId && w.day === day)
 
   // 条件を満たせないデータでは反復回数の上限だけでは体感フリーズし得るため、実時間でも打ち切る
-  const deadline = Date.now() + config.engine.repairMaxMs
+  const rnd = rngOf(input)
+  const now = nowOf(input)
+  const deadline = now() + config.engine.repairMaxMs
 
   for (let iter = 0; iter < config.engine.repairMaxIter; iter++) {
-    if (Date.now() > deadline) break
+    if (now() > deadline) break
     let fixed = false
     const order =
       iter % 2
@@ -43,26 +46,23 @@ export function repair(grid: AssignmentGrid, input: GenerateInput) {
 
     for (const d of order) {
       if (fixed) break
-      if (Date.now() > deadline) break
+      if (now() > deadline) break
       const dem = demandFor(rules, yearMonth, d)
 
       for (const patternId of Object.keys(dem)) {
-        if (Date.now() > deadline) break
+        if (now() > deadline) break
         const cur = staff.filter((s) => getCell(grid, s.id, d) === patternId).length
         if (cur >= dem[patternId]) continue
 
         // ① 休みの職員を充当（希望休の人・勤務数多い人を後回し）
-        const offs = staff
-          .filter((s) => getCell(grid, s.id, d) === offPattern.id && !isLocked(s.id, d))
-          .sort((a, b) => {
-            const wa = isWish(a.id, d) ? 1 : 0
-            const wb = isWish(b.id, d) ? 1 : 0
-            return (
-              wa - wb ||
-              workCountOf(grid, a.id, daysInMonth, patternById) - workCountOf(grid, b.id, daysInMonth, patternById) ||
-              Math.random() - 0.5
-            )
-          })
+        const offs = shuffle(
+          staff.filter((s) => getCell(grid, s.id, d) === offPattern.id && !isLocked(s.id, d)),
+          rnd,
+        ).sort((a, b) => {
+          const wa = isWish(a.id, d) ? 1 : 0
+          const wb = isWish(b.id, d) ? 1 : 0
+          return wa - wb || workCountOf(grid, a.id, daysInMonth, patternById) - workCountOf(grid, b.id, daysInMonth, patternById)
+        })
         for (const s of offs) {
           setCell(grid, s.id, d, null)
           if (tryAssign(grid, input, s, d, patternId)) {
@@ -96,10 +96,10 @@ export function repair(grid: AssignmentGrid, input: GenerateInput) {
         if (fixed) break
 
         // ③ 2手修復: 別日の余剰勤務を休に振替 → 空いた職員を充当
-        if (Date.now() > deadline) break
+        if (now() > deadline) break
         let twoHandFixed = false
         for (const s of offs) {
-          if (Date.now() > deadline) break
+          if (now() > deadline) break
           for (let d2 = 1; d2 <= daysInMonth && !twoHandFixed; d2++) {
             if (d2 === d) continue
             const pid2 = getCell(grid, s.id, d2)
@@ -175,10 +175,12 @@ export function repairGroups(grid: AssignmentGrid, input: GenerateInput) {
     return cost
   }
 
-  const deadline = Date.now() + config.engine.groupRepairMaxMs
+  const rnd = rngOf(input)
+  const now = nowOf(input)
+  const deadline = now() + config.engine.groupRepairMaxMs
 
   for (let iter = 0; iter < config.engine.groupRepairMaxIter; iter++) {
-    if (Date.now() > deadline) return
+    if (now() > deadline) return
     let fixed = false
     for (const r of groupRules) {
       const ids = (r.target.value as string[] | undefined) ?? []
@@ -191,9 +193,10 @@ export function repairGroups(grid: AssignmentGrid, input: GenerateInput) {
         if (r.cond.type === 'atLeastGroup' && total < (r.cond.count ?? 0)) {
           const offPattern = input.shiftPatterns.find((p) => p.category === 'off')
           if (!offPattern) continue
-          const offs = staff
-            .filter((s) => getCell(grid, s.id, d) === offPattern.id && !isLocked(s.id, d))
-            .sort((a, b) => workCountOf(grid, a.id, daysInMonth, patternById) - workCountOf(grid, b.id, daysInMonth, patternById) || Math.random() - 0.5)
+          const offs = shuffle(
+            staff.filter((s) => getCell(grid, s.id, d) === offPattern.id && !isLocked(s.id, d)),
+            rnd,
+          ).sort((a, b) => workCountOf(grid, a.id, daysInMonth, patternById) - workCountOf(grid, b.id, daysInMonth, patternById))
           let done = false
           for (const s of offs) {
             for (const id of ids) {
@@ -215,7 +218,7 @@ export function repairGroups(grid: AssignmentGrid, input: GenerateInput) {
             const candidates = offs.filter((s) => !isWish(s.id, d))
             for (const s of candidates) {
               if (done) break
-              if (Date.now() > deadline) break
+              if (now() > deadline) break
               for (let d2 = 1; d2 <= daysInMonth && !done; d2++) {
                 if (d2 === d) continue
                 const pid2 = getCell(grid, s.id, d2)

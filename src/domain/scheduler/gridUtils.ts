@@ -126,10 +126,14 @@ export function consecutiveOffStreakBefore(
   return streak
 }
 
-/** Fisher-Yates。引数の配列をその場でシャッフルして返す */
-export function shuffle<T>(arr: T[]): T[] {
+/**
+ * Fisher-Yates。引数の配列をその場でシャッフルして返す。
+ * 同点を乱数で並べたいときは、比較関数に Math.random を混ぜず（結果が実行環境の並べ替え方に左右されるため）、
+ * 先にこれでシャッフルしてから安定した並べ替え（Array.prototype.sort）をする（B0）
+ */
+export function shuffle<T>(arr: T[], random: () => number = Math.random): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
+    const j = Math.floor(random() * (i + 1))
     ;[arr[i], arr[j]] = [arr[j], arr[i]]
   }
   return arr
