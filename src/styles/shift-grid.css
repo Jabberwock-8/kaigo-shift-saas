@@ -1,0 +1,330 @@
+/* シフト表（表・セル・週表示・セルの選択パネル）（App.css から分けたもの。改善指示書 D1・remaining-work-design.md §24） */
+
+.app-shell.wide {
+  max-width: 1200px;
+}
+
+/* 表を画面の高さに収まる枠の中でスクロールさせる。職員が多くても、日付・曜日の行が上に残り、
+   横のスクロールバーが常に画面の下に見える（枠の外＝ページ全体のスクロールだと、どちらも隠れてしまう）。
+   実際の高さは ShiftGridPage が「画面の下の端まで」に合わせて上書きする。これは計算前の仮の値 */
+.grid-scroll {
+  overflow: auto;
+  max-height: calc(100vh - 32px);
+}
+
+.grid-scroll table.shift-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* 左上の「職員」は縦横どちらにスクロールしても残す */
+.grid-scroll table.shift-grid thead th.namecol {
+  z-index: 3;
+}
+
+table.shift-grid {
+  border-collapse: collapse;
+}
+
+table.shift-grid th,
+table.shift-grid td {
+  border: 1px solid var(--color-border);
+  text-align: center;
+  padding: 2px;
+  font-size: 0.8rem;
+}
+
+table.shift-grid th {
+  background: var(--color-surface-subtle);
+  font-weight: 600;
+}
+
+table.shift-grid th.sat {
+  color: var(--color-saturday);
+}
+
+table.shift-grid th.sun {
+  color: var(--color-danger);
+}
+
+table.shift-grid .dow {
+  font-weight: 400;
+  font-size: 0.7rem;
+}
+
+table.shift-grid td.namecol,
+table.shift-grid th.namecol {
+  position: sticky;
+  left: 0;
+  background: var(--color-surface-subtle);
+  text-align: left;
+  padding: 4px 8px;
+  white-space: nowrap;
+  min-width: 96px;
+  z-index: 1;
+}
+
+td.grid-cell {
+  min-width: 34px;
+  height: 34px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+}
+
+.cell-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.cell-code {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--color-surface-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 週表示: 7日分を広いセルで、記号の下に名称と時刻を出す */
+.view-toggle {
+  display: inline-flex;
+}
+
+.view-toggle button {
+  border-radius: 0;
+}
+
+.view-toggle button:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.view-toggle button:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  margin-left: -1px;
+}
+
+.view-toggle button.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+table.shift-grid.week td.grid-cell {
+  min-width: 110px;
+  height: 56px;
+}
+
+table.shift-grid.week .cell-code {
+  flex-direction: column;
+  gap: 2px;
+}
+
+table.shift-grid.week tr.event-row td {
+  max-width: 140px;
+}
+
+.week-cell-detail {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+table.shift-grid.week td.print-cell {
+  min-width: 80px;
+  height: 40px;
+}
+
+.cell-code:hover {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -1px;
+}
+
+.cell-picker {
+  position: fixed;
+  z-index: 60;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-popover);
+  padding: 12px 14px;
+}
+
+.cell-picker-head {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+.cell-picker-chips {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.chip {
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 8px 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+}
+
+.chip:hover {
+  filter: brightness(0.95);
+}
+
+.chip.selected {
+  outline: 2px solid var(--color-text);
+  outline-offset: -2px;
+}
+
+.cell-picker-actions {
+  display: flex;
+  gap: 16px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 8px;
+}
+
+.link-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.link-btn:hover {
+  color: var(--color-primary);
+}
+
+.swatch-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.swatch-preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.swatch.selected {
+  outline: 2px solid var(--color-text);
+  outline-offset: 1px;
+}
+
+th.sumcol,
+td.sumcol {
+  min-width: 30px;
+  font-size: 0.7rem;
+  background: var(--color-surface-muted);
+  border-left: 2px solid var(--color-border-strong);
+  color: var(--color-text-muted);
+}
+
+.lock-dot {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-text-subtle);
+  pointer-events: none;
+}
+
+td.grid-cell.viol {
+  position: relative;
+  outline: 2px solid var(--color-danger);
+  outline-offset: -2px;
+}
+
+.viol-mark {
+  position: absolute;
+  top: -5px;
+  left: -4px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  color: var(--color-surface);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 13px;
+  text-align: center;
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: 0 0 0 1px var(--color-surface);
+}
+
+td.grid-cell.wish-ok {
+  box-shadow: inset 0 0 0 2px var(--color-attention);
+}
+
+td.grid-cell.wish-bad {
+  box-shadow: inset 0 0 0 2px var(--color-danger);
+}
+
+td.wish-cell {
+  min-width: 34px;
+  height: 34px;
+  font-size: 1rem;
+  color: var(--color-attention);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+}
+
+td.wish-cell.wished {
+  background: var(--color-warning-soft);
+  font-weight: 700;
+}
+
+td.wish-cell.clickable {
+  cursor: pointer;
+}
+
+td.wish-cell.clickable:hover {
+  outline: 2px solid var(--color-attention);
+  outline-offset: -2px;
+}
+

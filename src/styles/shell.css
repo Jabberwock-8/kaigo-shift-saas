@@ -1,0 +1,104 @@
+/* 施設名・サイドバー最下段・ツールバーのメニュー（App.css から分けたもの。改善指示書 D1・remaining-work-design.md §24） */
+
+/* 施設タブ行の右端に出す現在の施設名（旧 .page-header の h1 の置き換え） */
+.facility-current-name {
+  margin-left: auto;
+  padding: 8px 0 6px 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.facility-current-name .service-type-chip {
+  margin-left: 8px;
+}
+
+/* サイドバー最下段（施設・ユーザー管理／ログアウトの移設先） */
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-footer .navbtn {
+  width: 100%;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.sidebar-logout {
+  color: var(--color-text-muted);
+}
+
+/* シフト表ツールバーのドロップダウンメニュー（出力／その他） */
+.toolbar-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.toolbar-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-menu);
+  padding: 6px;
+  gap: 2px;
+}
+
+.toolbar-menu button {
+  font: inherit;
+  text-align: left;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.toolbar-menu button:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.toolbar-menu button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block;
+  }
+
+  .app-shell.wide {
+    max-width: none;
+  }
+
+  .card {
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+}
+

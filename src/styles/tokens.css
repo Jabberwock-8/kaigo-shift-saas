@@ -1,0 +1,69 @@
+/*
+ * デザインの土台（色・角の丸み・影・余白）。改善指示書 D1（remaining-work-design.md §24）。
+ * 画面の色はここにだけ書き、ほかの CSS は var(--…) で参照する。値を変えると全画面に効く。
+ * 勤務パターンの色（施設ごとのデータ・lib/palette.ts）はここでは扱わない。
+ */
+:root {
+  /* 色 */
+  --color-surface: #fff; /* カード・入力欄などの面（白） */
+  --color-bg: #f7f6f3; /* ページの背景（生成り） */
+  --color-text: #22271f; /* 本文の文字 */
+  --color-text-secondary: #4a4a44; /* 少し弱い文字 */
+  --color-text-muted: #6b7066; /* 補足の文字 */
+  --color-text-subtle: #9a9e95; /* さらに弱い文字・無効 */
+  --color-border: #e4e2db; /* 区切り線・枠 */
+  --color-border-strong: #cfcdc4; /* 入力欄・ボタンの枠 */
+  --color-border-chip: #d8d5cc; /* タグの枠 */
+  --color-border-soft: #e0ded5; /* 薄い区切り */
+  --color-surface-subtle: #fbfaf7; /* ごく薄い面 */
+  --color-surface-muted: #f1f0eb; /* 薄い面（ホバー・タグ・勤務パターンの既定の背景） */
+  --color-surface-sunken: #edece6; /* 一段沈んだ面 */
+  --color-primary: #1d7a63; /* 主の緑 */
+  --color-primary-dark: #0c4a3b; /* 濃い緑（ロゴ・見出し） */
+  --color-primary-soft: #e4f2ed; /* 薄い緑の面 */
+  --color-primary-softer: #eef6f2; /* さらに薄い緑の面 */
+  --color-primary-border-soft: #c4ddd2; /* 薄い緑の枠 */
+  --color-danger: #b4372e; /* 危険・違反の赤 */
+  --color-danger-soft: #f9e9e7; /* 薄い赤の面 */
+  --color-attention: #c9971f; /* 金（希望休が守れている・注目） */
+  --color-warning-text: #8a5a0a; /* 注意の文字（茶） */
+  --color-warning-soft: #fbf1d6; /* 注意の面（薄い黄） */
+  --color-warning-softer: #f8efdc; /* さらに薄い注意の面 */
+  --color-event-bg: #fbf6e6; /* 行事の行の面 */
+  --color-info-soft: #e9effb; /* 案内の面（薄い青） */
+  --color-info-text: #33487a; /* 案内の文字（紺） */
+  --color-saturday: #2c5fa8; /* 土曜の文字 */
+  --color-secondary-role-bg: #f0eafb; /* 兼務行の面 */
+  --color-secondary-role-text: #5b3a8a; /* 兼務行の文字 */
+  --color-lock-soft: #eef2f7; /* 編集ロックの面 */
+  --color-lock-border: #c9d3e0; /* 編集ロックの枠 */
+  --color-unlock-soft: #fff6e0; /* 一時解除中の面 */
+  --color-unlock-border: #e8c66a; /* 一時解除中の枠 */
+  --color-toast-bg: #2f3a33; /* トーストの面 */
+  --color-overlay: rgba(34, 39, 31, 0.4); /* モーダルの後ろの暗幕 */
+  --color-env-dev: #b45309; /* 試験用の環境の帯 */
+  --color-env-dev-soft: #fdf1e3; /* 試験用の環境のサイドバー */
+  --color-env-dev-border: #e8b77a; /* 試験用の環境のサイドバーの枠 */
+
+  /* 影 */
+  --shadow-popover: 0 8px 24px rgba(34, 39, 31, 0.18); /* セルの選択パネル */
+  --shadow-menu: 0 10px 28px rgba(20, 30, 25, 0.18); /* ツールバーのメニュー */
+  --shadow-modal: 0 12px 32px rgba(34, 39, 31, 0.25); /* モーダル */
+  --shadow-toast: 0 8px 24px rgba(34, 39, 31, 0.3); /* トースト */
+
+  /* 角の丸み */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-pill: 999px;
+
+  /* 余白（D1 では定義だけ。既存の余白の置き換えは D4 で行う） */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+}

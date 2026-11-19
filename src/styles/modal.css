@@ -1,0 +1,107 @@
+/* モーダル・トースト（App.css から分けたもの。改善指示書 D1・remaining-work-design.md §24） */
+
+/* ------------------------------------------------------------------
+   モーダル（汎用）
+   ------------------------------------------------------------------ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.modal-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-modal);
+  max-width: 640px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-head h3 {
+  font-size: 1rem;
+}
+
+.modal-close {
+  border: none;
+  background: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 4px;
+}
+
+.modal-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+
+.limit-calc-box {
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.modal-footer {
+  padding: 12px 18px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: var(--color-toast-bg);
+  color: var(--color-surface);
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  box-shadow: var(--shadow-toast);
+  z-index: 200;
+  pointer-events: none;
+  animation:
+    toast-in 0.2s ease,
+    toast-out 0.2s ease 1.6s;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+

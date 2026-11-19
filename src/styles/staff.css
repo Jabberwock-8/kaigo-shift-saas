@@ -1,0 +1,155 @@
+/* 職員管理（カード表示）（App.css から分けたもの。改善指示書 D1・remaining-work-design.md §24） */
+
+/* ------------------------------------------------------------------
+   職員管理（カード表示）
+   ------------------------------------------------------------------ */
+
+.header-link-btn {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+
+.staff-card {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  background: var(--color-surface-subtle);
+}
+
+.staff-card.inactive {
+  opacity: 0.6;
+}
+
+.staff-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+/* 並び順・編集・削除。氏名の幅を奪わないよう、縮まない最小限の横並びにする */
+.staff-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.staff-order-input {
+  width: 42px;
+  padding: 3px 4px;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.staff-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--color-border-chip);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.staff-edit-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.staff-avatar {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.staff-card-title {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 氏名は折り返さない。入り切らない場合は省略記号（全文は title 属性で出す） */
+.staff-name {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.staff-meta {
+  font-size: 0.74rem;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.staff-delete-btn {
+  border: none;
+  background: none;
+  padding: 0 2px;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-danger);
+  opacity: 0.75;
+}
+
+.staff-delete-btn:hover {
+  opacity: 1;
+}
+
+.staff-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.chip.small {
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: default;
+}
+
+.tag-chip {
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.staff-card-footer {
+  font-size: 0.74rem;
+}
+

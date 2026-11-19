@@ -1,0 +1,93 @@
+/* サービス種別・編集ロック・試験用の帯・エラーの案内・まとめて入力（App.css から分けたもの。改善指示書 D1・remaining-work-design.md §24） */
+
+/* 施設名の横のサービス種別（市の提出様式で使う） */
+.service-type-chip {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+/* 勤務表の編集ロック（remaining-work-design.md §17） */
+.edit-lock-banner {
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-lock-soft);
+  border: 1px solid var(--color-lock-border);
+}
+.edit-lock-banner.unlocked {
+  background: var(--color-unlock-soft);
+  border-color: var(--color-unlock-border);
+}
+.edit-lock-banner .link-btn {
+  margin-left: 10px;
+}
+button.edit-lock-on {
+  background: var(--color-lock-soft);
+}
+
+/* 試験用（dev）の環境の表示（remaining-work-design.md §18 A5）。本番では出ない。印刷には出さない（no-print） */
+.env-banner {
+  background: var(--color-env-dev);
+  color: var(--color-surface);
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 3px 12px;
+  letter-spacing: 0.04em;
+}
+.sidebar.sidebar-dev {
+  background: var(--color-env-dev-soft);
+  border-right-color: var(--color-env-dev-border);
+}
+
+/* 描画エラーの案内（§18 A6） */
+.error-boundary h2 {
+  margin-bottom: 8px;
+}
+.error-boundary-detail {
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  margin: 10px 0 14px;
+}
+
+/* まとめて入力（remaining-work-design.md §19） */
+.bulk-fill-section {
+  margin-bottom: 14px;
+}
+.bulk-fill-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+.bulk-fill-staff {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 4px 12px;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
+.bulk-fill-summary {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-softer);
+  border: 1px solid var(--color-primary-border-soft);
+}

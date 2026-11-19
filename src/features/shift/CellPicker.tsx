@@ -69,7 +69,7 @@ export default function CellPicker({
             key={p.id}
             type="button"
             className={`chip${p.id === current ? ' selected' : ''}`}
-            style={{ background: p.color ?? '#fff', color: p.textColor ?? '#22271F' }}
+            style={{ background: p.color ?? 'var(--color-surface)', color: p.textColor ?? 'var(--color-text)' }}
             onClick={() => onPick(p.id)}
           >
             {p.code}

@@ -1,0 +1,189 @@
+/* 全体の器・カード・フォーム・施設タブ・ヘッダー（App.css から分けたもの。改善指示書 D1・remaining-work-design.md §24） */
+
+.app-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+.app-shell h1 {
+  font-size: 1.6rem;
+  margin-bottom: 4px;
+}
+
+.tagline {
+  color: var(--color-text-muted);
+  margin-bottom: 24px;
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  background: var(--color-surface);
+}
+
+.card h2 {
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.card ul {
+  padding-left: 1.2em;
+}
+
+.ok {
+  color: var(--color-primary);
+}
+
+.warn {
+  color: var(--color-warning-text);
+}
+
+.danger {
+  color: var(--color-danger);
+}
+
+code {
+  background: var(--color-surface-muted);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  font-size: 0.9em;
+}
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 320px;
+}
+
+.form-stack label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.form-stack input {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.form-stack button {
+  align-self: flex-start;
+  font: inherit;
+  padding: 8px 20px;
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.form-stack button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.list-plain {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.list-plain button {
+  font: inherit;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.facility-tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -24px -28px 16px;
+  padding: 10px 28px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.facility-tab {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.facility-tab:hover {
+  color: var(--color-text);
+}
+
+.facility-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 700;
+}
+
+.facility-tab.add {
+  color: var(--color-primary);
+  font-weight: 700;
+  padding: 8px 12px;
+}
+
+.facility-tab-add-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 8px;
+}
+
+.facility-tab-add-form input {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 5px 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.header-actions button {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  white-space: nowrap;
+}
+

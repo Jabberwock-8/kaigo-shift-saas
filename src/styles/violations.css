@@ -1,0 +1,34 @@
+/* 違反の一覧（App.css から分けたもの。改善指示書 D1・remaining-work-design.md §24） */
+
+/* ------------------------------------------------------------------
+   違反の一覧
+   ------------------------------------------------------------------ */
+
+.violation-list {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--color-surface-subtle);
+}
+
+.violation-list h4 {
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.violation-list h4:not(:first-child) {
+  margin-top: 12px;
+}
+
+.violation-list ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.violation-list li {
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+

@@ -1,0 +1,139 @@
+/* 自動生成（3案比較・プレビュー）（App.css から分けたもの。改善指示書 D1・remaining-work-design.md §24） */
+
+/* ------------------------------------------------------------------
+   自動生成（3案比較・プレビュー）
+   ------------------------------------------------------------------ */
+
+.header-actions button.primary,
+button.primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.header-actions button.primary:disabled,
+button.primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--color-warning-soft);
+  border: 1px solid var(--color-attention);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+.candidates-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.candidate-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  background: var(--color-surface-subtle);
+}
+
+.candidate-card.previewing {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.candidate-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.candidate-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.badge.recommend {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+}
+
+.candidate-total {
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.candidate-total-num {
+  color: var(--color-primary);
+}
+
+.candidate-fulfillment {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+.candidate-scores {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 8px;
+  font-size: 0.78rem;
+  margin-bottom: 8px;
+}
+
+.candidate-score-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.candidate-violations {
+  font-size: 0.8rem;
+  margin-bottom: 10px;
+}
+
+.candidate-violations p {
+  margin: 0 0 2px;
+}
+
+.candidate-violation-detail {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.candidate-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.candidate-actions button {
+  flex: 1;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.candidate-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.candidate-actions button.primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+}
+

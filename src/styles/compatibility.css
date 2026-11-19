@@ -1,0 +1,70 @@
+/* 相性マトリクス（App.css から分けたもの。改善指示書 D1・remaining-work-design.md §24） */
+
+/* ------------------------------------------------------------------
+   相性マトリクス
+   ------------------------------------------------------------------ */
+
+table.compat-table {
+  border-collapse: collapse;
+}
+
+table.compat-table th,
+table.compat-table td {
+  border: 1px solid var(--color-border);
+  padding: 6px 10px;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+table.compat-table th {
+  background: var(--color-surface-subtle);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+table.compat-table th.namecol {
+  text-align: left;
+}
+
+td.compat-cell {
+  min-width: 40px;
+  font-size: 1rem;
+}
+
+td.compat-cell.clickable {
+  cursor: pointer;
+}
+
+td.compat-cell.clickable:hover {
+  background: var(--color-surface-muted);
+}
+
+td.compat-cell.self {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-surface-sunken),
+    var(--color-surface-sunken) 6px,
+    var(--color-border-soft) 6px,
+    var(--color-border-soft) 7px
+  );
+}
+
+.lv-double {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.lv-good {
+  color: var(--color-text-muted);
+}
+
+.lv-caution {
+  color: var(--color-warning-text);
+  font-weight: 700;
+}
+
+.lv-x {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+

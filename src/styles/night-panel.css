@@ -1,0 +1,26 @@
+/* 夜勤回数のパネル（App.css から分けたもの。改善指示書 D1・remaining-work-design.md §24） */
+
+.night-target-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+}
+
+.night-target-title {
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.night-target-summary {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+

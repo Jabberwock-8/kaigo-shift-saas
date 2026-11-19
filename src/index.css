@@ -1,3 +1,6 @@
+/* 色・角の丸み・影の変数（改善指示書 D1） */
+@import './styles/tokens.css';
+
 :root {
   /* 欧文・数字は Inter、日本語は Noto Sans JP（Inter に無い文字は Noto Sans JP で表示される） */
   font-family: 'Inter', 'Noto Sans JP', system-ui, 'Segoe UI', 'Yu Gothic UI',
@@ -11,8 +14,8 @@
    * 当面は明るい配色に固定する（ダークモード対応は将来まとめて行う）。
    */
   color-scheme: light;
-  color: #22271f;
-  background: #f7f6f3;
+  color: var(--color-text);
+  background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
 }
 

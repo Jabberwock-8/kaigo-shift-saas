@@ -1,0 +1,58 @@
+/*
+ * 共通の部品（改善指示書 D1・remaining-work-design.md §24）。
+ * ボタンは次の4種類にそろえる。今あるボタンは置き場所ごとの見た目のままで、付け替えは見た目を変える D4〜D6 で画面ごとに行う。
+ * - .btn            通常（白地・枠あり）
+ * - .btn-primary    主ボタン（緑の塗り）。画面でいちばん押してほしい操作に1つだけ使う
+ * - .btn-ghost      文字だけ（枠・塗りなし）
+ * - .btn-danger     危険（削除など。赤の文字と枠）
+ */
+
+.btn {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.btn-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+  font-weight: 600;
+}
+
+.btn.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.btn.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-primary);
+}
+
+.btn.btn-ghost:hover:not(:disabled) {
+  background: var(--color-primary-softer);
+}
+
+.btn.btn-danger {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.btn.btn-danger:hover:not(:disabled) {
+  background: var(--color-danger-soft);
+}

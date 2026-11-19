@@ -1,0 +1,63 @@
+/* 印刷と行事・兼務の行（App.css から分けたもの。改善指示書 D1・remaining-work-design.md §24） */
+
+/* ------------------------------------------------------------------
+   印刷
+   ------------------------------------------------------------------ */
+
+.print-only {
+  display: none;
+}
+
+.print-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+
+.print-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+table.shift-grid td.print-cell {
+  font-size: 0.75rem;
+}
+
+table.shift-grid tr.tally-row td {
+  background: var(--color-surface-subtle);
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+}
+
+table.shift-grid tr.tally-row td.tally-short {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+table.shift-grid tr.event-row td {
+  background: var(--color-event-bg);
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+table.shift-grid tr.event-row td.clickable {
+  cursor: pointer;
+}
+
+table.shift-grid tr.event-row td.clickable:hover {
+  outline: 2px solid var(--color-attention);
+  outline-offset: -2px;
+}
+
+table.shift-grid tr.secondary-role-row td.namecol {
+  background: var(--color-secondary-role-bg);
+  color: var(--color-secondary-role-text);
+  font-size: 0.75rem;
+}
+

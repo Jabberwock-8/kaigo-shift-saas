@@ -198,7 +198,7 @@ export default function StaffListPage() {
                       <span
                         key={p.id}
                         className="chip small"
-                        style={{ background: p.color ?? '#F1F0EB', color: p.textColor ?? '#22271F' }}
+                        style={{ background: p.color ?? 'var(--color-surface-muted)', color: p.textColor ?? 'var(--color-text)' }}
                       >
                         {p.label}
                       </span>

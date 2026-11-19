@@ -261,7 +261,7 @@ export default function ShiftPatternsPage() {
                 <div className="swatch-row">
                   <span
                     className="swatch-preview"
-                    style={{ background: row.color ?? '#F1F0EB', color: row.textColor ?? '#22271F' }}
+                    style={{ background: row.color ?? 'var(--color-surface-muted)', color: row.textColor ?? 'var(--color-text)' }}
                   >
                     {row.code || '記'}
                   </span>
