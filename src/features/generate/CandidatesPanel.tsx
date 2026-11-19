@@ -6,6 +6,8 @@ interface Props {
   candidates: CandidateWithId[]
   previewId: string | null
   adoptingId: string | null
+  /** 新しい案を作成中は採択させない（作成中も画面を操作できるようになったため。§21 B1） */
+  generating?: boolean
   onPreview: (id: string) => void
   onAdopt: (candidate: CandidateWithId) => void
 }
@@ -33,7 +35,7 @@ function pickRecommendedId(candidates: CandidateWithId[]): string | null {
  * 自動生成された3案を横並びのカードで比較表示する（Phase 4e）。
  * 「プレビュー」で ShiftGridPage 側の previewId を切り替え、「採択する」で確定する。
  */
-export default function CandidatesPanel({ candidates, previewId, adoptingId, onPreview, onAdopt }: Props) {
+export default function CandidatesPanel({ candidates, previewId, adoptingId, generating = false, onPreview, onAdopt }: Props) {
   if (candidates.length === 0) return null
   const recommendedId = pickRecommendedId(candidates)
 
@@ -81,7 +83,8 @@ export default function CandidatesPanel({ candidates, previewId, adoptingId, onP
               type="button"
               className="primary"
               onClick={() => onAdopt(c)}
-              disabled={adoptingId !== null}
+              disabled={adoptingId !== null || generating}
+              title={generating ? '新しい案を作成中です。作成が終わるか中止してから採択してください' : undefined}
             >
               {adoptingId === c.id ? '採択中…' : '採択する'}
             </button>

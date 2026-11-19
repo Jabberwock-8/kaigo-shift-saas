@@ -353,7 +353,8 @@ export default function ShiftGridPage() {
   }
 
   async function handleAdopt(candidate: Candidate & { id: string }) {
-    if (!selectedFacilityId || !user) return
+    // 新しい案の作成中は採択しない（§21 B1）
+    if (!selectedFacilityId || !user || generatingRef.current) return
     if (candidate.hardCount > 0 && !confirm(`この案には必須条件の違反が${candidate.hardCount}件あります。採択しますか？`)) {
       return
     }
@@ -907,6 +908,7 @@ export default function ShiftGridPage() {
           candidates={candidates}
           previewId={previewId}
           adoptingId={adoptingId}
+          generating={generating}
           onPreview={(id) => setPreviewId((cur) => (cur === id ? null : id))}
           onAdopt={(c) => void handleAdopt(c)}
         />
