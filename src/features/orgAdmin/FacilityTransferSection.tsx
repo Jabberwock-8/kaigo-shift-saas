@@ -1,3 +1,4 @@
+import { Package } from 'lucide-react'
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useFacility } from '../../context/FacilityContext'
@@ -167,7 +168,10 @@ export default function FacilityTransferSection({
 
   return (
     <section className="card">
-      <h2>📦 施設データの引っ越し</h2>
+      <h2>
+        <Package className="ico" size={20} aria-hidden="true" />
+        施設データの引っ越し
+      </h2>
       <p className="muted" style={{ marginBottom: 16 }}>
         施設のデータ（職員・勤務パターン・条件・相性・設定・勤務表・希望休など）を丸ごと1つのファイルに書き出し、
         別の環境で読み込みます。開発環境から本番環境へ移すときや、バックアップに使います。

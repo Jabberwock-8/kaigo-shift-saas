@@ -1,3 +1,23 @@
+import {
+  CalendarCog,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Ellipsis,
+  FileSpreadsheet,
+  FileText,
+  Lock,
+  LockOpen,
+  Maximize2,
+  Minimize2,
+  PenLine,
+  Printer,
+  Save,
+  TriangleAlert,
+  Upload,
+  Zap,
+} from 'lucide-react'
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useFacility } from '../../context/FacilityContext'
@@ -655,8 +675,9 @@ export default function ShiftGridPage() {
           <button
             type="button"
             onClick={() => moveMonth(shiftYearMonth(yearMonth, -1))}
+            aria-label="前の月"
           >
-            ◀
+            <ChevronLeft size={16} aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -667,8 +688,9 @@ export default function ShiftGridPage() {
           <button
             type="button"
             onClick={() => moveMonth(shiftYearMonth(yearMonth, 1))}
+            aria-label="次の月"
           >
-            ▶
+            <ChevronRight size={16} aria-hidden="true" />
           </button>
           <div className="view-toggle" role="group" aria-label="表示の切り替え">
             <button
@@ -694,7 +716,8 @@ export default function ShiftGridPage() {
             </button>
           </div>
           <button type="button" onClick={() => setFitToScreen((v) => !v)}>
-            {fitToScreen ? '🔍 実寸に戻す' : '🔍 画面に収める'}
+            {fitToScreen ? <Minimize2 className="ico" size={16} aria-hidden="true" /> : <Maximize2 className="ico" size={16} aria-hidden="true" />}
+            {fitToScreen ? '実寸に戻す' : '画面に収める'}
           </button>
           {isAdmin && (
             <button
@@ -713,14 +736,16 @@ export default function ShiftGridPage() {
                     : 'パスワードを入れると、一時的に変更できます'
               }
             >
-              {!editLocked ? '🔒 ロック' : tempUnlocked ? '🔒 ロックに戻す' : '🔓 一時解除'}
+              {!editLocked || tempUnlocked ? <Lock className="ico" size={16} aria-hidden="true" /> : <LockOpen className="ico" size={16} aria-hidden="true" />}
+              {!editLocked ? 'ロック' : tempUnlocked ? 'ロックに戻す' : '一時解除'}
             </button>
           )}
           {canEditMonth && (
             <>
               <button type="button" onClick={() => void handleGenerate()} disabled={generating}>
+                {!generating && <Zap className="ico" size={16} aria-hidden="true" />}
                 {!generating
-                  ? '⚡ パターン生成'
+                  ? 'パターン生成'
                   : genProgress
                     ? `${genProgress.label} 作成中…（${genProgress.index + 1}/${genProgress.total}${genProgress.attempt > 1 ? `・${genProgress.attempt}回目` : ''}）`
                     : '準備中…'}
@@ -739,7 +764,9 @@ export default function ShiftGridPage() {
               aria-expanded={openMenu === 'export'}
               onClick={() => setOpenMenu((m) => (m === 'export' ? null : 'export'))}
             >
-              📤 出力 ▾
+              <Upload className="ico" size={16} aria-hidden="true" />
+              出力
+              <ChevronDown className="ico-after" size={14} aria-hidden="true" />
             </button>
             {openMenu === 'export' && (
               <div className="toolbar-menu no-print" role="menu">
@@ -751,7 +778,8 @@ export default function ShiftGridPage() {
                     window.print()
                   }}
                 >
-                  🖨 {isWeek ? 'この週を印刷' : '印刷'}
+                  <Printer className="ico" size={16} aria-hidden="true" />
+                  {isWeek ? 'この週を印刷' : '印刷'}
                 </button>
                 <button
                   type="button"
@@ -763,7 +791,8 @@ export default function ShiftGridPage() {
                   disabled={staffList.length === 0 || !!previewCandidate}
                   title={previewCandidate ? 'プレビュー中は書き出せません。採択するか、プレビューを閉じてください' : undefined}
                 >
-                  📊 Excelで出力
+                  <FileSpreadsheet className="ico" size={16} aria-hidden="true" />
+                  Excelで出力
                 </button>
                 <button
                   type="button"
@@ -774,7 +803,8 @@ export default function ShiftGridPage() {
                   }}
                   disabled={staffList.length === 0}
                 >
-                  📄 市の提出様式
+                  <FileText className="ico" size={16} aria-hidden="true" />
+                  市の提出様式
                 </button>
                 <button
                   type="button"
@@ -785,7 +815,8 @@ export default function ShiftGridPage() {
                   }}
                   disabled={staffList.length === 0}
                 >
-                  📋 TimePro貼付用
+                  <ClipboardList className="ico" size={16} aria-hidden="true" />
+                  TimePro貼付用
                 </button>
               </div>
             )}
@@ -798,7 +829,9 @@ export default function ShiftGridPage() {
                 aria-expanded={openMenu === 'misc'}
                 onClick={() => setOpenMenu((m) => (m === 'misc' ? null : 'misc'))}
               >
-                ⚙ その他 ▾
+                <Ellipsis className="ico" size={16} aria-hidden="true" />
+                その他
+                <ChevronDown className="ico-after" size={14} aria-hidden="true" />
               </button>
               {openMenu === 'misc' && (
                 <div className="toolbar-menu no-print" role="menu">
@@ -811,7 +844,8 @@ export default function ShiftGridPage() {
                     }}
                     disabled={!canEditMonth}
                   >
-                    📅 月の上限を調整
+                    <CalendarCog className="ico" size={16} aria-hidden="true" />
+                    月の上限を調整
                   </button>
                   <button
                     type="button"
@@ -824,7 +858,8 @@ export default function ShiftGridPage() {
                     disabled={!canEditMonth || !!previewCandidate || staffList.length === 0}
                     title={previewCandidate ? 'プレビュー中は使えません。採択するか、プレビューを閉じてください' : undefined}
                   >
-                    ✏ まとめて入力
+                    <PenLine className="ico" size={16} aria-hidden="true" />
+                    まとめて入力
                   </button>
                   <button
                     type="button"
@@ -835,7 +870,8 @@ export default function ShiftGridPage() {
                     }}
                     disabled={!canEditMonth || Object.values(schedule?.locks ?? {}).every((byDay) => Object.keys(byDay).length === 0)}
                   >
-                    🔓 ロックを全解除
+                    <LockOpen className="ico" size={16} aria-hidden="true" />
+                    ロックを全解除
                   </button>
                 </div>
               )}
@@ -854,7 +890,8 @@ export default function ShiftGridPage() {
             }}
             disabled={weekIndex === 0}
           >
-            ◀ 前の週
+            <ChevronLeft className="ico" size={16} aria-hidden="true" />
+            前の週
           </button>
           <strong>
             第{weekIndex + 1}週（{formatMonthDayWeekday(yearMonth, currentWeek[0])}〜
@@ -868,7 +905,8 @@ export default function ShiftGridPage() {
             }}
             disabled={weekIndex >= weeks.length - 1}
           >
-            次の週 ▶
+            次の週
+            <ChevronRight className="ico-after" size={16} aria-hidden="true" />
           </button>
         </div>
       )}
@@ -877,7 +915,8 @@ export default function ShiftGridPage() {
         <p className={`no-print edit-lock-banner${tempUnlocked ? ' unlocked' : ''}`}>
           {tempUnlocked ? (
             <>
-              🔓 一時解除中です。ほかの月・画面に移るか、再読み込みするとロックに戻ります。
+              <LockOpen className="ico" size={16} aria-hidden="true" />
+              一時解除中です。ほかの月・画面に移るか、再読み込みするとロックに戻ります。
               <button type="button" className="link-btn" onClick={() => setUnlockedKey(null)}>
                 ロックに戻す
               </button>
@@ -886,14 +925,26 @@ export default function ShiftGridPage() {
               </button>
             </>
           ) : (
-            <>🔒 この月の勤務表はロックされています（見る・印刷・出力はできます）。{isAdmin && '変更するには「一時解除」を押してください。'}</>
+            <>
+              <Lock className="ico" size={16} aria-hidden="true" />
+              この月の勤務表はロックされています（見る・印刷・出力はできます）。{isAdmin && '変更するには「一時解除」を押してください。'}</>
           )}
         </p>
       )}
       {genError && <p className="warn no-print">{genError}</p>}
       {genNotice && <p className="muted no-print">{genNotice}</p>}
-      {backupMsg && <p className="muted no-print">💾 {backupMsg}</p>}
-      {bulkMsg && <p className="muted no-print">✏ {bulkMsg}</p>}
+      {backupMsg && (
+        <p className="muted no-print">
+          <Save className="ico" size={16} aria-hidden="true" />
+          {backupMsg}
+        </p>
+      )}
+      {bulkMsg && (
+        <p className="muted no-print">
+          <PenLine className="ico" size={16} aria-hidden="true" />
+          {bulkMsg}
+        </p>
+      )}
 
       {canEditMonth && !candidates && storedCandidates.length > 0 && (
         <p className="no-print" style={{ marginBottom: 10 }}>
@@ -940,7 +991,8 @@ export default function ShiftGridPage() {
           <p style={{ marginBottom: showViolationList ? 8 : 0 }}>
             {checkResult.hardCount > 0 && (
               <span className="warn" style={{ marginRight: 12 }}>
-                ⚠ 必須条件の違反 {checkResult.hardCount}件
+                <TriangleAlert className="ico" size={16} aria-hidden="true" />
+                必須条件の違反 {checkResult.hardCount}件
               </span>
             )}
             {checkResult.softCount > 0 && (
@@ -1059,7 +1111,12 @@ export default function ShiftGridPage() {
                     <td className="namecol" title={staffMsgs.join('\n') || undefined}>
                       {staff.name}
                       {staff.active === false && <span className="muted">（無効）</span>}
-                      {staffMsgs.length > 0 && <span className="warn"> ⚠</span>}
+                      {staffMsgs.length > 0 && (
+                        <span className="warn">
+                          {' '}
+                          <TriangleAlert className="ico" size={14} aria-label="この職員に違反があります" />
+                        </span>
+                      )}
                     </td>
                     {visibleDays.map((d) => {
                       const patternId = staffAssignments[String(d)] ?? ''
@@ -1371,7 +1428,7 @@ export default function ShiftGridPage() {
 
       <p className="muted no-print" style={{ marginTop: 10 }}>
         セルをクリックすると勤務パターンを選択できます。<strong>セルを右クリックするとロックを切り替えられます</strong>
-        （パネル内の「ロック切替」でも同じ操作ができます）。ロックは自動生成でこのセルを固定する目印です（🔒が付きます）。
+        （パネル内の「ロック切替」でも同じ操作ができます）。ロックは自動生成でこのセルを固定する目印です（右上に灰色の点が付きます）。
         「!」は必須条件・相性・勤務条件などの違反（マウスを乗せると詳細）、金の枠は希望休が守れている日、赤の枠は希望休なのに勤務が入っている日です。
       </p>
 

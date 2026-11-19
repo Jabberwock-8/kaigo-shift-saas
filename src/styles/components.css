@@ -56,3 +56,40 @@
 .btn.btn-danger:hover:not(:disabled) {
   background: var(--color-danger-soft);
 }
+
+/*
+ * 文字の前後に置く線のアイコン（改善指示書 D2。lucide-react）。
+ * 文字と同じ色（currentColor）で、行の中で文字の高さにそろえる
+ */
+.ico {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: -0.2em;
+  margin-right: 6px;
+}
+
+.ico-after {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: -0.15em;
+  margin-left: 4px;
+}
+
+/* アイコンだけのボタン（前の月・次の月など）の中のアイコンは、文字の高さにそろえる */
+button > svg.lucide:only-child {
+  display: block;
+}
+
+/* アイコン付きのボタンは、アイコンと文字を横に並べて上下中央にそろえる（D2） */
+.header-actions button,
+.toolbar-menu button,
+.week-nav button {
+  display: inline-flex;
+  align-items: center;
+}
+
+.header-actions button .ico,
+.toolbar-menu button .ico,
+.week-nav button .ico {
+  vertical-align: 0;
+}

@@ -204,7 +204,7 @@ export default function ExcelPage() {
                 <ul>
                   {changedPatterns.map((p) => (
                     <li key={p.code}>
-                      {p.status === 'new' ? '➕新規' : '変更'} {p.code}（{p.next.label}）
+                      {p.status === 'new' ? '新規' : '変更'} {p.code}（{p.next.label}）
                     </li>
                   ))}
                 </ul>
@@ -217,7 +217,7 @@ export default function ExcelPage() {
                 <ul>
                   {changedStaff.map((s) => (
                     <li key={s.name}>
-                      {s.status === 'new' ? '➕新規' : '変更'} {s.name}（{s.employmentLabel}）
+                      {s.status === 'new' ? '新規' : '変更'} {s.name}（{s.employmentLabel}）
                     </li>
                   ))}
                 </ul>

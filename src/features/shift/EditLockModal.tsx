@@ -1,3 +1,4 @@
+import { Lock, LockOpen } from 'lucide-react'
 import { useState } from 'react'
 import Modal from '../../components/Modal'
 import { formatYearMonthLabel } from '../../lib/dateUtils'
@@ -51,7 +52,8 @@ export default function EditLockModal({ mode, yearMonth, lock, onSubmit, onClose
             キャンセル
           </button>
           <button type="button" className="primary" onClick={() => void handleSubmit()} disabled={busy || !password}>
-            {mode === 'lock' ? '🔒 ロックする' : '🔓 一時解除'}
+            {mode === 'lock' ? <Lock className="ico" size={16} aria-hidden="true" /> : <LockOpen className="ico" size={16} aria-hidden="true" />}
+            {mode === 'lock' ? 'ロックする' : '一時解除'}
           </button>
         </>
       }

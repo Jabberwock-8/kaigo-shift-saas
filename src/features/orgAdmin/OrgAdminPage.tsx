@@ -1,3 +1,4 @@
+import { Pencil, UsersRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useFacility } from '../../context/FacilityContext'
@@ -209,7 +210,7 @@ export default function OrgAdminPage() {
         await inviteAdminUser(input)
       }
       setInviteMessage(
-        `✅ ${inviteEmail} を招待しました。本人にパスワード再設定メールが届くので、リンクからパスワードを設定してもらってください。`,
+        `${inviteEmail} を招待しました。本人にパスワード再設定メールが届くので、リンクからパスワードを設定してもらってください。`,
       )
       setInviteEmail('')
       setInviteDisplayName('')
@@ -261,7 +262,7 @@ export default function OrgAdminPage() {
     setUserMessage(null)
     try {
       await resendInviteEmail(u.email)
-      setUserMessage(`✅ ${u.email} にパスワード設定メールを送り直しました。メールのリンクから設定してもらってください。`)
+      setUserMessage(`${u.email} にパスワード設定メールを送り直しました。メールのリンクから設定してもらってください。`)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -368,7 +369,7 @@ export default function OrgAdminPage() {
                     onClick={() => startEditFacility(f)}
                     title="施設名を編集"
                   >
-                    ✎
+                    <Pencil size={14} aria-label="施設名を編集" />
                   </button>
                 </div>
               ),
@@ -401,7 +402,10 @@ export default function OrgAdminPage() {
       </section>
 
       <section className="card">
-        <h2>👥 管理者ユーザー</h2>
+        <h2>
+          <UsersRound className="ico" size={20} aria-hidden="true" />
+          管理者ユーザー
+        </h2>
         <p className="muted" style={{ marginBottom: 16 }}>
           職員本人のログインはまだ対応していません。ここで招待できるのは各施設を管理する管理者アカウントのみです。
         </p>

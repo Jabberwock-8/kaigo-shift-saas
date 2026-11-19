@@ -1,3 +1,4 @@
+import { Lock, LockOpen } from 'lucide-react'
 import { useState } from 'react'
 import { useFacility } from '../../context/FacilityContext'
 import { formatYearMonthLabel } from '../../lib/dateUtils'
@@ -46,7 +47,10 @@ export default function EditLockAdminSection() {
 
   return (
     <section className="card">
-      <h2>🔒 勤務表のロック解除</h2>
+      <h2>
+        <Lock className="ico" size={20} aria-hidden="true" />
+        勤務表のロック解除
+      </h2>
       <p className="muted">
         シフト表でかけたロックのパスワードを忘れたときに、ここから解除できます。対象は、あなたが所属している施設だけです。
       </p>
@@ -71,7 +75,8 @@ export default function EditLockAdminSection() {
                 <td>{formatYearMonthLabel(r.yearMonth)}</td>
                 <td>
                   <button type="button" onClick={() => void handleUnlock(r.facilityId, r.facilityName, r.yearMonth)} disabled={busy}>
-                    🔓 解除
+                    <LockOpen className="ico" size={16} aria-hidden="true" />
+                解除
                   </button>
                 </td>
               </tr>

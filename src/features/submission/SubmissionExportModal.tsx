@@ -1,3 +1,4 @@
+import { CircleCheck, FileText } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import Modal from '../../components/Modal'
 import {
@@ -109,7 +110,8 @@ export default function SubmissionExportModal({ facilities, yearMonth, isAdmin, 
       footer={
         <>
           <button type="button" className="primary" onClick={() => void handleExport()} disabled={!sheet || busy}>
-            {busy ? '作成中…' : '📄 Excel を作成'}
+            {!busy && <FileText className="ico" size={16} aria-hidden="true" />}
+            {busy ? '作成中…' : 'Excel を作成'}
           </button>
           <button type="button" className="ghost" onClick={onClose}>
             閉じる
@@ -123,7 +125,7 @@ export default function SubmissionExportModal({ facilities, yearMonth, isAdmin, 
         </p>
         {!sheet ? (
           <p className="warn">
-            この施設のサービス種別が未設定です。「⚙️ 施設・ユーザー管理」の施設の ✎ から、サービス種別を選んでください。
+            この施設のサービス種別が未設定です。「施設・ユーザー管理」の施設の編集ボタンから、サービス種別を選んでください。
           </p>
         ) : (
           <>
@@ -174,7 +176,12 @@ export default function SubmissionExportModal({ facilities, yearMonth, isAdmin, 
           </>
         )}
         {error && <p className="warn">{error}</p>}
-        {done && <p className="ok">✅ {done}</p>}
+        {done && (
+            <p className="ok">
+              <CircleCheck className="ico" size={16} aria-hidden="true" />
+              {done}
+            </p>
+          )}
     </Modal>
   )
 }

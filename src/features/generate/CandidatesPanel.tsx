@@ -1,3 +1,4 @@
+import { TriangleAlert } from 'lucide-react'
 import type { Candidate, ScoreKey } from '../../domain/scheduler/types'
 
 type CandidateWithId = Candidate & { id: string }
@@ -66,7 +67,8 @@ export default function CandidatesPanel({ candidates, previewId, adoptingId, gen
           <div className="candidate-violations">
             {c.hardCount > 0 ? (
               <p className="warn">
-                ⚠ 必須違反 {c.hardCount}件
+                <TriangleAlert className="ico" size={16} aria-hidden="true" />
+                必須違反 {c.hardCount}件
                 {c.hardViolations[0] && <span className="candidate-violation-detail">{c.hardViolations[0]}</span>}
               </p>
             ) : (

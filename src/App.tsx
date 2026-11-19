@@ -1,3 +1,4 @@
+import { Building2 } from 'lucide-react'
 import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import './App.css'
 import { useAuth } from './context/AuthContext'
@@ -65,7 +66,8 @@ function HomeGate() {
               <p className="warn">所属施設がまだありません。</p>
               <p style={{ marginTop: 14 }}>
                 <Link to="/org-admin" className="header-link-btn">
-                  ⚙️ 施設・ユーザー管理へ（施設の作成・施設データの読み込み）
+                  <Building2 className="ico" size={16} aria-hidden="true" />
+                  施設・ユーザー管理へ（施設の作成・施設データの読み込み）
                 </Link>
               </p>
             </>

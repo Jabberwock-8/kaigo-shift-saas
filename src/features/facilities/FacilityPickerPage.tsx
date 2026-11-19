@@ -1,3 +1,4 @@
+import { Building2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useFacility } from '../../context/FacilityContext'
 
@@ -20,7 +21,8 @@ export default function FacilityPickerPage() {
         {appUser?.role === 'admin' && (
           <p style={{ marginTop: 14 }}>
             <Link to="/org-admin" className="header-link-btn">
-              ⚙️ 施設・ユーザー管理
+              <Building2 className="ico" size={16} aria-hidden="true" />
+          施設・ユーザー管理
             </Link>
           </p>
         )}

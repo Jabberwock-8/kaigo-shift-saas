@@ -1,3 +1,4 @@
+import { Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useFacility } from '../../context/FacilityContext'
@@ -178,7 +179,7 @@ export default function StaffListPage() {
                         }}
                       />
                       <Link to={`/staff/${s.id}`} className="staff-edit-btn" title="編集">
-                        ✎
+                        <Pencil size={14} aria-label="編集" />
                       </Link>
                       <button
                         type="button"
@@ -186,7 +187,7 @@ export default function StaffListPage() {
                         onClick={() => void handleDelete(s)}
                         title="削除"
                       >
-                        🗑
+                        <Trash2 size={14} aria-label="削除" />
                       </button>
                     </div>
                   )}

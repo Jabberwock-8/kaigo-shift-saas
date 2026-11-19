@@ -1,3 +1,4 @@
+import { Lock } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import type { ShiftPattern } from '../../types/models'
 
@@ -61,7 +62,12 @@ export default function CellPicker({
     <div className="cell-picker no-print" ref={ref} style={{ top, left, width }}>
       <div className="cell-picker-head">
         {staffName}・{dateLabel}
-        {locked && <span title="ロック中"> 🔒</span>}
+        {locked && (
+          <span title="ロック中">
+            {' '}
+            <Lock className="ico" size={14} aria-label="ロック中" />
+          </span>
+        )}
       </div>
       <div className="cell-picker-chips">
         {options.map((p) => (

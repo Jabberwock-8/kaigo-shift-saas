@@ -27,8 +27,17 @@
 .sidebar-footer .navbtn {
   width: 100%;
   font: inherit;
-  font-size: 11px;
+  font-size: 13px;
   cursor: pointer;
+}
+
+.sidebar.collapsed .sidebar-footer {
+  align-items: center;
+  width: 100%;
+}
+
+.sidebar.collapsed .sidebar-footer .navbtn {
+  width: 44px;
 }
 
 .sidebar-logout {

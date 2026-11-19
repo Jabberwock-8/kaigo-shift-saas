@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { useEffect, type ReactNode } from 'react'
 
 interface Props {
@@ -26,7 +27,7 @@ export default function Modal({ title, onClose, children, footer }: Props) {
         <div className="modal-head">
           <h3>{title}</h3>
           <button type="button" className="modal-close" onClick={onClose} aria-label="閉じる">
-            ✕
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
         <div className="modal-body">{children}</div>
