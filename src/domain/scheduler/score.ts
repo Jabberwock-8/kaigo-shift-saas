@@ -15,6 +15,18 @@ import type {
   StaffWithId,
 } from './types'
 import type { GenerationConfig, GenerationProfile } from './defaults'
+import { gridViewFor, type GridView, type RowReader } from './gridRows'
+
+/** 勤務パターンの表は入力ごとに変わらないので覚えておく（B2） */
+const patternMapCache = new WeakMap<GenerateInput, Map<string, PatternWithId>>()
+function patternMapOf(input: GenerateInput): Map<string, PatternWithId> {
+  let m = patternMapCache.get(input)
+  if (!m) {
+    m = new Map(input.shiftPatterns.map((p) => [p.id, p]))
+    patternMapCache.set(input, m)
+  }
+  return m
+}
 
 function stddev(values: number[]): number {
   if (values.length === 0) return 0
@@ -30,22 +42,18 @@ function effectiveDayPatternIds(staff: StaffWithId, shiftPatterns: PatternWithId
   return ids.slice().sort()
 }
 
-function patternCountOf(
-  staffId: string,
-  patternId: string,
-  assignments: AssignmentGrid,
-  daysInMonth: number,
-): number {
+function patternCountOf(staffId: string, patternId: string, rd: RowReader, daysInMonth: number): number {
   let count = 0
+  const row = rd.row(staffId)
   for (let d = 1; d <= daysInMonth; d++) {
-    if (assignments[staffId]?.[String(d)] === patternId) count++
+    if (row[d] === patternId) count++
   }
   return count
 }
 
-function fairScoreRaw(input: GenerateInput, assignments: AssignmentGrid, coeffs: GenerationConfig['score']['fair']): number {
+function fairScoreRaw(input: GenerateInput, rd: RowReader, coeffs: GenerationConfig['score']['fair']): number {
   const { staff, shiftPatterns, yearMonth, daysInMonth } = input
-  const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
+  const patternById = patternMapOf(input)
 
   const works: number[] = []
   const weekends: number[] = []
@@ -56,8 +64,9 @@ function fairScoreRaw(input: GenerateInput, assignments: AssignmentGrid, coeffs:
     let work = 0
     let night = 0
     let weekend = 0
+    const row = rd.row(s.id)
     for (let d = 1; d <= daysInMonth; d++) {
-      const pid = assignments[s.id]?.[String(d)]
+      const pid = row[d]
       const p = pid ? patternById.get(pid) : undefined
       if (p?.isWork) {
         work++
@@ -90,7 +99,7 @@ function fairScoreRaw(input: GenerateInput, assignments: AssignmentGrid, coeffs:
     if (members.length < 2) continue
     const patternIds = effectiveDayPatternIds(members[0], shiftPatterns)
     for (const patternId of patternIds) {
-      const counts = members.map((m) => patternCountOf(m.id, patternId, assignments, daysInMonth))
+      const counts = members.map((m) => patternCountOf(m.id, patternId, rd, daysInMonth))
       typeFairSum += stddev(counts)
       typeFairN++
     }
@@ -107,59 +116,80 @@ function fairScoreRaw(input: GenerateInput, assignments: AssignmentGrid, coeffs:
   )
 }
 
-function compScoreRaw(input: GenerateInput, assignments: AssignmentGrid, coeffs: GenerationConfig['score']['comp']): number {
-  const { staff, shiftPatterns, compatibilities, daysInMonth } = input
-  const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
-  const levelOf = (a: string, b: string) =>
-    compatibilities.find((c) => (c.staffIdA === a && c.staffIdB === b) || (c.staffIdA === b && c.staffIdB === a))
-      ?.level ?? null
+function compScoreRaw(input: GenerateInput, view: GridView, coeffs: GenerationConfig['score']['comp']): number {
+  const { daysInMonth } = input
+  const rd = view.read
+  const patternById = patternMapOf(input)
+  // 探索で1手ごとに呼ばれるため、全員の組み合わせを毎日調べるのをやめた（B2）。結果は従来と同じ:
+  // - 同じ日に同じ勤務（勤務日の勤務だけ）に入った組の数 = 勤務ごとの人数 n から n(n-1)/2 を足したもの
+  // - 相性の点は、相性が登録されている組だけを調べて足す（従来の「職員の組ごとに最初に見つかった相性」と同じ組）
+  const pairLevels = compatiblePairLevels(input)
 
   let comp = 50
   let pairs = 0
   for (let d = 1; d <= daysInMonth; d++) {
-    for (let i = 0; i < staff.length; i++) {
-      for (let j = i + 1; j < staff.length; j++) {
-        const a = staff[i]
-        const b = staff[j]
-        const pa = assignments[a.id]?.[String(d)]
-        if (!pa) continue
-        const pb = assignments[b.id]?.[String(d)]
-        if (pa !== pb || !patternById.get(pa)?.isWork) continue
-        pairs++
-        const level = levelOf(a.id, b.id)
-        if (level === 'double') comp += coeffs.double
-        else if (level === 'caution') comp += coeffs.caution
-        else if (level === 'x') comp += coeffs.x
-      }
+    for (const [pid, n] of view.dayCounts(d)) {
+      if (pid && n >= 2 && patternById.get(pid)?.isWork) pairs += (n * (n - 1)) / 2
+    }
+    for (const { a, b, level } of pairLevels) {
+      const pa = rd(a, d)
+      if (!pa || pa !== rd(b, d) || !patternById.get(pa)?.isWork) continue
+      if (level === 'double') comp += coeffs.double
+      else if (level === 'caution') comp += coeffs.caution
+      else if (level === 'x') comp += coeffs.x
     }
   }
   return Math.max(0, Math.min(100, pairs ? 50 + ((comp - 50) * 2) / Math.sqrt(pairs) : 70))
 }
 
-function wishScore(input: GenerateInput, assignments: AssignmentGrid): number {
-  const { wishes, shiftPatterns } = input
+/**
+ * 相性の採点で見る組（入力の職員どうし・1組1回・相性の値は従来の find と同じく一覧で最初に見つかったもの）。
+ * 入力ごとに変わらないので覚えておく
+ */
+const pairLevelCache = new WeakMap<GenerateInput, { a: string; b: string; level: string }[]>()
+function compatiblePairLevels(input: GenerateInput): { a: string; b: string; level: string }[] {
+  const cached = pairLevelCache.get(input)
+  if (cached) return cached
+  const ids = new Set(input.staff.map((s) => s.id))
+  const seen = new Set<string>()
+  const out: { a: string; b: string; level: string }[] = []
+  for (const c of input.compatibilities) {
+    if (c.staffIdA === c.staffIdB || !ids.has(c.staffIdA) || !ids.has(c.staffIdB)) continue
+    const key = [c.staffIdA, c.staffIdB].sort().join('\u0000')
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push({ a: c.staffIdA, b: c.staffIdB, level: c.level })
+  }
+  pairLevelCache.set(input, out)
+  return out
+}
+
+function wishScore(input: GenerateInput, rd: RowReader): number {
+  const { wishes } = input
   if (wishes.length === 0) return 100
-  const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
+  const patternById = patternMapOf(input)
   let kept = 0
   for (const w of wishes) {
-    const pid = assignments[w.staffId]?.[String(w.day)]
+    const pid = rd(w.staffId, w.day)
     const isWork = !!pid && !!patternById.get(pid)?.isWork
     if (!isWork) kept++
   }
   return Math.round((kept / wishes.length) * 100)
 }
 
-function softScore(input: GenerateInput, assignments: AssignmentGrid): number {
-  const { staff, shiftPatterns, rules, yearMonth, daysInMonth } = input
-  const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
+function softScore(input: GenerateInput, view: GridView): number {
+  const rd = view.read
+  const { staff, rules, yearMonth, daysInMonth } = input
+  const patternById = patternMapOf(input)
   const staffById = new Map(staff.map((s) => [s.id, s]))
-  const assignedOf = (staffId: string, day: number) => assignments[staffId]?.[String(day)]
+  const assignedOf = rd
   const isWorkPattern = (pid: string | undefined) => !!pid && !!patternById.get(pid)?.isWork
   const ruleTextCtx: RuleTextContext = {
     shiftLabel: (id) => patternById.get(id)?.label ?? '?',
     staffName: (id) => staffById.get(id)?.name ?? '?',
   }
-  const evalCtx: EvalCtx = { staff, patternById, assignedOf, isWorkPattern, ruleTextCtx }
+  const countAssigned = (day: number, patternId: string) => view.dayCounts(day).get(patternId) ?? 0
+  const evalCtx: EvalCtx = { staff, patternById, assignedOf, isWorkPattern, ruleTextCtx, countAssigned }
 
   let total = 0
   let ok = 0
@@ -174,18 +204,19 @@ function softScore(input: GenerateInput, assignments: AssignmentGrid): number {
   return total ? Math.round((ok / total) * 100) : 100
 }
 
-function intervalScore(input: GenerateInput, assignments: AssignmentGrid, coeffs: GenerationConfig['score']['interval']): number {
-  const { staff, shiftPatterns, settings, daysInMonth } = input
+function intervalScore(input: GenerateInput, rd: RowReader, coeffs: GenerationConfig['score']['interval']): number {
+  const { staff, settings, daysInMonth } = input
   const minRest = settings.minRestHours
   if (minRest == null) return 100
-  const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
+  const patternById = patternMapOf(input)
 
   let checks = 0
   let penalty = 0
   for (const s of staff) {
+    const row = rd.row(s.id)
     for (let d = 1; d < daysInMonth; d++) {
-      const p1 = patternById.get(assignments[s.id]?.[String(d)] ?? '')
-      const p2 = patternById.get(assignments[s.id]?.[String(d + 1)] ?? '')
+      const p1 = patternById.get(row[d] ?? '')
+      const p2 = patternById.get(row[d + 1] ?? '')
       if (!p1?.isWork || !p2?.isWork || p1.isNight || p2.isNight) continue
       const end1 = parseTimeToHours(p1.endTime)
       const start2 = parseTimeToHours(p2.startTime)
@@ -199,9 +230,9 @@ function intervalScore(input: GenerateInput, assignments: AssignmentGrid, coeffs
   return checks ? Math.max(0, Math.round(100 - (penalty / checks) * coeffs.penaltyPerHour)) : 100
 }
 
-function spreadScore(input: GenerateInput, assignments: AssignmentGrid, coeffs: GenerationConfig['score']['spread']): number {
-  const { staff, shiftPatterns, daysInMonth } = input
-  const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
+function spreadScore(input: GenerateInput, rd: RowReader, coeffs: GenerationConfig['score']['spread']): number {
+  const { staff, daysInMonth } = input
+  const patternById = patternMapOf(input)
 
   let spreadDevSum = 0
   let spreadN = 0
@@ -211,12 +242,13 @@ function spreadScore(input: GenerateInput, assignments: AssignmentGrid, coeffs: 
   for (const s of staff) {
     const chunks: { work: number; days: number }[] = []
     const typeWeekly: Record<string, number[]> = {}
+    const row = rd.row(s.id)
     let wi = 0
     for (let start = 1; start <= daysInMonth; start += 7, wi++) {
       const end = Math.min(start + 6, daysInMonth)
       let work = 0
       for (let d = start; d <= end; d++) {
-        const pid = assignments[s.id]?.[String(d)]
+        const pid = row[d]
         const p = pid ? patternById.get(pid) : undefined
         if (p?.isWork && pid) {
           work++
@@ -275,14 +307,19 @@ export function scoreGrid(
   input: GenerateInput,
   assignments: AssignmentGrid,
   profile: GenerationProfile,
+  /** 探索の1手で違反チェックと共有する読み取り（B2）。渡さなくても結果は同じ */
+  gridView?: GridView,
 ): CandidateScores {
   const coeffs = input.config.score
-  const fairRaw = fairScoreRaw(input, assignments, coeffs.fair)
-  const compRaw = compScoreRaw(input, assignments, coeffs.comp)
-  const wish = wishScore(input, assignments)
-  const soft = softScore(input, assignments)
-  const interval = intervalScore(input, assignments, coeffs.interval)
-  const spread = spreadScore(input, assignments, coeffs.spread)
+  // 勤務の読み取りを6指標で共有する（B2。1回の採点の間は勤務表を書き換えないので結果は同じ）
+  const view = gridViewFor(gridView, assignments, input.daysInMonth, input.staff)
+  const rd = view.read
+  const fairRaw = fairScoreRaw(input, rd, coeffs.fair)
+  const compRaw = compScoreRaw(input, view, coeffs.comp)
+  const wish = wishScore(input, rd)
+  const soft = softScore(input, view)
+  const interval = intervalScore(input, rd, coeffs.interval)
+  const spread = spreadScore(input, rd, coeffs.spread)
 
   const w = profile.weights
   const totalWeight = w.fair + w.comp + w.wish + w.soft + w.interval + w.spread

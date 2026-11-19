@@ -10,6 +10,7 @@ import type { MonthlyLimitsOverride } from './limits'
 import type { GenerationConfig } from './defaults'
 import type { DayPatternCaps } from './caps'
 import type { TraitPairBlock } from './traitPairs'
+import type { GridView } from './gridRows'
 
 export type StaffWithId = Staff & { id: string }
 export type PatternWithId = ShiftPattern & { id: string }
@@ -39,6 +40,11 @@ export interface CheckInput {
    * 未設定（前月の勤務表が無い）なら前月は分からないものとして扱う
    */
   prevTail?: PrevMonthTail
+  /**
+   * 探索の1手で、採点と共有する勤務の読み取り（gridRows.ts。B2）。assignments・staff が同じときだけ使われる。
+   * 画面からは渡さない（渡さなくても結果は同じ）
+   */
+  gridView?: GridView
 }
 
 /** 前月末の勤務。日は当月の1日を1として、前月の最終日を0、その前日を-1…とする */
@@ -120,6 +126,15 @@ export interface GenerateInput {
   random?: () => number
   /** 時刻(ms)。未指定なら Date.now。テストで、時間による打ち切りを決まった回数にするために渡す */
   now?: () => number
+  /** 計測用の数（npm run bench）。渡すと、探索で試した手の数を足していく（B2）。画面からは渡さない */
+  stats?: GenerateStats
+}
+
+export interface GenerateStats {
+  /** 局所改善（hillClimb）で評価した回数（＝試した手の数） */
+  hillClimbEvaluations: number
+  /** 局所改善を実行した回数（案の数） */
+  hillClimbRuns: number
 }
 
 export type ScoreKey = 'fair' | 'comp' | 'wish' | 'soft' | 'interval' | 'spread'

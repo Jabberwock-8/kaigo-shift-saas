@@ -11,7 +11,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { it } from 'vitest'
 import { generate } from '../generate'
 import { createSeededRandom } from '../random'
-import type { Candidate } from '../types'
+import type { Candidate, GenerateStats } from '../types'
 import { BENCH_FACILITIES } from '../__tests__/fixtures/facilities'
 
 const SEEDS = Number(process.env.BENCH_SEEDS ?? 10)
@@ -34,6 +34,8 @@ interface Row {
   fillAvg: number
   fillMin: number
   secAvg: number
+  /** 探索1回（1案）あたりの試した手の数 */
+  movesAvg: number
 }
 
 const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
@@ -45,8 +47,9 @@ it('bench: 架空4施設 × 種', () => {
     if (ONLY && fac.key !== ONLY) continue
     const picks: Candidate[] = []
     const secs: number[] = []
+    const stats: GenerateStats = { hillClimbEvaluations: 0, hillClimbRuns: 0 }
     for (let seed = 1; seed <= SEEDS; seed++) {
-      const input = { ...fac.build(), random: createSeededRandom(seed) }
+      const input = { ...fac.build(), random: createSeededRandom(seed), stats }
       const t0 = performance.now()
       picks.push(recommended(generate(input)))
       secs.push((performance.now() - t0) / 1000)
@@ -62,15 +65,16 @@ it('bench: 架空4施設 × 種', () => {
       fillAvg: avg(picks.map((c) => c.fulfillmentRate)),
       fillMin: Math.min(...picks.map((c) => c.fulfillmentRate)),
       secAvg: avg(secs),
+      movesAvg: stats.hillClimbRuns ? stats.hillClimbEvaluations / stats.hillClimbRuns : 0,
     })
   }
 
   const header =
-    '| 施設の形 | 必須違反 平均 | 必須違反 最悪 | 推奨未達 平均 | 推奨未達 最悪 | 総合点 平均 | 総合点 最低 | 充足率% 平均 | 充足率% 最低 | 1回の秒数 平均 |'
-  const sep = '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|'
+    '| 施設の形 | 必須違反 平均 | 必須違反 最悪 | 推奨未達 平均 | 推奨未達 最悪 | 総合点 平均 | 総合点 最低 | 充足率% 平均 | 充足率% 最低 | 1回の秒数 平均 | 探索の手数（1案） |'
+  const sep = '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|'
   const lines = rows.map(
     (r) =>
-      `| ${r.label} | ${f1(r.hardAvg)} | ${r.hardMax} | ${f1(r.softAvg)} | ${r.softMax} | ${f1(r.totalAvg)} | ${f1(r.totalMin)} | ${f1(r.fillAvg)} | ${f1(r.fillMin)} | ${f1(r.secAvg)} |`,
+      `| ${r.label} | ${f1(r.hardAvg)} | ${r.hardMax} | ${f1(r.softAvg)} | ${r.softMax} | ${f1(r.totalAvg)} | ${f1(r.totalMin)} | ${f1(r.fillAvg)} | ${f1(r.fillMin)} | ${f1(r.secAvg)} | ${Math.round(r.movesAvg)} |`,
   )
   const md = [`種 ${SEEDS} 個（1〜${SEEDS}）。各回の「おすすめ」案の数字。`, '', header, sep, ...lines, ''].join('\n')
   // vitest は成功したテストの console.log を出さないことがあるため、直接書き出す

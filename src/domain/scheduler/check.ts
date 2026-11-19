@@ -8,6 +8,7 @@ import { parseTimeToHours, weekdayOf } from '../../lib/dateUtils'
 import { ruleText, type RuleTextContext } from './ruleText'
 import { akeAllowsConsecutiveNights, akeRequiresOffNextDay, PREV_TAIL_DAYS } from './gridUtils'
 import { resolveLimits } from './limits'
+import { gridViewFor } from './gridRows'
 import { ruleAppliesToDate } from './ruleMatch'
 import type { CheckInput, CheckResult, PatternWithId, RuleWithId, StaffWithId } from './types'
 
@@ -24,6 +25,11 @@ export interface EvalCtx {
   assignedOfSecondary?: (staffId: string, day: number) => string | undefined
   isWorkPattern: (patternId: string | undefined) => boolean
   ruleTextCtx: RuleTextContext
+  /**
+   * その日にその勤務の人の数（staff のうち）。渡すと、勤務の人数を数えるルールでこれを使う（B2。数え方は同じ）。
+   * 未指定なら従来どおり assignedOf で1人ずつ数える
+   */
+  countAssigned?: (day: number, patternId: string) => number
 }
 
 export interface RuleViolation {
@@ -33,11 +39,14 @@ export interface RuleViolation {
 
 export function evalRuleDay(rule: Rule, day: number, ctx: EvalCtx): RuleViolation | null {
   const { target, cond } = rule
-  const label = ruleText(rule, ctx.ruleTextCtx)
+  // 説明文は違反があったときだけ作る（探索で1手ごとに全ルール×全日を調べるため。B2）
+  const label = () => ruleText(rule, ctx.ruleTextCtx)
 
   if (target.type === 'shift') {
     const patternId = target.value as string
-    const n = ctx.staff.filter((s) => ctx.assignedOf(s.id, day) === patternId).length
+    const n = ctx.countAssigned
+      ? ctx.countAssigned(day, patternId)
+      : ctx.staff.filter((s) => ctx.assignedOf(s.id, day) === patternId).length
     return countViolation(cond, n, label)
   }
 
@@ -62,22 +71,24 @@ export function evalRuleDay(rule: Rule, day: number, ctx: EvalCtx): RuleViolatio
     const staffId = target.value as string
     const pid = ctx.assignedOf(staffId, day)
     const isW = ctx.isWorkPattern(pid)
-    if (cond.type === 'work' && !isW) return { message: label, cells: [{ staffId, day }] }
-    if (cond.type === 'off' && isW) return { message: label, cells: [{ staffId, day }] }
+    if (cond.type === 'work' && !isW) return { message: label(), cells: [{ staffId, day }] }
+    if (cond.type === 'off' && isW) return { message: label(), cells: [{ staffId, day }] }
     if (cond.type === 'preferShift' && isW && pid !== cond.value) {
       const cur = ctx.patternById.get(pid ?? '')?.label ?? pid
-      return { message: `${label}（現在${cur}）`, cells: [{ staffId, day }] }
+      return { message: `${label()}（現在${cur}）`, cells: [{ staffId, day }] }
     }
     return null
   }
 
   if (target.type === 'shiftGroup') {
     const ids = (target.value as string[] | undefined) ?? []
-    const counts = ids.map((id) => ctx.staff.filter((s) => ctx.assignedOf(s.id, day) === id).length)
+    const counts = ids.map((id) =>
+      ctx.countAssigned ? ctx.countAssigned(day, id) : ctx.staff.filter((s) => ctx.assignedOf(s.id, day) === id).length,
+    )
     const total = counts.reduce((a, b) => a + b, 0)
     const activeTypes = counts.filter((c) => c > 0).length
     if (cond.type === 'atLeastGroup' && total < (cond.count ?? 0)) {
-      return { message: `${label}（現在${total}名）` }
+      return { message: `${label()}（現在${total}名）` }
     }
     if (cond.type === 'notTogetherGroup' && activeTypes > 1) {
       const cells: { staffId: string; day: number }[] = []
@@ -86,7 +97,7 @@ export function evalRuleDay(rule: Rule, day: number, ctx: EvalCtx): RuleViolatio
           .filter((s) => ctx.assignedOf(s.id, day) === id)
           .forEach((s) => cells.push({ staffId: s.id, day }))
       })
-      return { message: label, cells }
+      return { message: label(), cells }
     }
     return null
   }
@@ -101,7 +112,7 @@ export function evalRuleDay(rule: Rule, day: number, ctx: EvalCtx): RuleViolatio
       )
       if (bad.length) {
         return {
-          message: `${label}（${bad.map((p) => p.name).join('、')}が単独）`,
+          message: `${label()}（${bad.map((p) => p.name).join('、')}が単独）`,
           cells: bad.map((p) => ({ staffId: p.id, day })),
         }
       }
@@ -116,7 +127,7 @@ export function evalRuleDay(rule: Rule, day: number, ctx: EvalCtx): RuleViolatio
           }
         }),
       )
-      if (cells.length) return { message: label, cells }
+      if (cells.length) return { message: label(), cells }
     }
     return null
   }
@@ -124,11 +135,11 @@ export function evalRuleDay(rule: Rule, day: number, ctx: EvalCtx): RuleViolatio
   return null
 }
 
-function countViolation(cond: RuleCond, n: number, label: string): RuleViolation | null {
-  if (cond.type === 'exact' && n !== cond.count) return { message: `${label}（現在${n}名）` }
-  if (cond.type === 'atLeast' && n < (cond.count ?? 0)) return { message: `${label}（現在${n}名）` }
-  if (cond.type === 'atMost' && n > (cond.count ?? 0)) return { message: `${label}（現在${n}名）` }
-  if (cond.type === 'none' && n > 0) return { message: label }
+function countViolation(cond: RuleCond, n: number, label: () => string): RuleViolation | null {
+  if (cond.type === 'exact' && n !== cond.count) return { message: `${label()}（現在${n}名）` }
+  if (cond.type === 'atLeast' && n < (cond.count ?? 0)) return { message: `${label()}（現在${n}名）` }
+  if (cond.type === 'atMost' && n > (cond.count ?? 0)) return { message: `${label()}（現在${n}名）` }
+  if (cond.type === 'none' && n > 0) return { message: label() }
   return null
 }
 
@@ -146,6 +157,7 @@ export function checkMonth(input: CheckInput): CheckResult {
     settings,
     monthlyMaxDaysOverride,
     prevTail,
+    gridView,
   } = input
   const patternById = new Map(shiftPatterns.map((p) => [p.id, p]))
   // 違反の文言は施設の夜勤明けの記号で出す（準夜勤の施設は「明休」、ロング夜勤の施設は「明出」など）
@@ -168,20 +180,28 @@ export function checkMonth(input: CheckInput): CheckResult {
     staffMessages[staffId].push(msg)
   }
 
-  // 1日より前は前月末の勤務（前月の勤務表が無ければ undefined）
-  const assignedOf = (staffId: string, day: number) =>
-    day < 1 ? prevTail?.[staffId]?.[String(day)] : assignments[staffId]?.[String(day)]
+  // 1日より前は前月末の勤務（前月の勤務表が無ければ undefined）。当月は行の並びで引く（B2。結果は同じ）
+  const view = gridViewFor(gridView, assignments, daysInMonth, staff)
+  const readRow = view.read
+  const assignedOf = (staffId: string, day: number) => (day < 1 ? prevTail?.[staffId]?.[String(day)] : readRow(staffId, day))
   const assignedOfSecondary = (staffId: string, day: number) => secondaryAssignments?.[staffId]?.[String(day)]
   const patternOf = (staffId: string, day: number) => {
     const id = assignedOf(staffId, day)
     return id ? patternById.get(id) : undefined
   }
   const isWorkPattern = (patternId: string | undefined) => !!patternId && !!patternById.get(patternId)?.isWork
+  // 勤務ごとの連続日数の上限がある勤務（日ごとに作り直さない。B2）
+  const capPatternIds = Object.keys(settings.shiftConsecutiveCaps)
 
   // ---- 職員ごとのチェック ----
   for (const s of staff) {
     // シフト作成の対象外（施設長・看護師など）は勤務を手で入れるため、個人の日数・連続・夜勤などの決まりは見ない
     if (s.excludeFromGeneration) continue
+    // この人の当月の勤務（ID と勤務パターン）を先に並べておき、番号で引く（B2。月の外の日は従来どおり）
+    const ids = readRow.row(s.id)
+    const pats = ids.map((id) => (id ? patternById.get(id) : undefined))
+    const idAt = (day: number) => (day >= 1 && day <= daysInMonth ? ids[day] : assignedOf(s.id, day))
+    const patAt = (day: number) => (day >= 1 && day <= daysInMonth ? pats[day] : patternOf(s.id, day))
     const wc = s.workConditions ?? {}
     const limits = resolveLimits(
       s,
@@ -196,21 +216,21 @@ export function checkMonth(input: CheckInput): CheckResult {
     // 前月末から続いている連続勤務を引き継ぐ（月の初めの連続勤務の上限を、月をまたいで数える）
     const tailKnown = !!prevTail?.[s.id]
     let consecutive = 0
-    for (let d = 0; d >= 1 - PREV_TAIL_DAYS && patternOf(s.id, d)?.isWork; d--) consecutive++
+    for (let d = 0; d >= 1 - PREV_TAIL_DAYS && patAt(d)?.isWork; d--) consecutive++
     const consecutiveByPattern: Record<string, number> = {}
-    const lastPrevId = assignedOf(s.id, 0)
+    const lastPrevId = idAt(0)
     if (lastPrevId && settings.shiftConsecutiveCaps[lastPrevId] != null) {
       let n = 0
-      for (let d = 0; d >= 1 - PREV_TAIL_DAYS && assignedOf(s.id, d) === lastPrevId; d--) n++
+      for (let d = 0; d >= 1 - PREV_TAIL_DAYS && idAt(d) === lastPrevId; d--) n++
       consecutiveByPattern[lastPrevId] = n
     }
 
     // 前月末の夜勤の続き（前月の最終日・その前日の夜勤に対する、当月1・2日の明・休み）
     if (tailKnown) {
-      const p0 = patternOf(s.id, 0)
-      const pm1 = patternOf(s.id, -1)
-      const p1 = patternOf(s.id, 1)
-      const p2 = patternOf(s.id, 2)
+      const p0 = patAt(0)
+      const pm1 = patAt(-1)
+      const p1 = patAt(1)
+      const p2 = patAt(2)
       if (settings.nightMode === 'ake') {
         if (p0?.isNight && !(p1?.isNight && akeAllowsConsecutiveNights(settings))) {
           if (p1?.category !== 'afterNight') {
@@ -228,8 +248,8 @@ export function checkMonth(input: CheckInput): CheckResult {
       } else if (settings.nightMode === 'direct' && p0?.isNight) {
         // 前月末から続く夜勤の終わりを探し、その翌日が勤務なら違反
         let e = 0
-        while (e + 1 <= daysInMonth && patternOf(s.id, e + 1)?.isNight) e++
-        if (e + 1 <= daysInMonth && patternOf(s.id, e + 1)?.isWork) {
+        while (e + 1 <= daysInMonth && patAt(e + 1)?.isNight) e++
+        if (e + 1 <= daysInMonth && patAt(e + 1)?.isWork) {
           hard.push(`${s.name}: ${e + 1}日 夜勤翌日は休みが必要（前月末の夜勤）`)
           addCell(s.id, e + 1, '夜勤翌日は休みが必要（前月末の夜勤）')
         }
@@ -237,7 +257,7 @@ export function checkMonth(input: CheckInput): CheckResult {
     }
 
     for (let d = 1; d <= daysInMonth; d++) {
-      const patternId = assignedOf(s.id, d)
+      const patternId = idAt(d)
       const pattern = patternId ? patternById.get(patternId) : undefined
 
       if (pattern?.isWork) {
@@ -253,9 +273,9 @@ export function checkMonth(input: CheckInput): CheckResult {
         const allowed = wc.workablePatternIds
         // 夜勤とセットで入る勤務（夜勤明け、夜勤の前日の決まった勤務）は、本人の「可能な勤務」に無くても対応外としない。
         // 夜勤練習（R1）だけを可能な勤務にした新人に、前日の M3・翌日の明出まで対応外と出ていたため
-        const nextIsNight = !!patternOf(s.id, d + 1)?.isNight
+        const nextIsNight = !!patAt(d + 1)?.isNight
         const comesWithNight =
-          (pattern.category === 'afterNight' && !!patternOf(s.id, d - 1)?.isNight) ||
+          (pattern.category === 'afterNight' && !!patAt(d - 1)?.isNight) ||
           (!!settings.nightPrecedingPatternId && pattern.id === settings.nightPrecedingPatternId && nextIsNight)
         if (allowed && allowed.length > 0 && !allowed.includes(pattern.id) && !comesWithNight) {
           hard.push(`${s.name}: ${d}日 対応外の勤務（${pattern.label}）`)
@@ -269,7 +289,7 @@ export function checkMonth(input: CheckInput): CheckResult {
         }
 
         // パターン別の連続日数上限
-        for (const pid of Object.keys(settings.shiftConsecutiveCaps)) {
+        for (const pid of capPatternIds) {
           if (patternId === pid) {
             consecutiveByPattern[pid] = (consecutiveByPattern[pid] ?? 0) + 1
             const cap = settings.shiftConsecutiveCaps[pid]
@@ -284,14 +304,12 @@ export function checkMonth(input: CheckInput): CheckResult {
         }
       } else {
         consecutive = 0
-        Object.keys(consecutiveByPattern).forEach((pid) => {
-          consecutiveByPattern[pid] = 0
-        })
+        for (const pid in consecutiveByPattern) consecutiveByPattern[pid] = 0
       }
 
       // ---- 夜勤の前日の決まった勤務（M3→夜勤 など。夜勤の連続中と月の1日は除く） ----
       if (settings.nightPrecedingPatternId && pattern?.isNight && d > 1) {
-        const prevPattern = patternOf(s.id, d - 1)
+        const prevPattern = patAt(d - 1)
         if (!prevPattern?.isNight && prevPattern?.id !== settings.nightPrecedingPatternId) {
           const preCode = patternById.get(settings.nightPrecedingPatternId)?.code ?? '決まった勤務'
           hard.push(`${s.name}: ${d - 1}日 夜勤の前日は「${preCode}」が必要`)
@@ -303,27 +321,27 @@ export function checkMonth(input: CheckInput): CheckResult {
       if (settings.nightMode === 'ake') {
         // 1日の明は、前月の勤務表があるときだけ前月末の夜勤と照らす（無いと前月の夜勤が分からないため）
         if (pattern?.category === 'afterNight' && (d > 1 || tailKnown)) {
-          const prevPattern = patternOf(s.id, d - 1)
+          const prevPattern = patAt(d - 1)
           if (!prevPattern?.isNight) {
             hard.push(`${s.name}: ${d}日 夜勤なしの「${akeCode}」`)
             addCell(s.id, d, `夜勤なしの${akeCode}`)
           }
         }
         if (pattern?.isNight) {
-          const nextPattern = d + 1 <= daysInMonth ? patternOf(s.id, d + 1) : undefined
+          const nextPattern = d + 1 <= daysInMonth ? patAt(d + 1) : undefined
           if (nextPattern?.isNight && akeAllowsConsecutiveNights(settings)) {
             // 夜勤の連続中。明は連続の最後の夜勤の翌日で確かめる
           } else if (d + 1 <= daysInMonth && nextPattern?.category !== 'afterNight') {
             hard.push(`${s.name}: ${d + 1}日 夜勤翌日は「${akeCode}」が必要`)
             addCell(s.id, d + 1, `夜勤翌日は${akeCode}が必要`)
           } else if (akeRequiresOffNextDay(settings) && d + 2 <= daysInMonth) {
-            const next2Pattern = patternOf(s.id, d + 2)
+            const next2Pattern = patAt(d + 2)
             if (next2Pattern?.category !== 'off') {
               hard.push(`${s.name}: ${d + 2}日 ${akeCode}の翌日は「休」が必要`)
               addCell(s.id, d + 2, `${akeCode}の翌日は休が必要`)
             }
           } else if (d + 2 <= daysInMonth) {
-            const next2Id = assignedOf(s.id, d + 2)
+            const next2Id = idAt(d + 2)
             if (next2Id && settings.nightAvoidPatternIdsAfter2.includes(next2Id)) {
               const avoidLabel = patternById.get(next2Id)?.label ?? next2Id
               hard.push(`${s.name}: ${d + 2}日 夜勤の2日後に${avoidLabel}は避ける`)
@@ -332,19 +350,19 @@ export function checkMonth(input: CheckInput): CheckResult {
           }
         }
       } else if (settings.nightMode === 'direct') {
-        const prevPattern = patternOf(s.id, d - 1)
+        const prevPattern = patAt(d - 1)
         const prevWasNight = !!prevPattern?.isNight
         if (pattern?.isNight && !prevWasNight) {
           // 夜勤ブロックの開始日。終端 e を探す
           let e = d
-          while (e + 1 <= daysInMonth && patternOf(s.id, e + 1)?.isNight) e++
+          while (e + 1 <= daysInMonth && patAt(e + 1)?.isNight) e++
           if (e + 1 <= daysInMonth) {
-            const nextPattern = patternOf(s.id, e + 1)
+            const nextPattern = patAt(e + 1)
             if (nextPattern?.isWork) {
               hard.push(`${s.name}: ${e + 1}日 夜勤翌日は休みが必要`)
               addCell(s.id, e + 1, '夜勤翌日は休みが必要')
             } else if (e + 2 <= daysInMonth) {
-              const next2Id = assignedOf(s.id, e + 2)
+              const next2Id = idAt(e + 2)
               if (next2Id && settings.nightAvoidPatternIdsAfter2.includes(next2Id)) {
                 const avoidLabel = patternById.get(next2Id)?.label ?? next2Id
                 hard.push(`${s.name}: ${e + 2}日 夜勤の2日後に${avoidLabel}は避ける`)
@@ -357,8 +375,8 @@ export function checkMonth(input: CheckInput): CheckResult {
 
       // ---- 休息時間（既定は推奨(soft)。treatRestHoursAsHard=true なら必須(hard)扱い） ----
       if (settings.minRestHours != null && d < daysInMonth) {
-        const p1 = patternOf(s.id, d)
-        const p2 = patternOf(s.id, d + 1)
+        const p1 = patAt(d)
+        const p2 = patAt(d + 1)
         if (p1?.isWork && p2?.isWork && !p1.isNight && !p2.isNight) {
           const end1 = parseTimeToHours(p1.endTime)
           const start2 = parseTimeToHours(p2.startTime)
@@ -420,7 +438,8 @@ export function checkMonth(input: CheckInput): CheckResult {
     shiftLabel: (id) => patternById.get(id)?.label ?? '?',
     staffName: (id) => staffById.get(id)?.name ?? '?',
   }
-  const evalCtx: EvalCtx = { staff, patternById, assignedOf, assignedOfSecondary, isWorkPattern, ruleTextCtx }
+  const countAssigned = (day: number, patternId: string) => view.dayCounts(day).get(patternId) ?? 0
+  const evalCtx: EvalCtx = { staff, patternById, assignedOf, assignedOfSecondary, isWorkPattern, ruleTextCtx, countAssigned }
 
   const enabledRules: RuleWithId[] = rules.filter((r) => r.enabled)
   for (const r of enabledRules) {

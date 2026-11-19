@@ -21,6 +21,7 @@ import { scoreGrid } from './score'
 import type { AssignmentGrid, GenerateInput } from './types'
 import type { GenerationProfile } from './defaults'
 import { nowOf, randomInt, rngOf } from './random'
+import { makeGridView } from './gridRows'
 
 export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: GenerationProfile, ms: number) {
   const { staff, daysInMonth, yearMonth, shiftPatterns, rules, lockedCells, wishes, employmentTypes, settings, monthlyMaxDaysOverride } =
@@ -66,18 +67,29 @@ export function hillClimb(grid: AssignmentGrid, input: GenerateInput, profile: G
   }
 
   const evaluate = () => {
+    if (input.stats) input.stats.hillClimbEvaluations++
     const chk = checkMonth(makeCheckInput(grid, input))
     const sc = scoreGrid(input, grid, profile).total
     return { hardCount: chk.hardCount, total: sc }
   }
 
+  if (input.stats) input.stats.hillClimbRuns++
   let current = evaluate()
   const end = now() + ms
 
   const evalMove = (revert: () => void) => {
-    const next = evaluate()
-    if (next.hardCount < current.hardCount || (next.hardCount === current.hardCount && next.total > current.total)) {
-      current = next
+    if (input.stats) input.stats.hillClimbEvaluations++
+    // 必須違反が増えた手は、採点を待たずに戻す（採点しても採らないので判定は従来と同じ。B2）
+    // 勤務の読み取りと日ごとの人数の表を、違反チェックと採点で共有する（B2）
+    const view = makeGridView(grid, daysInMonth, staff)
+    const hardCount = checkMonth({ ...makeCheckInput(grid, input), gridView: view }).hardCount
+    if (hardCount > current.hardCount) {
+      revert()
+      return
+    }
+    const total = scoreGrid(input, grid, profile, view).total
+    if (hardCount < current.hardCount || total > current.total) {
+      current = { hardCount, total }
       return
     }
     revert()

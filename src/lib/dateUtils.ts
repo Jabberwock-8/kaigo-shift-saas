@@ -19,7 +19,23 @@ export function daysInMonth(yearMonth: string): number {
   return new Date(year, month0 + 1, 0).getDate()
 }
 
+/**
+ * 月ごとの曜日の表（[日] = 0〜6）。自動生成の探索では1手ごとに何百回も曜日を調べるため、
+ * 毎回 Date を作らず、月ごとに1回だけ作って使い回す（改善指示書 B2。結果は同じ）
+ */
+const weekdayTables = new Map<string, number[]>()
+
 export function weekdayOf(yearMonth: string, day: number): number {
+  let table = weekdayTables.get(yearMonth)
+  if (!table) {
+    const { year, month0 } = parseYearMonth(yearMonth)
+    table = []
+    for (let d = 0; d <= 32; d++) table[d] = new Date(year, month0, d).getDay()
+    weekdayTables.set(yearMonth, table)
+  }
+  const w = table[day]
+  if (w !== undefined) return w
+  // 表の外の日（月の前後に大きくはみ出す日）は、従来どおり計算する
   const { year, month0 } = parseYearMonth(yearMonth)
   return new Date(year, month0, day).getDay()
 }
@@ -74,8 +90,19 @@ export function formatMonthDayWeekday(yearMonth: string, day: number): string {
 }
 
 /** "HH:MM" -> 小数時間（例 "09:30" -> 9.5）。不正な値は null */
+const timeCache = new Map<string, number | null>()
+
 export function parseTimeToHours(hhmm: string | undefined | null): number | null {
   if (!hhmm) return null
+  // 探索中に同じ時刻を何度も読むため、読んだ結果を覚えておく（B2。結果は同じ）
+  const cached = timeCache.get(hhmm)
+  if (cached !== undefined) return cached
+  const v = parseTimeToHoursUncached(hhmm)
+  timeCache.set(hhmm, v)
+  return v
+}
+
+function parseTimeToHoursUncached(hhmm: string): number | null {
   const parts = hhmm.split(':')
   if (parts.length < 2) return null
   const h = Number(parts[0])
