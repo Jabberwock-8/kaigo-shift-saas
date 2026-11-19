@@ -60,6 +60,11 @@ export interface GenerationConfig {
     enforceTraitPairs: boolean
     /** 希望休の日に勤務を入れない（人手不足でも崩さない）。false で旧挙動（不足時の最後の手段として崩す）へ戻せる */
     enforceWishes: boolean
+    /**
+     * 1案の持ち時間(ms)。この間で作り直して、いちばん良い案を残す（B3。generateBest.ts）。
+     * 0 なら従来どおり1回だけ作る。古い上書き設定に無くても既定値が入る
+     */
+    candidateTimeBudgetMs: number
   }
 }
 
@@ -102,6 +107,7 @@ export const GENERATION_DEFAULTS_V1: GenerationConfig = {
     preferShiftWeight: 4,
     enforceTraitPairs: true,
     enforceWishes: true,
+    candidateTimeBudgetMs: 5000,
   },
 }
 

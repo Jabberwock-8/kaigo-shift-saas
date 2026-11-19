@@ -722,7 +722,7 @@ export default function ShiftGridPage() {
                 {!generating
                   ? '⚡ パターン生成'
                   : genProgress
-                    ? `${genProgress.label} 作成中…（${genProgress.index + 1}/${genProgress.total}）`
+                    ? `${genProgress.label} 作成中…（${genProgress.index + 1}/${genProgress.total}${genProgress.attempt > 1 ? `・${genProgress.attempt}回目` : ''}）`
                     : '準備中…'}
               </button>
               {generating && (

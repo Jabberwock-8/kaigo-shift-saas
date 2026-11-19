@@ -2,7 +2,7 @@
  * 3案を順に作る処理（generate() と同じ順・同じ中身）に、「何案目を作っているか」の知らせを足したもの。
  * Worker の中と、Worker が使えないときの画面側の両方から使う（remaining-work-design.md §21）。
  */
-import { generateOne } from '../../domain/scheduler/generateOne'
+import { generateBest } from '../../domain/scheduler/generateBest'
 import type { Candidate, GenerateInput } from '../../domain/scheduler/types'
 
 export interface GenerateProgress {
@@ -11,15 +11,16 @@ export interface GenerateProgress {
   total: number
   /** 案の名前（例: 案A） */
   label: string
+  /** その案を何回目に作り直しているか（1始まり。B3） */
+  attempt: number
 }
 
-/** 1案ずつ作る。各案の前に onProgress を呼ぶ */
+/** 1案ずつ作る（generate() と同じ）。各案の各回を始める前に onProgress を呼ぶ */
 export function runProfiles(input: GenerateInput, onProgress: (p: GenerateProgress) => void): Candidate[] {
   const profiles = input.config.profiles
-  return profiles.map((profile, index) => {
-    onProgress({ index, total: profiles.length, label: profile.label })
-    return generateOne(input, profile)
-  })
+  return profiles.map((profile, index) =>
+    generateBest(input, profile, (attempt) => onProgress({ index, total: profiles.length, label: profile.label, attempt })),
+  )
 }
 
 /** Worker とやりとりする内容 */

@@ -13,7 +13,8 @@ function seeded(seed = 1): GenerateInput {
     ...base,
     random: createSeededRandom(seed),
     now: steppingClock(),
-    config: { ...base.config, engine: { ...base.config.engine, hillClimbMs: 40 } },
+    // 作り直し（B3）は generateBest.test.ts で確かめる。ここでは1案1回にして、進み具合の回数を決まった数にする
+    config: { ...base.config, engine: { ...base.config.engine, hillClimbMs: 40, candidateTimeBudgetMs: 0 } },
   }
 }
 

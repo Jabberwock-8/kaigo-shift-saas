@@ -56,7 +56,7 @@ describe('generate: 種と時計を渡すと毎回同じ案になる', () => {
 
   it('種を渡さない従来の呼び方でも、案の形は同じ（3案・全職員分）', () => {
     const f = BENCH_FACILITIES[0].build()
-    const result = generate({ ...f, config: { ...f.config, engine: { ...f.config.engine, hillClimbMs: 30 } } })
+    const result = generate({ ...f, config: { ...f.config, engine: { ...f.config.engine, hillClimbMs: 30, candidateTimeBudgetMs: 0 } } })
     expect(result).toHaveLength(f.config.profiles.length)
     for (const c of result) expect(Object.keys(c.assignments).sort()).toEqual(f.staff.map((s) => s.id).sort())
   })

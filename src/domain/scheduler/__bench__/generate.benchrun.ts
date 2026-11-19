@@ -34,8 +34,10 @@ interface Row {
   fillAvg: number
   fillMin: number
   secAvg: number
-  /** 探索1回（1案）あたりの試した手の数 */
+  /** 探索1回あたりの試した手の数 */
   movesAvg: number
+  /** 1案あたりの作り直しの回数（B3） */
+  attemptsAvg: number
 }
 
 const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
@@ -66,15 +68,16 @@ it('bench: 架空4施設 × 種', () => {
       fillMin: Math.min(...picks.map((c) => c.fulfillmentRate)),
       secAvg: avg(secs),
       movesAvg: stats.hillClimbRuns ? stats.hillClimbEvaluations / stats.hillClimbRuns : 0,
+      attemptsAvg: stats.hillClimbRuns / (SEEDS * fac.build().config.profiles.length),
     })
   }
 
   const header =
-    '| 施設の形 | 必須違反 平均 | 必須違反 最悪 | 推奨未達 平均 | 推奨未達 最悪 | 総合点 平均 | 総合点 最低 | 充足率% 平均 | 充足率% 最低 | 1回の秒数 平均 | 探索の手数（1案） |'
-  const sep = '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|'
+    '| 施設の形 | 必須違反 平均 | 必須違反 最悪 | 推奨未達 平均 | 推奨未達 最悪 | 総合点 平均 | 総合点 最低 | 充足率% 平均 | 充足率% 最低 | 1回の秒数 平均 | 探索の手数（1回） | 作り直し（1案） |'
+  const sep = '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|'
   const lines = rows.map(
     (r) =>
-      `| ${r.label} | ${f1(r.hardAvg)} | ${r.hardMax} | ${f1(r.softAvg)} | ${r.softMax} | ${f1(r.totalAvg)} | ${f1(r.totalMin)} | ${f1(r.fillAvg)} | ${f1(r.fillMin)} | ${f1(r.secAvg)} | ${Math.round(r.movesAvg)} |`,
+      `| ${r.label} | ${f1(r.hardAvg)} | ${r.hardMax} | ${f1(r.softAvg)} | ${r.softMax} | ${f1(r.totalAvg)} | ${f1(r.totalMin)} | ${f1(r.fillAvg)} | ${f1(r.fillMin)} | ${f1(r.secAvg)} | ${Math.round(r.movesAvg)} | ${f1(r.attemptsAvg)} |`,
   )
   const md = [`種 ${SEEDS} 個（1〜${SEEDS}）。各回の「おすすめ」案の数字。`, '', header, sep, ...lines, ''].join('\n')
   // vitest は成功したテストの console.log を出さないことがあるため、直接書き出す
