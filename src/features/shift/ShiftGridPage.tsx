@@ -54,7 +54,7 @@ import {
 import { prepareBackupFolder, saveFacilityBackup } from '../../lib/autoBackup'
 import { checkMonth } from '../../domain/scheduler/check'
 import { demandFor, shiftGroupDeficitPatternIds } from '../../domain/scheduler/demand'
-import { generate } from '../../domain/scheduler/generate'
+import { GenerationCancelledError, runGenerate, type GenerateProgress } from '../generate/runGenerate'
 import { resolveLimits } from '../../domain/scheduler/limits'
 import type { Candidate, PrevMonthTail } from '../../domain/scheduler/types'
 import { prevMonthTail } from '../../domain/scheduler/gridUtils'
@@ -123,6 +123,10 @@ export default function ShiftGridPage() {
   const [candidates, setCandidates] = useState<(Candidate & { id: string })[] | null>(null)
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
+  // 生成の進み具合（案A 作成中…（1/3））と中止（§21 B1）
+  const [genProgress, setGenProgress] = useState<GenerateProgress | null>(null)
+  const [genNotice, setGenNotice] = useState<string | null>(null)
+  const genAbortRef = useRef<AbortController | null>(null)
   const [adoptingId, setAdoptingId] = useState<string | null>(null)
   const [genError, setGenError] = useState<string | null>(null)
   const [backupMsg, setBackupMsg] = useState<string | null>(null)
@@ -215,9 +219,15 @@ export default function ShiftGridPage() {
     }
   }
 
+  // 画面を離れたら生成を止める
+  useEffect(() => () => genAbortRef.current?.abort('navigate'), [])
+
   useEffect(() => {
     setUnlockedKey(null)
     setBulkMsg(null)
+    setGenNotice(null)
+    // 月・施設を移ったら生成を止める（古い月の案が新しい月の画面に出ないように）
+    genAbortRef.current?.abort('navigate')
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFacilityId, yearMonth])
@@ -302,12 +312,14 @@ export default function ShiftGridPage() {
   async function handleGenerate() {
     if (!selectedFacilityId || generatingRef.current) return
     generatingRef.current = true
+    const abort = new AbortController()
+    genAbortRef.current = abort
     setGenerating(true)
+    setGenProgress(null)
     setGenError(null)
+    setGenNotice(null)
     setPreviewId(null)
     try {
-      // 旧版と同じく、生成を開始する前に1フレーム逃してボタン押下の反応を先に描画させる
-      await new Promise((resolve) => setTimeout(resolve, 30))
       // 案を作る時点の勤務表の版を先に控える（採択時に、その後の手直しを上書きしないか確かめるため）
       const baseSchedule = await fetchSchedule(selectedFacilityId, yearMonth)
       const baseRevision = baseSchedule?.revision ?? 0
@@ -318,15 +330,25 @@ export default function ShiftGridPage() {
       const kept = Object.fromEntries(
         Object.entries(baseSchedule?.assignments ?? {}).filter(([staffId]) => !generatedIds.has(staffId)),
       )
-      const result = generate(input).map((c) => ({ ...c, assignments: { ...kept, ...c.assignments }, baseRevision }))
+      // 画面とは別の所（Worker）で作る。中止したら何も保存しない
+      const generated = await runGenerate(input, { onProgress: setGenProgress, signal: abort.signal })
+      if (abort.signal.aborted) throw new GenerationCancelledError()
+      const result = generated.map((c) => ({ ...c, assignments: { ...kept, ...c.assignments }, baseRevision }))
       const saved = await saveCandidates(selectedFacilityId, yearMonth, result)
       setCandidates(saved)
       setStoredCandidates(saved)
     } catch (e) {
-      setGenError(e instanceof Error ? e.message : String(e))
+      if (e instanceof GenerationCancelledError) {
+        // 月・施設を移って止めたときは、新しい画面に案内を出さない
+        if (abort.signal.reason !== 'navigate') setGenNotice('生成を中止しました。勤務表と前回の案は変わっていません。')
+      } else {
+        setGenError(e instanceof Error ? e.message : String(e))
+      }
     } finally {
+      if (genAbortRef.current === abort) genAbortRef.current = null
       generatingRef.current = false
       setGenerating(false)
+      setGenProgress(null)
     }
   }
 
@@ -694,9 +716,20 @@ export default function ShiftGridPage() {
             </button>
           )}
           {canEditMonth && (
-            <button type="button" onClick={() => void handleGenerate()} disabled={generating}>
-              {generating ? '生成中…' : '⚡ パターン生成'}
-            </button>
+            <>
+              <button type="button" onClick={() => void handleGenerate()} disabled={generating}>
+                {!generating
+                  ? '⚡ パターン生成'
+                  : genProgress
+                    ? `${genProgress.label} 作成中…（${genProgress.index + 1}/${genProgress.total}）`
+                    : '準備中…'}
+              </button>
+              {generating && (
+                <button type="button" className="ghost" onClick={() => genAbortRef.current?.abort('user')}>
+                  中止
+                </button>
+              )}
+            </>
           )}
           <div className="toolbar-menu-wrap">
             <button
@@ -857,6 +890,7 @@ export default function ShiftGridPage() {
         </p>
       )}
       {genError && <p className="warn no-print">{genError}</p>}
+      {genNotice && <p className="muted no-print">{genNotice}</p>}
       {backupMsg && <p className="muted no-print">💾 {backupMsg}</p>}
       {bulkMsg && <p className="muted no-print">✏ {bulkMsg}</p>}
 
