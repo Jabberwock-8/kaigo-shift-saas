@@ -137,3 +137,93 @@ button.primary:disabled {
   color: var(--color-surface);
 }
 
+/* ------------------------------------------------------------------
+   改善指示書 D5: 3案の比較カード（remaining-work-design.md §28）
+   ------------------------------------------------------------------ */
+.candidate-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.candidate-card.recommended {
+  border-color: var(--color-primary-border-soft);
+  box-shadow: var(--shadow-card-raised);
+}
+
+.candidate-reason {
+  margin: -2px 0 8px;
+  font-size: 0.75rem;
+  color: var(--color-primary-dark);
+}
+
+.candidate-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 4px 0 10px;
+}
+
+.candidate-bar-row {
+  display: grid;
+  grid-template-columns: 3.4em 1fr 2.2em;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.candidate-bar-track {
+  position: relative;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  overflow: hidden;
+}
+
+.candidate-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-border-soft);
+}
+
+.candidate-bar-value {
+  text-align: right;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* 3案の中でいちばん高い項目は濃い色 */
+.candidate-bar-row.best .candidate-bar-fill {
+  background: var(--color-primary);
+}
+
+.candidate-bar-row.best .candidate-bar-label,
+.candidate-bar-row.best .candidate-bar-value {
+  color: var(--color-primary-dark);
+  font-weight: 700;
+}
+
+.candidate-violation-list summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.candidate-violation-open {
+  margin-left: 4px;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.candidate-violation-list ul {
+  margin: 4px 0 0;
+  padding-left: 1.2em;
+  max-height: 160px;
+  overflow-y: auto;
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+}

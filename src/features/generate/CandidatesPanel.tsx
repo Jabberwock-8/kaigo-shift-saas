@@ -1,5 +1,6 @@
-import { TriangleAlert } from 'lucide-react'
+import { CircleCheck, Sparkles, TriangleAlert } from 'lucide-react'
 import type { Candidate, ScoreKey } from '../../domain/scheduler/types'
+import { bestScoreByKey, pickRecommendedId, recommendReason } from './candidateCompare'
 
 type CandidateWithId = Candidate & { id: string }
 
@@ -22,32 +23,37 @@ const SCORE_LABELS: Record<ScoreKey, string> = {
   spread: '偏り',
 }
 
-/** hardCount が最も少なく、同数なら total が最も高い案を「おすすめ」とする */
-function pickRecommendedId(candidates: CandidateWithId[]): string | null {
-  if (candidates.length === 0) return null
-  return candidates.reduce((best, c) => {
-    if (c.hardCount < best.hardCount) return c
-    if (c.hardCount === best.hardCount && c.scores.total > best.scores.total) return c
-    return best
-  }, candidates[0]).id
-}
+const SCORE_KEYS = Object.keys(SCORE_LABELS) as ScoreKey[]
 
 /**
  * 自動生成された3案を横並びのカードで比較表示する（Phase 4e）。
  * 「プレビュー」で ShiftGridPage 側の previewId を切り替え、「採択する」で確定する。
+ * 改善指示書 D5（remaining-work-design.md §28）: 6つの点数を横棒にし、3案の中でいちばん高い項目を濃い色に。
+ * 「おすすめ」の理由を1行で出し、必須違反は開くと全件見られる
  */
 export default function CandidatesPanel({ candidates, previewId, adoptingId, generating = false, onPreview, onAdopt }: Props) {
   if (candidates.length === 0) return null
   const recommendedId = pickRecommendedId(candidates)
+  const reason = recommendReason(candidates, recommendedId)
+  const best = bestScoreByKey(candidates, SCORE_KEYS)
 
   return (
     <div className="candidates-panel no-print">
       {candidates.map((c) => (
-        <div key={c.id} className={`candidate-card${c.id === previewId ? ' previewing' : ''}`}>
+        <div
+          key={c.id}
+          className={`candidate-card${c.id === previewId ? ' previewing' : ''}${c.id === recommendedId ? ' recommended' : ''}`}
+        >
           <div className="candidate-card-head">
             <span className="candidate-label">{c.label}</span>
             {c.id === recommendedId && <span className="badge recommend">おすすめ</span>}
           </div>
+          {c.id === recommendedId && reason && (
+            <p className="candidate-reason">
+              <Sparkles className="ico" size={14} aria-hidden="true" />
+              {reason}
+            </p>
+          )}
 
           <div className="candidate-total">
             <span className="candidate-total-num">{c.scores.total}</span>
@@ -55,24 +61,41 @@ export default function CandidatesPanel({ candidates, previewId, adoptingId, gen
           </div>
           <div className="candidate-fulfillment">充足率 {Math.round(c.fulfillmentRate)}%</div>
 
-          <div className="candidate-scores">
-            {(Object.keys(SCORE_LABELS) as ScoreKey[]).map((key) => (
-              <div key={key} className="candidate-score-item">
-                <span className="muted">{SCORE_LABELS[key]}</span>
-                <span>{c.scores[key]}</span>
-              </div>
-            ))}
+          <div className="candidate-bars" aria-label="6つの観点の点数（100点満点）">
+            {SCORE_KEYS.map((key) => {
+              const v = Math.max(0, Math.min(100, c.scores[key]))
+              const isBest = candidates.length > 1 && c.scores[key] === best[key]
+              return (
+                <div key={key} className={`candidate-bar-row${isBest ? ' best' : ''}`}>
+                  <span className="candidate-bar-label">{SCORE_LABELS[key]}</span>
+                  <span className="candidate-bar-track" aria-hidden="true">
+                    <span className="candidate-bar-fill" style={{ width: `${v}%` }} />
+                  </span>
+                  <span className="candidate-bar-value">{c.scores[key]}</span>
+                </div>
+              )
+            })}
           </div>
 
           <div className="candidate-violations">
             {c.hardCount > 0 ? (
-              <p className="warn">
-                <TriangleAlert className="ico" size={16} aria-hidden="true" />
-                必須違反 {c.hardCount}件
-                {c.hardViolations[0] && <span className="candidate-violation-detail">{c.hardViolations[0]}</span>}
-              </p>
+              <details className="candidate-violation-list">
+                <summary className="warn">
+                  <TriangleAlert className="ico" size={16} aria-hidden="true" />
+                  必須違反 {c.hardCount}件
+                  <span className="candidate-violation-open">（開いて全件を見る）</span>
+                </summary>
+                <ul>
+                  {c.hardViolations.map((v, i) => (
+                    <li key={i}>{v}</li>
+                  ))}
+                </ul>
+              </details>
             ) : (
-              <p className="ok">必須違反なし</p>
+              <p className="ok">
+                <CircleCheck className="ico" size={16} aria-hidden="true" />
+                必須違反なし
+              </p>
             )}
             {c.softCount > 0 && <p className="muted">推奨未達 {c.softCount}件</p>}
           </div>

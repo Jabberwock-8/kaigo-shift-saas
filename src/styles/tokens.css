@@ -54,6 +54,8 @@
   --shadow-menu: 0 10px 28px rgba(20, 30, 25, 0.18); /* ツールバーのメニュー */
   --shadow-modal: 0 12px 32px rgba(34, 39, 31, 0.25); /* モーダル */
   --shadow-toast: 0 8px 24px rgba(34, 39, 31, 0.3); /* トースト */
+  --shadow-card: 0 1px 2px rgba(34, 39, 31, 0.05); /* 案のカード（D5） */
+  --shadow-card-raised: 0 1px 2px rgba(34, 39, 31, 0.05), 0 6px 18px rgba(29, 122, 99, 0.08); /* おすすめの案のカード（D5） */
 
   /* 角の丸み */
   --radius-xs: 4px;
