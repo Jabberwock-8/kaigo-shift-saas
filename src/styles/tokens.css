@@ -44,6 +44,10 @@
   --color-env-dev: #b45309; /* 試験用の環境の帯 */
   --color-env-dev-soft: #fdf1e3; /* 試験用の環境のサイドバー */
   --color-env-dev-border: #e8b77a; /* 試験用の環境のサイドバーの枠 */
+  --color-grid-line: #ebe9e3; /* シフト表の罫線（D4） */
+  --color-grid-sat: #f4f7fc; /* シフト表の土曜の列（D4） */
+  --color-grid-sun: #fcf4f3; /* シフト表の日曜の列（D4） */
+  --color-grid-hover: var(--color-primary-softer); /* シフト表のマウスを乗せた行・列（D4） */
 
   /* 影 */
   --shadow-popover: 0 8px 24px rgba(34, 39, 31, 0.18); /* セルの選択パネル */

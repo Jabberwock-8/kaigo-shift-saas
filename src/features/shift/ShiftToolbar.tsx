@@ -69,27 +69,31 @@ export default function ShiftToolbar({ g }: { g: ShiftGrid }) {
   return (
     <>
       <div className="page-header no-print">
-        <h2>{formatYearMonthLabel(yearMonth)} のシフト表</h2>
+        <h2>シフト表</h2>
         <div className="header-actions toolbar" ref={toolbarRef}>
-          <button
-            type="button"
-            onClick={() => moveMonth(shiftYearMonth(yearMonth, -1))}
-            aria-label="前の月"
-          >
-            <ChevronLeft size={16} aria-hidden="true" />
-          </button>
+          {/* 月の切り替えをひとまとまりに（改善指示書 D4） */}
+          <div className="month-nav" role="group" aria-label="月の切り替え">
+            <button
+              type="button"
+              onClick={() => moveMonth(shiftYearMonth(yearMonth, -1))}
+              aria-label="前の月"
+            >
+              <ChevronLeft size={16} aria-hidden="true" />
+            </button>
+            <span className="month-nav-label">{formatYearMonthLabel(yearMonth)}</span>
+            <button
+              type="button"
+              onClick={() => moveMonth(shiftYearMonth(yearMonth, 1))}
+              aria-label="次の月"
+            >
+              <ChevronRight size={16} aria-hidden="true" />
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => moveMonth(currentYearMonth())}
           >
             今月
-          </button>
-          <button
-            type="button"
-            onClick={() => moveMonth(shiftYearMonth(yearMonth, 1))}
-            aria-label="次の月"
-          >
-            <ChevronRight size={16} aria-hidden="true" />
           </button>
           <div className="view-toggle" role="group" aria-label="表示の切り替え">
             <button
@@ -118,6 +122,7 @@ export default function ShiftToolbar({ g }: { g: ShiftGrid }) {
             {fitToScreen ? <Minimize2 className="ico" size={16} aria-hidden="true" /> : <Maximize2 className="ico" size={16} aria-hidden="true" />}
             {fitToScreen ? '実寸に戻す' : '画面に収める'}
           </button>
+          <span className="toolbar-spacer" aria-hidden="true" />
           {isAdmin && (
             <button
               type="button"
@@ -138,23 +143,6 @@ export default function ShiftToolbar({ g }: { g: ShiftGrid }) {
               {!editLocked || tempUnlocked ? <Lock className="ico" size={16} aria-hidden="true" /> : <LockOpen className="ico" size={16} aria-hidden="true" />}
               {!editLocked ? 'ロック' : tempUnlocked ? 'ロックに戻す' : '一時解除'}
             </button>
-          )}
-          {canEditMonth && (
-            <>
-              <button type="button" onClick={() => void handleGenerate()} disabled={generating}>
-                {!generating && <Zap className="ico" size={16} aria-hidden="true" />}
-                {!generating
-                  ? 'パターン生成'
-                  : genProgress
-                    ? `${genProgress.label} 作成中…（${genProgress.index + 1}/${genProgress.total}${genProgress.attempt > 1 ? `・${genProgress.attempt}回目` : ''}）`
-                    : '準備中…'}
-              </button>
-              {generating && (
-                <button type="button" className="ghost" onClick={() => genAbortRef.current?.abort('user')}>
-                  中止
-                </button>
-              )}
-            </>
           )}
           <div className="toolbar-menu-wrap">
             <button
@@ -275,6 +263,24 @@ export default function ShiftToolbar({ g }: { g: ShiftGrid }) {
                 </div>
               )}
             </div>
+          )}
+          {/* パターン生成は右端の主ボタン（改善指示書 D4） */}
+          {canEditMonth && (
+            <>
+              <button type="button" className="primary" onClick={() => void handleGenerate()} disabled={generating}>
+                {!generating && <Zap className="ico" size={16} aria-hidden="true" />}
+                {!generating
+                  ? 'パターン生成'
+                  : genProgress
+                    ? `${genProgress.label} 作成中…（${genProgress.index + 1}/${genProgress.total}${genProgress.attempt > 1 ? `・${genProgress.attempt}回目` : ''}）`
+                    : '準備中…'}
+              </button>
+              {generating && (
+                <button type="button" className="ghost" onClick={() => genAbortRef.current?.abort('user')}>
+                  中止
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

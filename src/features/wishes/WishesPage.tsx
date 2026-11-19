@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useFacility } from '../../context/FacilityContext'
@@ -132,13 +133,13 @@ export default function WishesPage() {
         <h2>{formatYearMonthLabel(yearMonth)} の希望休</h2>
         <div className="header-actions">
           <button type="button" onClick={() => setYearMonth((ym) => shiftYearMonth(ym, -1))}>
-            ◀
+            <ChevronLeft size={16} aria-label="前の月" />
           </button>
           <button type="button" onClick={() => setYearMonth(currentYearMonth())}>
             今月
           </button>
           <button type="button" onClick={() => setYearMonth((ym) => shiftYearMonth(ym, 1))}>
-            ▶
+            <ChevronRight size={16} aria-label="次の月" />
           </button>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useFacility } from '../../context/FacilityContext'
 import { useMasters } from '../../context/MastersContext'
@@ -106,13 +107,13 @@ export default function PaidLeavePage() {
         <h2>有給休暇</h2>
         <div className="header-actions">
           <button type="button" onClick={() => setAsOf((ym) => shiftYearMonth(ym, -1))}>
-            ◀
+            <ChevronLeft size={16} aria-label="前の月" />
           </button>
           <button type="button" onClick={() => setAsOf(currentYearMonth())}>
             今月
           </button>
           <button type="button" onClick={() => setAsOf((ym) => shiftYearMonth(ym, 1))}>
-            ▶
+            <ChevronRight size={16} aria-label="次の月" />
           </button>
         </div>
       </div>

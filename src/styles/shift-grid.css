@@ -328,3 +328,208 @@ td.wish-cell.clickable:hover {
   outline-offset: -2px;
 }
 
+/* ------------------------------------------------------------------
+   改善指示書 D4: シフト表を読みやすく（remaining-work-design.md §27）。
+   画面の表（.grid-scroll の中）だけに効かせる。印刷用の表（PrintableShiftGrid）には効かせない
+   ------------------------------------------------------------------ */
+
+/* ツールバー: 月の切り替えをひとまとまりに、右端に主ボタン */
+.page-header .header-actions.toolbar {
+  flex: 1 1 auto;
+  align-items: center;
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.month-nav {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.header-actions .month-nav button {
+  border: none;
+  border-radius: 0;
+  padding: 6px 10px;
+  background: transparent;
+}
+
+.header-actions .month-nav button:hover {
+  background: var(--color-surface-muted);
+}
+
+.month-nav-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+}
+
+/* 表の上の凡例 */
+.grid-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.grid-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+}
+
+.grid-legend-hint {
+  margin-left: 4px;
+  color: var(--color-text-muted);
+}
+
+.legend-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.legend-viol {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  color: var(--color-surface);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.legend-wish-ok {
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 2px var(--color-attention);
+}
+
+.legend-wish-bad {
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 2px var(--color-danger);
+}
+
+.legend-lock {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-subtle);
+}
+
+.legend-sat {
+  background: var(--color-grid-sat);
+  border: 1px solid var(--color-border);
+}
+
+.legend-sun {
+  background: var(--color-grid-sun);
+  border: 1px solid var(--color-border);
+}
+
+.legend-today {
+  border: 2px solid var(--color-primary);
+}
+
+/* 罫線を少し薄く */
+.grid-scroll table.shift-grid th,
+.grid-scroll table.shift-grid td {
+  border-color: var(--color-grid-line);
+}
+
+/* 日付の見出し: 数字と曜日を2段に */
+.grid-scroll table.shift-grid th .day-num {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.grid-scroll table.shift-grid th .dow {
+  display: block;
+}
+
+/* 土曜・日曜の列全体に薄い色 */
+.grid-scroll table.shift-grid th.sat,
+.grid-scroll table.shift-grid td.sat {
+  background-color: var(--color-grid-sat);
+}
+
+.grid-scroll table.shift-grid th.sun,
+.grid-scroll table.shift-grid td.sun {
+  background-color: var(--color-grid-sun);
+}
+
+/* 週の区切り（月曜の左）を少し濃く */
+.grid-scroll table.shift-grid th.week-start,
+.grid-scroll table.shift-grid td.week-start {
+  border-left: 2px solid var(--color-border-strong);
+}
+
+/* 今日の列を緑の枠で。見出しは緑の札 */
+.grid-scroll table.shift-grid th.today,
+.grid-scroll table.shift-grid td.today {
+  border-left: 2px solid var(--color-primary);
+  border-right: 2px solid var(--color-primary);
+}
+
+.grid-scroll table.shift-grid th.today {
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.grid-scroll table.shift-grid th.today .dow {
+  color: var(--color-surface);
+}
+
+/* マウスを乗せた行を薄く光らせる（列は ShiftGridTable が data-day で光らせる） */
+.grid-scroll table.shift-grid tbody tr:hover > td {
+  background-color: var(--color-grid-hover);
+}
+
+/* 名前の欄: 名前と日数、その下に雇用区分・職種 */
+.grid-scroll table.shift-grid td.namecol {
+  min-width: 150px;
+}
+
+.name-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.name-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.name-count.short {
+  color: var(--color-warning-text);
+}
+
+.name-meta {
+  font-size: 0.68rem;
+  line-height: 1.3;
+  color: var(--color-text-muted);
+}

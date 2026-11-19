@@ -29,12 +29,6 @@ export default function ShiftGridPage() {
       <ShiftGridTable g={g} />
       <ShiftGridOverlays g={g} />
 
-      <p className="muted no-print" style={{ marginTop: 10 }}>
-        セルをクリックすると勤務パターンを選択できます。<strong>セルを右クリックするとロックを切り替えられます</strong>
-        （パネル内の「ロック切替」でも同じ操作ができます）。ロックは自動生成でこのセルを固定する目印です（右上に灰色の点が付きます）。
-        「!」は必須条件・相性・勤務条件などの違反（マウスを乗せると詳細）、金の枠は希望休が守れている日、赤の枠は希望休なのに勤務が入っている日です。
-      </p>
-
       {staffList.length > 0 && shiftPatterns.length > 0 && (
         <PrintableShiftGrid
           facilityName={facilityName}
